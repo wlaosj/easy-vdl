@@ -4,7 +4,7 @@
 **支持x86设备（推荐），arm设备也编译了镜像，但是我没有设备测试，你们自行测试吧，不保证100%能用 **<br>
 **作者爱发电主页：https://afdian.com/a/docker #发电期间内独有内测功能授权 **<br>
 **电报交流群：https://t.me/+7jcTMePlNVwwZjg1 #反馈使用问题，交流更新日志 **<br>
-**dockerhub主页：[https://t.me/+7jcTMePlNVwwZjg1](https://hub.docker.com/r/qq918652593/easy-vdl) **<br>
+**dockerhub主页：https://hub.docker.com/r/qq918652593/easy-vdl **<br>
 <br>
 ---<br>
 <br>
