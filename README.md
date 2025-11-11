@@ -1,6 +1,6 @@
 # easy-vdl 统一视频下载平台<br>
 <br>
-**软件作者：隔壁小王-bigv **<br>
+**软件作者：bigv **<br>
 **支持x86设备（推荐），arm设备也编译了镜像，但是我没有设备测试，你们自行测试吧，不保证100%能用 **<br>
 **作者爱发电主页：https://afdian.com/a/docker #发电期间内独有内测功能授权 **<br>
 **电报交流群：https://t.me/+7jcTMePlNVwwZjg1 #反馈使用问题，交流更新日志 **<br>
