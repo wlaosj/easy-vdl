@@ -2,15 +2,13 @@
 <br>
 **软件作者：bigv **<br>
 **支持x86设备（推荐），arm设备也编译了镜像，但是我没有设备测试，你们自行测试吧，不保证100%能用 **<br>
-**作者爱发电主页：https://afdian.com/a/docker #发电期间内独有内测功能授权 **<br>
 **电报交流群：https://t.me/+7jcTMePlNVwwZjg1 #反馈使用问题，交流更新日志 **<br>
-**dockerhub主页：https://hub.docker.com/r/qq918652593/easy-vdl **<br>
 <br>
 ---<br>
 <br>
 ## 简介<br>
 <br>
-easy-vdl 是一款支持多平台（某音、某书、B某、YouTube、更多平台、多平台博主订阅功能、批量下载、文件管理）的视频解析与下载的可视化平台。内置智能缓存、批量下载、Emby/Jellyfin 元数据自动刮削生成，界面美观，操作简单，适合个人和媒体库用户。<br>
+easy-vdl 是一款支持多平台（某音、某书、B某、YouTube、更多平台、多平台博主订阅功能、批量下载、文件管理）的视频解析与下载的可视化平台。内置智能缓存、批量下载、Emby/Jellyfin 元数据自动刮削生成、核显硬件加速转码播放，界面美观，操作简单，适合个人和媒体库用户。<br>
 <br>
 ---<br>
 <br>
@@ -19,6 +17,7 @@ easy-vdl 是一款支持多平台（某音、某书、B某、YouTube、更多平
 **桥接模式示例：**<br>
 <pre>
 docker run -d -p 888:80 \<br>
+  --device=/dev/dri:/dev/dri \<br>
   -v /mnt/easy-vdl/downloads:/app/downloads \<br>
   -v /mnt/easy-vdl/logs:/app/logs \<br>
   -v /mnt/easy-vdl/database:/app/database \<br>
@@ -35,6 +34,7 @@ docker run -d -p 888:80 \<br>
 **Host模式示例：**<br>
 <pre>
 docker run -d --network host \<br>
+  --device=/dev/dri:/dev/dri \<br>
   -v /mnt/easy-vdl/downloads:/app/downloads \<br>
   -v /mnt/easy-vdl/logs:/app/logs \<br>
   -v /mnt/easy-vdl/database:/app/database \<br>
@@ -68,6 +68,14 @@ docker run -d --network host \<br>
 - `/app/database`：数据库目录，包含PostgreSQL数据库文件和Chrome用户数据<br>
 - 建议将所有目录挂载到本地，确保数据持久化和便于管理<br>
 <br>
+**硬件加速说明（x86 架构）：**<br>
+- `--device=/dev/dri:/dev/dri`：启用核显硬件加速（可选，仅 x86 架构支持）<br>
+- **Intel 核显**：✅ 明确支持，支持 Intel 第 6 代（Skylake）及更新的核显（HD 500/600/700/UHD 系列）和 Intel Arc 系列独立显卡<br>
+- **AMD 核显**：⚠️ 可能支持但未测试，镜像已包含 `mesa-va-drivers` 和 AMD DRM 库，理论上支持较新的 AMD APU（如 Radeon 600/700 系列），但未经过实际测试验证，如有 AMD 设备可自行测试<br>
+- ARM 架构不支持标准 VA-API 硬件加速，无需添加此参数<br>
+- **使用说明**：硬件加速仅在随机的播放视频器中生效，可在播放器的右上角切换画质；画质选择器会实时显示当前使用的转码技术标识：`qsv`（Intel Quick Sync Video 硬件加速）、`vaapi`（VA-API 硬件加速）或 `cpu`（CPU 软件转码），方便确认硬件加速是否生效<br>
+- **验证方法**：在播放器中切换画质时，如果硬件加速正常工作，画质选项后会显示 `qsv` 或 `vaapi` 标识（如"720p (qsv)"），且 CPU 占用会明显降低；如果显示 `cpu` 则表示使用软件转码<br>
+<br>
 
 ---<br>
 <br>
@@ -82,6 +90,8 @@ services:<br>
     container_name: easy-vdl<br>
     ports:<br>
       - "888:80"  # 主服务端口<br>
+    devices:<br>
+      - /dev/dri:/dev/dri  # Intel 核显硬件加速（x86 架构，可选）<br>
     volumes:<br>
       - /mnt/easy-vdl/easy-vdl:/app/downloads  # 下载文件目录<br>
       - /mnt/easy-vdl/easy-vdl/logs:/app/logs  # 日志目录<br>
@@ -130,3 +140,4 @@ services:<br>
 ---<br>
 <br>
 快来体验 easy-vdl 带来的极致视频下载体验吧！
+
