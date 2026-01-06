@@ -19,8 +19,8 @@ easy-vdl 是一款支持多平台的视频解析与下载可视化平台。内�
 
 ```bash
 docker run -d -p 888:80 \
-  --memory=2g \
-  --memory-swap=2g \
+  --memory=4g \
+  --memory-swap=4g \
   --device=/dev/dri:/dev/dri \
   -v /mnt/easy-vdl/downloads:/app/downloads \
   -v /mnt/easy-vdl/logs:/app/logs \
@@ -48,6 +48,10 @@ docker run -d -p 888:80 \
 - `/app/logs` - 日志目录
 - `/app/database` - 数据库目录
 
+> **内存建议：**
+> - 轻量使用（订阅数量较少、偶尔解析下载）：可以将 `--memory` / `mem_limit` 调整为 `2g`。  
+> - 中重度使用（约 50 个以上订阅、经常进行批量检测/批量同步）：推荐使用 `4g`，以保证浏览器嗅探和数据库在高负载场景下更稳定。
+
 **硬件加速（可选）：**
 - 添加 `--device=/dev/dri:/dev/dri` 启用 Intel 核显硬件加速
 - 支持 Intel 第 6 代（Skylake）及更新的核显和 Intel Arc 系列
@@ -64,8 +68,8 @@ services:
     container_name: easy-vdl
     ports:
       - "888:80"
-    mem_limit: 2g
-    memswap_limit: 2g
+    mem_limit: 4g
+    memswap_limit: 4g
     devices:
       - /dev/dri:/dev/dri  # 硬件加速（可选）
     volumes:
