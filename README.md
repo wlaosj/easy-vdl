@@ -8,7 +8,7 @@
 
 ## 简介
 
-easy-vdl 是一款支持多平台的视频解析与下载可视化平台。内置订阅系统、批量下载、Emby/Jellyfin 元数据自动生成、核显硬件加速转码播放，界面美观，操作简单。
+easy-vdl 是一款支持多平台的视频解析与下载可视化平台。内置视频订阅系统、直播订阅系统、批量下载、Emby/Jellyfin 元数据自动生成、核显硬件加速转码播放，界面美观，操作简单。
 
 **支持平台：** 抖音、小红书、YouTube、Bilibili、TikTok、网易云、推特、ins等其他平台  
 **支持订阅：** 博主订阅、合集订阅、点赞列表订阅（抖音）
@@ -40,7 +40,6 @@ docker run -d -p 888:80 \
 - `PUID`/`PGID`：用户权限，解决数据库权限问题（可选）
 - `EASY_VDL_ADMIN_USERNAME`：管理员用户名（可选）
 - `EASY_VDL_ADMIN_PASSWORD`：管理员密码（可选）
-- `COMMUNITY_API_KEY`：社区功能密钥（可选）
 - `SNIFFER_LICENSE_KEY`：高级功能密钥（可选）
 
 **目录挂载：**
@@ -82,8 +81,6 @@ services:
       - PGID=100
       - EASY_VDL_ADMIN_USERNAME=admin
       - EASY_VDL_ADMIN_PASSWORD=admin123456
-      - COMMUNITY_API_KEY=社区功能密钥（可选）
-      - SNIFFER_LICENSE_KEY=高级功能密钥（可选）
       - TZ=Asia/Shanghai
     restart: unless-stopped
 ```
