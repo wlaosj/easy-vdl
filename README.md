@@ -128,7 +128,7 @@ services:
 - 支持系统状态查询、服务重启等管理功能
 - 转存功能需要**高级版授权**，且仅允许 `Chat ID` 白名单用户使用
 - 转存为静默模式：仅落盘，不进入下载任务列表
-- 转存大小限制：受 Telegram Bot API 限制，默认仅支持约 `20MB` 以内文件
+- 转存大小限制：内置 Telethon MTProto 代理直连底层，已永久突破 20MB 枷锁，最高支持转存 **2GB (2000MB)** 以内的大文件
 - 转存目录：`/app/downloads/telegram-inbox/YYYYMMDD/<chat_id>/`
 - 命名规则：优先使用消息 caption（视频下方标题），回退到 Telegram `file_unique_id`
 - 在"设置" → "Telegram Bot"中配置 Bot Token 和 Chat ID
@@ -160,7 +160,7 @@ services:
 5. **配置 API Token**：在"设置" → "API Token 管理"中创建 Token，用于浏览器插件或 API 调用
 6. **配置 Telegram Bot**（可选）：在"设置" → "Telegram Bot"中配置 Bot Token 和 Chat ID，实现远程管理
    - 可直接给 Bot 发送视频/图片进行转存（需高级授权 + 白名单 Chat ID）
-   - 转存受 Telegram Bot API 文件大小限制（默认约 20MB，超限会失败）
+   - 转存已由核心层的 MTProto 引擎接管，最高支持约 **2GB** 超大媒体文件（突破传统 Bot 的 20MB 枷锁）
 7. **添加直播订阅**：在"直播"页面添加直播间，系统会自动监控并录制
 
 **API 调用示例：**
