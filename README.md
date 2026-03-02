@@ -37,6 +37,7 @@ docker run -d -p 888:80 \
   -e EASY_VDL_PORT=80 \
   -e PUID=1000 \
   -e PGID=100 \
+  -e TZ=Asia/Shanghai \
   -e EASY_VDL_ADMIN_USERNAME=admin \
   -e EASY_VDL_ADMIN_PASSWORD=admin123456 \
   qq918652593/easy-vdl:latest
@@ -65,6 +66,36 @@ docker run -d -p 888:80 \
 - 添加 `--device=/dev/dri:/dev/dri` 启用 Intel 核显硬件加速
 - 支持 Intel 第 6 代（Skylake）及更新的核显和 Intel Arc 系列
 - 播放器会显示 `qsv`、`vaapi` 或 `cpu` 标识
+
+### GPU 监控配置（仪表盘）
+
+如需在仪表盘显示 GPU 实时负载，确保包含以下参数：
+
+#### Docker run
+
+```bash
+docker run -d \
+  --device=/dev/dri:/dev/dri \
+  --cap-add PERFMON \
+  --security-opt seccomp=unconfined \
+  qq918652593/easy-vdl:latest
+```
+
+#### Docker Compose
+
+```yaml
+services:
+  easy-vdl:
+    image: qq918652593/easy-vdl:latest
+    devices:
+      - /dev/dri:/dev/dri
+    cap_add:
+      - PERFMON
+    security_opt:
+      - seccomp:unconfined
+```
+
+> 仪表盘显示 `已启用` 但 `负载 N/A` 时，通常是 PMU 权限不足；优先检查以上 3 个参数是否完整。
 
 ### Docker Compose 部署
 
