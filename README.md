@@ -62,16 +62,45 @@ docker run -d -p 888:80 \
 > - 轻量使用（订阅数量较少、偶尔解析下载）：可以将 `--memory` / `mem_limit` 调整为 `2g`。  
 > - 中重度使用（约 50 个以上订阅、经常进行批量检测/批量同步）：推荐使用 `4g`，以保证浏览器嗅探和数据库在高负载场景下更稳定。
 
-**硬件加速（可选）：**
-- 添加 `--device=/dev/dri:/dev/dri` 启用 Intel 核显硬件加速
-- 支持 Intel 第 6 代（Skylake）及更新的核显和 Intel Arc 系列
-- 播放器会显示 `qsv`、`vaapi` 或 `cpu` 标识
+**硬件加速（可选，测试功能）：**
+- **Intel / AMD 核显**：加 `--device=/dev/dri:/dev/dri`
+- **NVIDIA 显卡**：加 `--gpus all`
+- 播放器会显示 `qsv` / `vaapi` / `nvenc` / `cpu`
 
-### GPU 监控配置（仪表盘）
+**Intel / AMD 示例（Docker run）：**
 
-如需在仪表盘显示 GPU 实时负载，确保包含以下参数：
+```bash
+docker run -d -p 888:80 \
+  --device=/dev/dri:/dev/dri \
+  -v /mnt/easy-vdl/downloads:/app/downloads \
+  -v /mnt/easy-vdl/logs:/app/logs \
+  -v /mnt/easy-vdl/database:/app/database \
+  qq918652593/easy-vdl:latest
+```
 
-#### Docker run
+
+**容器内快速自检（可选）：**
+
+```bash
+# Intel/AMD
+ffmpeg -hide_banner -hwaccels
+ffmpeg -hide_banner -encoders | grep -E "vaapi|qsv"
+vainfo
+
+# NVIDIA
+ffmpeg -hide_banner -encoders | grep -E "nvenc"
+nvidia-smi
+```
+
+### GPU 监控（仪表盘）
+
+- **Intel / AMD**：建议保留 `--device=/dev/dri:/dev/dri`
+- **NVIDIA**：建议保留 `--gpus all`
+- 如果显示 `负载 N/A`：
+  - Intel 可再加 `--cap-add PERFMON --security-opt seccomp=unconfined`
+  - NVIDIA 先检查宿主机驱动和 `nvidia-container-toolkit`
+
+**Docker run 示例（Intel / AMD）：**
 
 ```bash
 docker run -d \
@@ -81,7 +110,7 @@ docker run -d \
   qq918652593/easy-vdl:latest
 ```
 
-#### Docker Compose
+**Docker Compose 示例（Intel / AMD）：**
 
 ```yaml
 services:
@@ -94,8 +123,6 @@ services:
     security_opt:
       - seccomp:unconfined
 ```
-
-> 仪表盘显示 `已启用` 但 `负载 N/A` 时，通常是 PMU 权限不足；优先检查以上 3 个参数是否完整。
 
 ### Docker Compose 部署
 
