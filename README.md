@@ -1,7 +1,7 @@
 # Easy-vdl 综合直播视频订阅解析下载器
 
 **软件作者：bigv**  
-**支持架构：x86设备**  
+**支持架构：x86 / ARM64 设备**  
 **电报交流群：** https://t.me/+7jcTMePlNVwwZjg1
 
 ---
@@ -27,6 +27,13 @@ easy-vdl 是一款支持多平台的视频解析下载、视频订阅、直播�
 
 ## Docker 一键安装
 
+当前镜像按架构分标签发布：
+
+- `qq918652593/easy-vdl:latest`：x86 / amd64 设备
+- `qq918652593/easy-vdl:arm64`：ARM64 设备（如 Apple Silicon Mac、部分 ARM NAS、ARM Linux 设备）
+
+### x86 / amd64
+
 ```bash
 docker run -d -p 888:80 \
   --memory=4g \
@@ -42,6 +49,28 @@ docker run -d -p 888:80 \
   -e EASY_VDL_ADMIN_USERNAME=admin \
   -e EASY_VDL_ADMIN_PASSWORD=admin123456 \
   qq918652593/easy-vdl:latest
+```
+
+**访问地址：** `http://服务器IP:888`
+
+### ARM64
+
+ARM64 设备请将镜像标签改为 `arm64`。ARM64 镜像当前不支持硬件加速，请不要映射 `/dev/dri` 或配置 GPU 参数。
+
+```bash
+docker run -d -p 888:80 \
+  --memory=4g \
+  --memory-swap=4g \
+  -v /mnt/easy-vdl/downloads:/app/downloads \
+  -v /mnt/easy-vdl/logs:/app/logs \
+  -v /mnt/easy-vdl/database:/app/database \
+  -e EASY_VDL_PORT=80 \
+  -e PUID=1000 \
+  -e PGID=100 \
+  -e TZ=Asia/Shanghai \
+  -e EASY_VDL_ADMIN_USERNAME=admin \
+  -e EASY_VDL_ADMIN_PASSWORD=admin123456 \
+  qq918652593/easy-vdl:arm64
 ```
 
 **访问地址：** `http://服务器IP:888`
@@ -64,6 +93,7 @@ docker run -d -p 888:80 \
 > - 中重度使用（约 50 个以上订阅、经常进行批量检测/批量同步）：推荐使用 `4g`，以保证浏览器嗅探和数据库在高负载场景下更稳定。
 
 **硬件加速（可选，测试功能）：**
+- **ARM64 镜像当前不支持硬件加速**
 - **Intel / AMD 核显**：加 `--device=/dev/dri:/dev/dri`
 - **NVIDIA 显卡**：加 `--gpus all`
 - 播放器会显示 `qsv` / `vaapi` / `nvenc` / `cpu`
@@ -127,6 +157,8 @@ services:
 
 ### Docker Compose 部署
 
+#### x86 / amd64
+
 ```yaml
 version: '3.8'
 
@@ -140,6 +172,35 @@ services:
     memswap_limit: 4g
     devices:
       - /dev/dri:/dev/dri  # 硬件加速（可选）
+    volumes:
+      - /mnt/easy-vdl/downloads:/app/downloads
+      - /mnt/easy-vdl/logs:/app/logs
+      - /mnt/easy-vdl/database:/app/database
+    environment:
+      - EASY_VDL_PORT=80
+      - PUID=1000
+      - PGID=100
+      - EASY_VDL_ADMIN_USERNAME=admin
+      - EASY_VDL_ADMIN_PASSWORD=admin123456
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+```
+
+#### ARM64
+
+ARM64 设备使用 `qq918652593/easy-vdl:arm64`。ARM64 镜像当前不支持硬件加速，请不要添加 `devices`、`--device=/dev/dri` 或 GPU 相关配置。
+
+```yaml
+version: '3.8'
+
+services:
+  easy-vdl:
+    image: qq918652593/easy-vdl:arm64
+    container_name: easy-vdl
+    ports:
+      - "888:80"
+    mem_limit: 4g
+    memswap_limit: 4g
     volumes:
       - /mnt/easy-vdl/downloads:/app/downloads
       - /mnt/easy-vdl/logs:/app/logs
