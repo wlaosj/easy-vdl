@@ -533,7 +533,7 @@ class TelegramBotService:
                     "🚀 **直接使用**\n"
                     "直接粘贴链接发送给机器人，支持自动识别：\n"
                     "• **单视频**：直接下载\n"
-                    "• **博主/合集**：引导添加订阅\n"
+                    "• **博主/合集**：引导添加订阅（支持抖音、YouTube、B站、TikTok、Instagram、小红书、网易云）\n"
                     "• **直播间**：引导添加监控录制\n\n"
                     "📥 **媒体转存 · LIFETIME**\n"
                     "直接发送 **视频/图片** 给机器人可自动转存到本地（静默保存，不进入下载列表）。\n"
@@ -734,6 +734,10 @@ class TelegramBotService:
             # 排除笔记链接（/explore/）和直播链接
             if '/explore/' not in url and '/livestream' not in url:
                 return "小红书博主主页"
+
+        # Instagram
+        if 'instagram.com' in url and '/p/' not in url and '/reel/' not in url and '/stories/' not in url:
+            return "Instagram博主主页"
 
         # 网易云歌单
         if 'music.163.com' in url and ('playlist' in url or 'id=' in url):
@@ -1046,7 +1050,8 @@ class TelegramBotService:
                     "youtube": "YouTube",
                     "tiktok": "TikTok",
                     "netease": "网易云",
-                    "xiaohongshu": "小红书"
+                    "xiaohongshu": "小红书",
+                    "instagram": "Instagram"
                 }
                 msg = f"📺 **{title_map.get(platform, '订阅')} 列表** (第 {page}/{total_pages} 页)\n"
                 msg += "------------------------\n"
@@ -1060,7 +1065,8 @@ class TelegramBotService:
                     "youtube": "YouTube",
                     "tiktok": "TikTok",
                     "xiaohongshu": "小红书",
-                    "netease": "网易云"
+                    "netease": "网易云",
+                    "instagram": "Instagram"
                 }
 
                 for i, sub in enumerate(subs):
@@ -1104,7 +1110,8 @@ class TelegramBotService:
                     ("youtube", "油管"),
                     ("tiktok", "TK"),
                     ("netease", "网易云"),
-                    ("xiaohongshu", "小红书")
+                    ("xiaohongshu", "小红书"),
+                    ("instagram", "Ins")
                 ]
                 
                 for code, label in filter_options:
@@ -2832,6 +2839,13 @@ class TelegramBotService:
                     await self.send_message(chat_id, "💡 这是直播链接，请使用 `/live <链接>` 添加直播订阅")
                     return
                 platform = Platform.XIAOHONGSHU.value
+            # Instagram
+            elif 'instagram.com' in url:
+                # 排除单条帖子或 Reels 链接
+                if '/p/' in url or '/reel/' in url or '/stories/' in url:
+                    await self.send_message(chat_id, "❌ 请使用创作者主页链接添加订阅，不要使用帖子/Reels/快拍链接\n\n示例：`https://www.instagram.com/username/`")
+                    return
+                platform = Platform.INSTAGRAM.value
             # 网易云歌单
             elif 'music.163.com' in url:
                 if 'playlist' not in url and 'id=' not in url:
@@ -2840,7 +2854,7 @@ class TelegramBotService:
                 platform = Platform.NETEASE.value
                 subscription_type = "playlist"
             else:
-                await self.send_message(chat_id, "❌ 暂不支持该平台的订阅\n\n支持：抖音、YouTube、B站、TikTok、小红书、网易云歌单")
+                await self.send_message(chat_id, "❌ 暂不支持该平台的订阅\n\n支持：抖音、YouTube、B站、TikTok、Instagram、小红书、网易云歌单")
                 return
             
             # 构造订阅创建请求
@@ -2869,6 +2883,7 @@ class TelegramBotService:
                         Platform.BILIBILI_COLLECTION.value: "B站合集",
                         Platform.TIKTOK.value: "TikTok用户",
                         Platform.XIAOHONGSHU.value: "小红书博主",
+                        Platform.INSTAGRAM.value: "Instagram博主",
                         Platform.NETEASE.value: "网易云歌单"
                     }
                     platform_name = platform_names.get(platform, "订阅")
