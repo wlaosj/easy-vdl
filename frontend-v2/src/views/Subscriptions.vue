@@ -392,7 +392,16 @@
             <span class="platform-badge mobile-only" :class="`badge-${sub.platform}`">
               {{ getPlatformName(sub.platform, sub.subscription_type, sub.youtube_tab_type) }}
             </span>
-            <h3 class="creator-name">{{ sub.nickname }}</h3>
+            <h3
+              class="creator-name"
+              :class="{ 'is-marquee': (sub.nickname || '').length > 10 }"
+              :title="sub.nickname"
+            >
+              <span class="creator-name-track">
+                <span class="creator-name-text">{{ sub.nickname }}</span>
+                <span class="creator-name-text creator-name-clone" aria-hidden="true">{{ sub.nickname }}</span>
+              </span>
+            </h3>
             <span class="video-count-inline mobile-only" v-if="sub.video_count">
               {{ sub.video_count }}
             </span>
@@ -542,7 +551,16 @@
             />
             <div class="compact-text-content">
               <div class="compact-title-row">
-                <h2 class="compact-title">{{ currentSubscription?.nickname }}</h2>
+                <h2
+                  class="compact-title"
+                  :class="{ 'is-marquee': (currentSubscription?.nickname || '').length > 12 }"
+                  :title="currentSubscription?.nickname"
+                >
+                  <span class="compact-title-track">
+                    <span class="compact-title-text">{{ currentSubscription?.nickname }}</span>
+                    <span class="compact-title-text compact-title-clone" aria-hidden="true">{{ currentSubscription?.nickname }}</span>
+                  </span>
+                </h2>
                 <div class="detail-header-info">
                   <span class="platform-badge" :class="`badge-${currentSubscription?.platform}`">
                     {{ getPlatformName(currentSubscription?.platform, currentSubscription?.subscription_type, currentSubscription?.youtube_tab_type) }}
@@ -4510,6 +4528,19 @@ onUnmounted(() => {
   height: 30px; 
 }
 
+.action-panel .btn-dark:hover:not(:disabled),
+.action-panel .btn-dark:focus-visible:not(:disabled) {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 10px var(--color-primary-light);
+}
+
+.action-panel .btn-dark:active:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
 /* 卡片设计 - 优化版 */
 .subscriptions-grid {
   display: grid;
@@ -4730,9 +4761,60 @@ onUnmounted(() => {
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   flex: 1;
+  min-width: 0;
   line-height: 1.2;
+  max-width: 100%;
+  mask-image: linear-gradient(to right, #000 0%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 88%, transparent 100%);
+}
+
+.creator-name-track {
+  display: inline-flex;
+  align-items: center;
+  min-width: 100%;
+}
+
+.creator-name-text {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.creator-name-clone {
+  display: none;
+}
+
+.creator-name.is-marquee .creator-name-track {
+  min-width: max-content;
+  animation: creator-name-marquee 9s linear infinite;
+}
+
+.creator-name.is-marquee:hover .creator-name-track {
+  animation-play-state: paused;
+}
+
+.creator-name.is-marquee .creator-name-text {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.creator-name.is-marquee .creator-name-clone {
+  display: inline-block;
+  padding-left: 32px;
+}
+
+@keyframes creator-name-marquee {
+  0%, 12% {
+    transform: translateX(0);
+  }
+  88%, 100% {
+    transform: translateX(calc(-50% - 16px));
+  }
 }
 
 [data-theme="dark"] .creator-name {
@@ -5028,9 +5110,59 @@ onUnmounted(() => {
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  mask-image: linear-gradient(to right, #000 0%, #000 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 90%, transparent 100%);
+}
+
+.compact-title-track {
+  display: inline-flex;
+  align-items: center;
+  min-width: 100%;
+}
+
+.compact-title-text {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.compact-title-clone {
+  display: none;
+}
+
+.compact-title.is-marquee .compact-title-track {
+  min-width: max-content;
+  animation: compact-title-marquee 10s linear infinite;
+}
+
+.compact-title.is-marquee:hover .compact-title-track {
+  animation-play-state: paused;
+}
+
+.compact-title.is-marquee .compact-title-text {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.compact-title.is-marquee .compact-title-clone {
+  display: inline-block;
+  padding-left: 36px;
+}
+
+@keyframes compact-title-marquee {
+  0%, 12% {
+    transform: translateX(0);
+  }
+  88%, 100% {
+    transform: translateX(calc(-50% - 18px));
+  }
 }
 
 [data-theme="dark"] .compact-title {
