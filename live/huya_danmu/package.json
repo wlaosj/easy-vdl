@@ -1,0 +1,12 @@
+{
+  "name": "huya-danmu-collector",
+  "version": "1.0.0",
+  "description": "Huya danmu collector for easy-vdl",
+  "main": "huya_danmu_collector.js",
+  "type": "module",
+  "dependencies": {
+    "socks-proxy-agent": "^3.0.1",
+    "to-arraybuffer": "^1.0.1",
+    "ws": "^4.1.0"
+  }
+}

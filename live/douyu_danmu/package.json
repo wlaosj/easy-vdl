@@ -1,0 +1,11 @@
+{
+  "name": "douyu-danmu-collector",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Douyu danmu collector for easy-vdl",
+  "main": "douyu_danmu_collector.js",
+  "dependencies": {
+    "ws": "^8.18.0",
+    "mitt": "^3.0.1"
+  }
+}
