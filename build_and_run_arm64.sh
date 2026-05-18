@@ -20,7 +20,7 @@ IMAGE_NAME="${IMAGE_NAME:-easy-vdl:arm64}"
 ENABLE_OBFUSCATION="false"
 
 # ARM64 脚本默认使用独立端口，避免和 x86 本地容器冲突
-FRONTEND_PORT="${FRONTEND_PORT:-5859}"
+FRONTEND_PORT="${FRONTEND_PORT:-5858}"
 VNC_PORT="${VNC_PORT:-5901}"
 
 # ARM 设备硬件加速差异较大，默认关闭；需要时可 ENABLE_DRI_MAPPING=true ./build_and_run_arm64.sh
