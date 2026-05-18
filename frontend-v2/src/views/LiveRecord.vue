@@ -214,8 +214,8 @@
           itemMinWidth="260px"
         />
         <div v-else class="rooms-grid">
-        <div 
-          v-for="sub in filteredSubscriptions" 
+        <div
+          v-for="sub in subscriptionCards"
           :key="sub.id"
           class="room-card"
           :class="{ 'is-live': sub.is_live === 'true', 'is-recording': sub.is_recording === 'true' }"
@@ -258,10 +258,10 @@
             <div class="info-area">
               <div class="name-row">
                 <span class="platform-badge" :class="`badge-${sub.platform}`">
-                  {{ getPlatformName(sub.platform) }}
+                  {{ sub._platformName }}
                 </span>
                 <a :href="sub.room_url" target="_blank" rel="noopener noreferrer" class="name-link">
-                  <h3 class="room-name" :title="sanitizeAnchorName(sub.anchor_name)">{{ sanitizeAnchorName(sub.anchor_name) }}</h3>
+                  <h3 class="room-name" :title="sub._anchorName">{{ sub._anchorName }}</h3>
                 </a>
               </div>
               
@@ -271,9 +271,9 @@
                   <div class="recording-row-main">
                     <span class="recording-text">录制中</span>
                     <span class="dot">·</span>
-                    <span>{{ formatDuration(sub.recording_status.duration) }}</span>
+                    <span>{{ sub._duration }}</span>
                     <span class="dot">·</span>
-                    <span>{{ formatSize(sub.recording_status.file_size) }}</span>
+                    <span>{{ sub._fileSize }}</span>
                   </div>
                   <div class="recording-row-sub">
                     <template v-if="sub.recording_status.resolution || sub.recording_status.fps">
@@ -711,7 +711,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="record in historyRecords" :key="record.id">
+                <tr v-for="record in historyCardItems" :key="record.id">
                   <td style="text-align: center;">
                     <input
                       type="checkbox"
@@ -737,16 +737,16 @@
                     >
                       <img v-if="record.avatar_url" :src="record.avatar_url" class="history-avatar" referrerpolicy="no-referrer" />
                       <div v-else class="history-avatar-placeholder">{{ (record.anchor_name || '未')[0] }}</div>
-                      <span class="history-anchor-name" :title="record.anchor_name">{{ truncateHistoryAnchorName(record.anchor_name) }}</span>
+                      <span class="history-anchor-name" :title="record.anchor_name">{{ record._anchorName }}</span>
                     </div>
                   </td>
-                  <td>{{ formatDate(record.start_time) }}</td>
-                  <td>{{ formatDuration(record.duration) }}</td>
-                  <td>{{ formatSize(record.file_size) }}</td>
+                  <td>{{ record._date }}</td>
+                  <td>{{ record._duration }}</td>
+                  <td>{{ record._size }}</td>
                   <td>
                     <div style="display: flex; align-items: center; gap: 4px;">
                       <span class="status-badge" :class="'status-' + record.status">
-                        {{ getStatusText(record.status) }}
+                        {{ record._statusText }}
                       </span>
                       <span v-if="record.converted === 'true'" class="badge badge-info">
                         已转码
@@ -788,10 +788,10 @@
                       播放
                     </button>
                     <button
-                      v-if="['completed', 'stopped', 'failed'].includes(record.status) && getRecordFileUrl(record)"
+                      v-if="['completed', 'stopped', 'failed'].includes(record.status) && record._fileUrl"
                       class="btn btn-primary btn-xs"
                       @click="downloadRecord(record)"
-                      :disabled="!getRecordFileUrl(record)"
+                      :disabled="!record._fileUrl"
                     >
                       下载
                     </button>
@@ -805,8 +805,8 @@
                   </td>
                   <td>
                     <div class="remark-cell">
-                      <span class="remark-text" :title="getRecordRemark(record)" :class="{ 'text-danger': !record.remark && record.error_message }">
-                        {{ getRecordRemark(record) }}
+                      <span class="remark-text" :title="record._remark" :class="{ 'text-danger': !record.remark && record.error_message }">
+                        {{ record._remark }}
                       </span>
                       <button class="btn btn-outline btn-xs" @click="openRemarkEditor(record)">备注</button>
                     </div>
@@ -818,7 +818,7 @@
 
           <!-- 移动端列表 -->
           <div class="history-mobile">
-            <div v-for="record in historyRecords" :key="record.id" class="history-card">
+            <div v-for="record in historyCardItems" :key="record.id" class="history-card">
               <div class="h-card-header">
                 <div class="h-card-anchor">
                   <input
@@ -844,45 +844,45 @@
                   >
                     <img v-if="record.avatar_url" :src="record.avatar_url" class="h-card-avatar" referrerpolicy="no-referrer" />
                     <div v-else class="h-card-avatar-placeholder">{{ (record.anchor_name || '未')[0] }}</div>
-                    <span class="h-card-name" :title="record.anchor_name">{{ truncateHistoryAnchorName(record.anchor_name) }}</span>
+                    <span class="h-card-name" :title="record.anchor_name">{{ record._anchorName }}</span>
                   </div>
                 </div>
                 <span class="status-badge" :class="'status-' + record.status">
-                  {{ getStatusText(record.status) }}
+                  {{ record._statusText }}
                 </span>
               </div>
               <div class="h-card-body">
                 <div class="h-info-row">
                   <span class="h-label">时间:</span>
-                  <span class="h-value">{{ formatDate(record.start_time) }}</span>
+                  <span class="h-value">{{ record._date }}</span>
                 </div>
                 <div class="h-info-row">
                   <span class="h-label">时长/大小:</span>
-                  <span class="h-value">{{ formatDuration(record.duration) }} / {{ formatSize(record.file_size) }}</span>
+                  <span class="h-value">{{ record._duration }} / {{ record._size }}</span>
                 </div>
                 <div class="h-info-row">
                   <span class="h-label">备注:</span>
-                  <span class="h-value h-value-remark" :title="getRecordRemark(record)" :class="{ 'text-danger': !record.remark && record.error_message }">{{ getRecordRemark(record) }}</span>
+                  <span class="h-value h-value-remark" :title="record._remark" :class="{ 'text-danger': !record.remark && record.error_message }">{{ record._remark }}</span>
                 </div>
               </div>
               <div class="h-card-footer">
                 <span v-if="record.converted === 'true'" class="badge badge-info">已转码</span>
                 <div class="h-card-actions">
-                  <button 
+                  <button
                     v-if="record.status === 'converting'"
                     class="btn btn-secondary btn-xs"
                     disabled
                   >
                     转码中...
                   </button>
-                  <button 
+                  <button
                     v-else-if="record.converted !== 'true' && ['completed', 'stopped', 'failed'].includes(record.status) && record.file_path?.endsWith('.ts')"
                     class="btn btn-secondary btn-xs"
                     @click="convertRecord(record)"
                   >
                     转码
                   </button>
-                  <button 
+                  <button
                     class="btn btn-success btn-xs"
                     @click="playRecord(record)"
                     :disabled="!record.file_path && !record.converted_path"
@@ -891,10 +891,10 @@
                   </button>
                   <button class="btn btn-outline btn-xs" @click="openRemarkEditor(record)">备注</button>
                   <button
-                    v-if="['completed', 'stopped', 'failed'].includes(record.status) && getRecordFileUrl(record)"
+                    v-if="['completed', 'stopped', 'failed'].includes(record.status) && record._fileUrl"
                     class="btn btn-primary btn-xs"
                     @click="downloadRecord(record)"
-                    :disabled="!getRecordFileUrl(record)"
+                    :disabled="!record._fileUrl"
                   >
                     下载
                   </button>
@@ -1072,9 +1072,9 @@
                 <div class="playing-badge" v-if="currentPlayerSub?.id === sub.id">播放中</div>
               </div>
               <div class="item-info">
-                <div class="item-name">{{ sanitizeAnchorName(sub.anchor_name) }}</div>
+                <div class="item-name">{{ sub._anchorName }}</div>
                 <div class="item-meta">
-                  <span class="p-tag" :class="`tag-${sub.platform}`">{{ getPlatformName(sub.platform).replace('直播', '') }}</span>
+                  <span class="p-tag" :class="`tag-${sub.platform}`">{{ sub._platformName.replace('直播', '') }}</span>
                   <span class="q-tag">{{ sub.quality }}</span>
                 </div>
               </div>
@@ -1424,6 +1424,7 @@ import { useSystemStore } from '@/stores/system'
 import { useDialog } from '@/composables/useDialog'
 import { useToast } from '@/composables/useToast'
 import { buildAuthedWsUrl } from '@/utils/wsAuth'
+import { formatBytes } from '@/utils/dashboard'
 import mpegts from 'mpegts.js'
 import Hls from 'hls.js'
 
@@ -1586,29 +1587,27 @@ const filteredSubscriptions = computed(() => {
   })
 })
 
-// 正在直播的订阅列表 (用于播放器侧边栏切换)
-const liveSubList = computed(() => {
-  return subscriptions.value.filter(sub => sub.is_live === 'true')
+// 订阅卡片数据（预计算展示字段，避免模板中反复调用函数）
+const subscriptionCards = computed(() => {
+  return filteredSubscriptions.value.map(sub => ({
+    ...sub,
+    _platformName: getPlatformName(sub.platform),
+    _anchorName: sanitizeAnchorName(sub.anchor_name),
+    _duration: sub.recording_status?.duration != null ? formatDuration(sub.recording_status.duration) : '',
+    _fileSize: sub.recording_status?.file_size != null ? formatSize(sub.recording_status.file_size) : '',
+  }))
 })
 
-const shouldRenderCardGlow = (sub) => {
-  return !!sub.avatar_url && (sub.is_live === 'true' || sub.is_recording === 'true')
-}
-
-const getFreePercent = () => {
-  const total = systemStore.storage.total_gb || 0
-  const free = systemStore.storage.free_gb || 0
-  if (total <= 0) return 0
-  return (free / total) * 100
-}
-
-const getStorageClass = () => {
-  const free = getFreePercent()
-  if (free <= 10) return 'critical'
-  if (free <= 25) return 'warning'
-  if (free <= 40) return 'caution'
-  return 'normal'
-}
+// 正在直播的订阅列表 (用于播放器侧边栏切换)
+const liveSubList = computed(() => {
+  return subscriptions.value
+    .filter(sub => sub.is_live === 'true')
+    .map(sub => ({
+      ...sub,
+      _anchorName: sanitizeAnchorName(sub.anchor_name),
+      _platformName: getPlatformName(sub.platform),
+    }))
+})
 
 // 添加表单
 const MIN_CHECK_INTERVAL_SECONDS = 10
@@ -1745,8 +1744,6 @@ const editForm = ref({
   compat_mode: false
 })
 
-// 删除
-const showDeleteModal = ref(false)
 const deleteLoading = ref(false)
 const deletingSubscription = ref(null)
 
@@ -1754,6 +1751,19 @@ const deletingSubscription = ref(null)
 const showHistory = ref(false)
 const historyLoading = ref(false)
 const historyRecords = ref([])
+// 历史记录展示数据（预计算展示字段）
+const historyCardItems = computed(() => {
+  return historyRecords.value.map(record => ({
+    ...record,
+    _anchorName: truncateHistoryAnchorName(record.anchor_name),
+    _date: formatDate(record.start_time),
+    _duration: formatDuration(record.duration),
+    _size: formatSize(record.file_size),
+    _statusText: getStatusText(record.status),
+    _fileUrl: getRecordFileUrl(record),
+    _remark: getRecordRemark(record),
+  }))
+})
 const historyPage = ref(1)
 const historyPageSize = ref(8)
 const historyTotal = ref(0)
@@ -2655,10 +2665,9 @@ onMounted(async () => {
   }
 })
 
-// 监听路由参数变化，处理从其他页面跳转回来的情况
 watch(() => route.query, () => {
   handleRouteQuery()
-}, { deep: true })
+})
 
 function handleRouteQuery() {
   // 必须确保当前确实处于直播录制页面，才处理此类通用筛选参数
@@ -4397,13 +4406,8 @@ function retryPlay() {
   }
 }
 
-// 工具函数
 function formatSize(bytes) {
-  if (!bytes || bytes === 0) return '0 B'
-  const k = 1000
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return (bytes / Math.pow(k, i)).toFixed(i < 3 ? 0 : 2) + ' ' + sizes[i]
+  return formatBytes(bytes, 0)
 }
 
 function formatDuration(seconds) {
