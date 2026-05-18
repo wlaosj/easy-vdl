@@ -261,7 +261,16 @@
                   {{ sub._platformName }}
                 </span>
                 <a :href="sub.room_url" target="_blank" rel="noopener noreferrer" class="name-link">
-                  <h3 class="room-name" :title="sub._anchorName">{{ sub._anchorName }}</h3>
+                  <h3
+                    class="room-name"
+                    :class="{ 'is-marquee': (sub._anchorName || '').length > 10 }"
+                    :title="sub._anchorName"
+                  >
+                    <span class="room-name-track">
+                      <span class="room-name-text">{{ sub._anchorName }}</span>
+                      <span class="room-name-text room-name-clone" aria-hidden="true">{{ sub._anchorName }}</span>
+                    </span>
+                  </h3>
                 </a>
               </div>
               
@@ -5410,15 +5419,65 @@ function getStatusText(status) {
   display: block;
 }
 
-.room-name {
+.name-link .room-name {
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text-primary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   transition: color 0.2s ease;
+  max-width: 100%;
+  mask-image: linear-gradient(to right, #000 0%, #000 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 88%, transparent 100%);
+}
+
+.room-name-track {
+  display: inline-flex;
+  align-items: center;
+  min-width: 100%;
+}
+
+.room-name-text {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.room-name-clone {
+  display: none;
+}
+
+.name-link .room-name.is-marquee .room-name-track {
+  min-width: max-content;
+  animation: live-room-name-marquee 9s linear infinite;
+}
+
+.name-link .room-name.is-marquee:hover .room-name-track {
+  animation-play-state: paused;
+}
+
+.name-link .room-name.is-marquee .room-name-text {
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.name-link .room-name.is-marquee .room-name-clone {
+  display: inline-block;
+  padding-left: 32px;
+}
+
+@keyframes live-room-name-marquee {
+  0%, 12% {
+    transform: translateX(0);
+  }
+  88%, 100% {
+    transform: translateX(calc(-50% - 16px));
+  }
 }
 
 .platform-badge {
