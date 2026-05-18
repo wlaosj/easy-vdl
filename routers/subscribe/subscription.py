@@ -18,6 +18,7 @@ from .common import logger
 from .platforms import registry
 from .utils import _is_douyin_collection_url, get_correct_douyin_url, generate_profile_url
 from .models import QualityUpdateRequest, DouyinBatchAddRequest, DouyinBatchAddResponse
+from .rename import SubscriptionRenameRequest, rename_bilibili_collection_subscription
 
 # 导入平台API（保留用于特殊场景）
 from routers.douyin import douyin_api, parse_collection_url, get_collection_videos
@@ -59,6 +60,24 @@ def _proxy_avatar_url(platform: str, url: Optional[str]) -> Optional[str]:
         from urllib.parse import quote
         return f"{_PROXY_BASE}?url={quote(url)}"
     return url
+
+
+@router.put("/{subscription_id}/rename")
+@require_license_api
+async def rename_subscription(
+    subscription_id: str,
+    request: SubscriptionRenameRequest,
+    db: Session = Depends(get_db),
+):
+    """重命名订阅并迁移对应文件夹（当前仅 B站合集试点）"""
+    try:
+        result = rename_bilibili_collection_subscription(db, subscription_id, request.nickname)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"重命名订阅失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/list", response_model=List[SubscriptionResponse])

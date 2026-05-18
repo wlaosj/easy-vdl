@@ -46,11 +46,21 @@ async def _export_subscriptions(db: Session) -> Dict[str, Any]:
 
     for sub in subscriptions:
         profile_url = generate_profile_url(sub.platform, sub.user_id)
+        subscription_type = sub.subscription_type
+        if sub.platform == "bilibili_collection":
+            subscription_type = "collection"
 
         subscription_data = {
             "platform": sub.platform,
             "user_id": sub.user_id,
             "nickname": sub.nickname,
+            "storage_name": sub.storage_name,
+            "nickname_locked": sub.nickname_locked,
+            "subscription_type": subscription_type,
+            "collection_id": sub.collection_id,
+            "collection_title": sub.collection_title,
+            "author_id": sub.author_id,
+            "author_name": sub.author_name,
             "profile_url": profile_url,
             "update_interval": sub.update_interval,
             "auto_download": sub.auto_download,
@@ -277,4 +287,3 @@ async def import_live_subscriptions_backup(
         failed=failed_count,
         errors=errors,
     )
-

@@ -747,6 +747,14 @@
               {{ currentSubscription.is_syncing ? '同步中' : '同步' }}
             </button>
 
+            <button
+              v-if="isRenamableBilibiliCollection(currentSubscription)"
+              class="btn btn-secondary grid-pure-text-btn"
+              @click="renameCurrentSubscription"
+            >
+              重命名
+            </button>
+
             <button class="btn btn-secondary grid-pure-text-btn delete-text" @click="deleteCurrentSubscription">
               删除订阅
             </button>
@@ -2814,6 +2822,69 @@ async function updateCurrentSubscription() {
   } catch (error) {
     console.error('更新订阅失败:', error)
     customAlert('更新失败', error.response?.data?.detail || error.message, 'error')
+  }
+}
+
+function isRenamableBilibiliCollection(sub) {
+  return sub && (
+    sub.platform === 'bilibili_collection' ||
+    (sub.platform === 'bilibili' && sub.subscription_type === 'collection')
+  )
+}
+
+async function renameCurrentSubscription() {
+  if (!currentSubscription.value || !isRenamableBilibiliCollection(currentSubscription.value)) return
+
+  const currentName = currentSubscription.value.nickname || ''
+  const input = await customPrompt(
+    '重命名合集',
+    `
+      <div style="text-align: left; line-height: 1.7;">
+        <p><strong>仅用于 B站合集试点</strong></p>
+        <p style="color: var(--color-warning);">重命名会同步迁移历史下载文件夹并更新数据库路径。</p>
+        <p>建议先关闭该订阅的自动更新/自动下载，并确认当前没有下载任务正在运行。</p>
+        <p style="margin-top: 8px;">请输入新的合集名称：</p>
+      </div>
+    `,
+    currentName || '请输入新名称',
+    200
+  )
+  if (!input) return
+
+  const nickname = String(input).trim()
+  if (!nickname) return
+
+  const confirmed = await customConfirm(
+    '确认迁移',
+    `
+      <div style="text-align: left; line-height: 1.7;">
+        <p>将合集从 <strong>${currentName || '未命名'}</strong> 重命名为 <strong>${nickname}</strong>。</p>
+        <p style="color: var(--color-warning);">这会移动历史文件夹并更新该订阅的任务路径。</p>
+        <p>迁移期间不要手动操作对应下载目录。</p>
+      </div>
+    `
+  )
+  if (!confirmed) return
+
+  try {
+    const result = await subscriptionsApi.rename(currentSubscription.value.id, nickname)
+    currentSubscription.value.nickname = result.nickname || nickname
+    currentSubscription.value.storage_name = result.storage_name
+    currentSubscription.value.nickname_locked = 'true'
+    const index = subscriptions.value.findIndex(s => s.id === currentSubscription.value.id)
+    if (index > -1) {
+      subscriptions.value[index] = { ...subscriptions.value[index], ...currentSubscription.value }
+      filterSubscriptions()
+    }
+    customAlert('重命名成功', `已完成迁移，更新了 ${result.updated_tasks || 0} 条任务路径。`, 'success')
+    await loadSubscriptions()
+    const refreshed = subscriptions.value.find(s => s.id === currentSubscription.value.id)
+    if (refreshed) {
+      await openDetailDrawer(refreshed)
+    }
+  } catch (error) {
+    console.error('重命名失败:', error)
+    customAlert('重命名失败', error.response?.data?.detail || error.message || '重命名失败', 'error')
   }
 }
 

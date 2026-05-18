@@ -26,6 +26,11 @@ export const subscriptionsApi = {
         return await client.put(`/subscribe/${id}`, data)
     },
 
+    // 重命名订阅并迁移文件夹
+    async rename(id, nickname) {
+        return await client.put(`/subscribe/${id}/rename`, { nickname })
+    },
+
     // 删除订阅
     async delete(id) {
         return await client.delete(`/subscribe/${id}`)
