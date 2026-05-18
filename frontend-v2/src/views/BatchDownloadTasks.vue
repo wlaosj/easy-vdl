@@ -112,11 +112,8 @@ import { useRouter } from 'vue-router'
 import Icon from '@/components/common/Icon.vue'
 import Modal from '@/components/common/Modal.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
-import { subscriptionsApi } from '@/api/subscriptions'
+import { subscriptionsApi, resolveAvatarUrl, handleImageError as sharedHandleImageError } from '@/api/subscriptions'
 import { useBatchDownloadProgress } from '@/composables/useBatchDownloadProgress'
-
-// 默认头像(SVG)
-const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23e2e8f0"/%3E%3Ccircle cx="50" cy="40" r="18" fill="%23a0aec0"/%3E%3Cpath d="M 25 85 Q 25 60 50 60 T 75 85" fill="%23a0aec0"/%3E%3C/svg%3E'
 
 // 使用统一的进度管理 Composable
 const {
@@ -129,31 +126,14 @@ const {
   cleanup
 } = useBatchDownloadProgress()
 
-// 代理图片
+// 代理图片（委托共享工具）
 function proxyImage(url) {
-  if (!url) return DEFAULT_AVATAR
-  
-  // 部分平台图片需要代理(防盗链、签名链接或请求头兼容性问题)
-  if (
-    url.includes('hdslb.com') ||
-    url.includes('bilibili.com') ||
-    url.includes('douyinpic.com') ||
-    url.includes('byteimg.com') ||
-    url.includes('douyinstatic.com')
-  ) {
-    return subscriptionsApi.proxyImage(url)
-  }
-  
-  // 其他平台直接使用原始URL
-  return url
+  return resolveAvatarUrl(url)
 }
 
-// 图片加载失败处理
+// 图片加载失败处理（委托共享工具）
 function handleImageError(event) {
-  // 防止循环错误
-  if (event.target.src !== DEFAULT_AVATAR) {
-    event.target.src = DEFAULT_AVATAR
-  }
+  sharedHandleImageError(event)
 }
 
 const router = useRouter()

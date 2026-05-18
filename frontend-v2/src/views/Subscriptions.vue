@@ -1582,7 +1582,7 @@ import Modal from '@/components/common/Modal.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import VideoListModal from '@/components/business/VideoListModal.vue'
 import VncLoginModal from '@/components/business/VncLoginModal.vue'
-import { subscriptionsApi } from '@/api/subscriptions'
+import { subscriptionsApi, resolveAvatarUrl, handleImageError as sharedHandleImageError } from '@/api/subscriptions'
 import { systemApi, licenseApi } from '@/api/index'
 import { wsService } from '@/utils/websocket'
 import { buildAuthedWsUrl } from '@/utils/wsAuth'
@@ -1595,15 +1595,17 @@ const route = useRoute()
 // 授权状态 - 优先读取本地缓存，避免闪烁
 const cachedLicense = localStorage.getItem('license_status')
 const licenseValid = ref(cachedLicense === 'true')
+// 用 ref 跟踪是否有缓存，避免并发调用时 const 值不变的问题
+const hasCachedLicense = ref(cachedLicense !== null)
 // 如果有缓存，初始不显示loading；如果无缓存，显示loading
 const checkingLicense = ref(cachedLicense === null)
 
 async function checkLicense(force = false) {
     // 只有在没有缓存时才显示loading状态，否则静默更新
-    if (cachedLicense === null) {
+    if (!hasCachedLicense.value) {
         checkingLicense.value = true
     }
-    
+
     try {
         // 只有在手动强制刷新时，才请求后端去授权服务器验证
         if (force) {
@@ -1613,18 +1615,19 @@ async function checkLicense(force = false) {
                 console.warn('刷新授权失败，将使用缓存状态', e)
             }
         }
-        
+
         const res = await licenseApi.getStatus()
         licenseValid.value = res.is_licensed
+        hasCachedLicense.value = true
         // 更新本地缓存
         localStorage.setItem('license_status', res.is_licensed)
-        
+
         if (force && res.is_licensed) {
              customAlert('提示', '授权状态已刷新', 'success')
         }
     } catch (e) {
         // 仅在明确失败时才置为false
-        if (cachedLicense === null) {
+        if (!hasCachedLicense.value) {
              licenseValid.value = false
         }
         console.error('License check failed:', e)
@@ -3518,37 +3521,14 @@ function openProfile(sub) {
 }
 
 // 默认头像(SVG)
-const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23e2e8f0"/%3E%3Ccircle cx="50" cy="40" r="18" fill="%23a0aec0"/%3E%3Cpath d="M 25 85 Q 25 60 50 60 T 75 85" fill="%23a0aec0"/%3E%3C/svg%3E'
-
-// 代理图片
+// 代理图片（委托共享工具）
 function proxyImage(url) {
-  if (!url) return DEFAULT_AVATAR
-  
-  // B站/小红书/YouTube/抖音 图片走后端代理，避免防盗链、跨域和网络连通差异导致的前端加载失败
-  if (
-    url.includes('hdslb.com') ||
-    url.includes('bilibili.com') ||
-    url.includes('xhscdn.com') ||
-    url.includes('googleusercontent.com') ||
-    url.includes('ytimg.com') ||
-    url.includes('ggpht.com') ||
-    url.includes('douyinpic.com') ||
-    url.includes('byteimg.com') ||
-    url.includes('douyinstatic.com')
-  ) {
-    return subscriptionsApi.proxyImage(url)
-  }
-  
-  // 其他平台直接使用原始URL
-  return url
+  return resolveAvatarUrl(url)
 }
 
-// 图片加载失败处理
+// 图片加载失败处理（委托共享工具）
 function handleImageError(event) {
-  // 防止循环错误
-  if (event.target.src !== DEFAULT_AVATAR) {
-    event.target.src = DEFAULT_AVATAR
-  }
+  sharedHandleImageError(event)
 }
 
 // 获取链接标签

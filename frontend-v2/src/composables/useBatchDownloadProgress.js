@@ -10,6 +10,8 @@ import { subscriptionsApi } from '@/api/subscriptions'
 const progressStates = reactive(new Map())
 const updateTrigger = ref(0)
 let refreshInterval = null
+// 支持多个调用者注册/注销 ws 监听器（引用计数模式）
+let wsListenerCount = 0
 let wsUnregister = null
 
 export function useBatchDownloadProgress() {
@@ -184,16 +186,17 @@ export function useBatchDownloadProgress() {
     }
 
     /**
-     * 启动 WebSocket 监听
+     * 启动 WebSocket 监听（引用计数，支持多个调用者）
      */
     function startWebSocketListener() {
-        if (wsUnregister) return // 避免重复注册
-
-        wsUnregister = wsService.onMessage((id, data) => {
-            if (data.type === 'batch_download_progress') {
-                handleProgressUpdate(data)
-            }
-        })
+        if (wsListenerCount === 0) {
+            wsUnregister = wsService.onMessage((id, data) => {
+                if (data.type === 'batch_download_progress') {
+                    handleProgressUpdate(data)
+                }
+            })
+        }
+        wsListenerCount++
     }
 
     /**
@@ -216,11 +219,16 @@ export function useBatchDownloadProgress() {
     }
 
     /**
-     * 清理资源（组件级清理，只停轮询，不动状态）
+     * 清理资源（组件级清理，引用计数减一）
+     * 当所有调用者都清理后，才真正注销 ws 监听器
      */
     function cleanup() {
         stopPolling()
-        // 不在这里清理 progressStates 和 ws，因为是单例，页面跳转还需要用
+        wsListenerCount = Math.max(0, wsListenerCount - 1)
+        if (wsListenerCount === 0 && wsUnregister) {
+            wsUnregister()
+            wsUnregister = null
+        }
     }
 
     /**
@@ -233,6 +241,7 @@ export function useBatchDownloadProgress() {
             wsUnregister()
             wsUnregister = null
         }
+        wsListenerCount = 0
 
         // 关闭所有 WebSocket 连接
         progressStates.forEach((_, subscriptionId) => {

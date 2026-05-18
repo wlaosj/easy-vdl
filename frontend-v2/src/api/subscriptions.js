@@ -125,17 +125,6 @@ export const subscriptionsApi = {
         }
         return await client.post(`/subscribe/${id}/retry_failed`)
     },
-
-    // 批量检测更新
-    async batchCheckFiltered(filters) {
-        return await client.post('/subscribe/batch_check_filtered', filters)
-    },
-
-    // 批量同步视频
-    async batchSyncFiltered(filters) {
-        return await client.post('/subscribe/batch_sync_filtered', filters)
-    },
-
     // 导出订阅配置（通过 backup 模块）
     async exportConfig() {
         return await client.get('/backup/subscriptions')
@@ -208,8 +197,37 @@ export const subscriptionsApi = {
         })
     },
 
-    // 代理图片
+    // 代理图片（仅返回代理 URL）
     proxyImage(url) {
         return `/api/subscribe/proxy/image?url=${encodeURIComponent(url)}`
+    }
+}
+
+// 默认头像（内联 SVG data URI）
+export const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23e2e8f0"/%3E%3Ccircle cx="50" cy="40" r="18" fill="%23a0aec0"/%3E%3Cpath d="M 25 85 Q 25 60 50 60 T 75 85" fill="%23a0aec0"/%3E%3C/svg%3E'
+
+/**
+ * 判断图片是否需要走后端代理，返回最终的图片 URL
+ */
+export function resolveAvatarUrl(url) {
+    if (!url) return DEFAULT_AVATAR
+    const proxyDomains = [
+        'hdslb.com', 'bilibili.com',
+        'xhscdn.com',
+        'googleusercontent.com', 'ytimg.com', 'ggpht.com',
+        'douyinpic.com', 'byteimg.com', 'douyinstatic.com',
+    ]
+    if (proxyDomains.some(d => url.includes(d))) {
+        return subscriptionsApi.proxyImage(url)
+    }
+    return url
+}
+
+/**
+ * 图片加载失败时回退到默认头像
+ */
+export function handleImageError(event) {
+    if (event.target.src !== DEFAULT_AVATAR) {
+        event.target.src = DEFAULT_AVATAR
     }
 }
