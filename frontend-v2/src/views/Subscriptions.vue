@@ -5776,16 +5776,28 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
       box-shadow: var(--shadow-sm);
   }
   
-  .primary-panel, .secondary-panel {
+  .action-panel-container .primary-panel,
+  .action-panel-container .secondary-panel {
       display: contents; 
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
+      overflow: visible;
+      flex-wrap: initial;
+      align-items: initial;
   }
 
-  .action-group {
+  .action-panel-container .action-group {
     display: flex;
+    flex-direction: column;
     align-items: center; /* 垂直居中 */
+    gap: var(--spacing-sm);
     padding: 8px 12px;
     position: relative;
     min-width: max-content;
+    flex-shrink: 0;
   }
 
   /* 桌面端工具栏紧凑化，尽量避免 1080p 换行 */
@@ -5810,7 +5822,7 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   }
 
   /* 添加分隔线 */
-  .action-group:not(:last-child)::after {
+  .action-panel-container .action-group:not(:last-child)::after {
     content: '';
     position: absolute;
     right: 0;
