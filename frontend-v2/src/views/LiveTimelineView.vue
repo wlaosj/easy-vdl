@@ -16,7 +16,7 @@
       </div>
       <div class="streamer-list custom-scrollbar">
         <div 
-          v-for="sub in filteredSubscriptions" 
+          v-for="sub in subscriptionCards"
           :key="sub.id"
           class="streamer-item"
           :class="{ active: subId === sub.id, 'has-records': timelineAvailability[sub.id]?.available }"
@@ -26,7 +26,7 @@
           <div v-else class="item-avatar-placeholder">{{ (sub.anchor_name || '未')[0] }}</div>
           <div class="item-info">
             <div class="item-name" :title="sub.anchor_name">{{ sub.anchor_name }}</div>
-            <div class="item-platform">{{ getPlatformName(sub.platform) }}</div>
+            <div class="item-platform">{{ sub._platformName }}</div>
           </div>
           <div v-if="timelineAvailability[sub.id]?.available" class="record-dot" title="有回放记录"></div>
         </div>
@@ -190,7 +190,7 @@
               </div>
               <div class="recent-resume-list custom-scrollbar" @wheel.prevent="handleRecentWheel">
                 <div
-                  v-for="entry in recentResumeEntries"
+                  v-for="entry in recentResumeCards"
                   :key="entry.sub.id"
                   class="recent-resume-card"
                   @click="selectStreamerWithDate(entry.sub, entry.resumeDate, entry.timeOfDay)"
@@ -200,13 +200,13 @@
                     <img v-if="entry.sub.avatar_url" :src="entry.sub.avatar_url" referrerpolicy="no-referrer" />
                     <div v-else class="recent-avatar-placeholder">{{ (entry.sub.anchor_name || '播')[0] }}</div>
                   </div>
-                  <div class="recent-platform-below">{{ getPlatformName(entry.sub.platform) }}</div>
+                  <div class="recent-platform-below">{{ entry._platformName }}</div>
                 </div>
                 <div class="recent-info">
                   <div class="recent-name">{{ entry.sub.anchor_name }}</div>
                   <div class="recent-meta">
-                    <span class="recent-time">{{ formatTime(entry.timeOfDay) }}</span>
-                    <span class="recent-ago">{{ formatRelativeTime(entry.updatedAt) }}</span>
+                    <span class="recent-time">{{ entry._time }}</span>
+                    <span class="recent-ago">{{ entry._relativeTime }}</span>
                     <span class="recent-date">{{ entry.resumeDate }}</span>
                   </div>
                   </div>
@@ -214,9 +214,9 @@
               </div>
             </div>
             
-            <div v-if="filteredSubscriptions.length > 0" class="streamer-grid">
+            <div v-if="subscriptionCards.length > 0" class="streamer-grid">
                <div 
-                v-for="sub in filteredSubscriptions" 
+                v-for="sub in subscriptionCards"
                 :key="sub.id"
                 class="grid-card"
                 @click="selectStreamer(sub)"
@@ -225,7 +225,7 @@
                 <div v-if="sub.avatar_url" class="card-blur-bg" :style="{ backgroundImage: `url(${sub.avatar_url})` }"></div>
                 
                 <!-- 顶部标识区域 -->
-                <div class="card-platform-tag" :class="`tag-${sub.platform}`">{{ getPlatformName(sub.platform) }}</div>
+                <div class="card-platform-tag" :class="`tag-${sub.platform}`">{{ sub._platformName }}</div>
                 <div class="card-record-badge" :class="{ 'badge-empty': !timelineAvailability[sub.id]?.available }">
                   {{ timelineAvailability[sub.id]?.available ? '有回放' : '无回放' }}
                 </div>
@@ -292,12 +292,10 @@ const platforms = [
 ]
 
 // 授权状态 - 优先读取本地缓存，避免闪烁
-const cachedLicense = localStorage.getItem('license_status')
+let cachedLicense = null
+try { cachedLicense = localStorage.getItem('license_status') } catch (e) { /* 隐私模式下可能被阻止 */ }
 const licenseValid = ref(cachedLicense === 'true')
 const checkingLicense = ref(cachedLicense === null)
-const subName = ref(route.query.name || '')
-const subAvatar = ref(route.query.avatar || '')
-const subPlatformName = ref(route.query.platform_name || '')
 const date = computed(() => route.query.date || '')
 
 const subId = computed(() => route.params.subId)
@@ -314,18 +312,36 @@ const activeSubPlatformName = computed(() => activeSub.value ? getPlatformName(a
 
 const filteredSubscriptions = computed(() => {
   let list = subscriptions.value
-  
+
   if (selectedPlatform.value !== 'all') {
     list = list.filter(sub => sub.platform === selectedPlatform.value)
   }
-  
+
   if (!searchQuery.value) return list
-  
+
   const q = searchQuery.value.toLowerCase()
-  return list.filter(s => 
-    s.anchor_name.toLowerCase().includes(q) || 
+  return list.filter(s =>
+    s.anchor_name.toLowerCase().includes(q) ||
     getPlatformName(s.platform).toLowerCase().includes(q)
   )
+})
+
+// 预计算订阅列表展示字段，避免模板中重复调用函数
+const subscriptionCards = computed(() => {
+  return filteredSubscriptions.value.map(sub => ({
+    ...sub,
+    _platformName: getPlatformName(sub.platform),
+  }))
+})
+
+// 预计算最近播放条目的展示字段
+const recentResumeCards = computed(() => {
+  return recentResumeEntries.value.map(entry => ({
+    ...entry,
+    _platformName: getPlatformName(entry.sub.platform),
+    _time: formatTime(entry.timeOfDay),
+    _relativeTime: formatRelativeTime(entry.updatedAt),
+  }))
 })
 
 let storageListener = null
@@ -456,8 +472,8 @@ function getTimelineDateForSub(subId) {
         return date
       }
     }
-  } catch (e) {}
-  
+  } catch (e) { console.warn('读取时间线日期缓存失败', e) }
+
   return getTodayDateString()
 }
 
@@ -617,7 +633,7 @@ function clearResumeHistory() {
   loadRecentResumeEntries()
   try {
     window.dispatchEvent(new CustomEvent('timeline-resume-updated'))
-  } catch (e) {}
+  } catch (e) { console.warn('触发 resume 更新事件失败', e) }
 }
 
 watch(subscriptions, () => {
