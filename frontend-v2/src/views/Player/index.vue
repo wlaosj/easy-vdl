@@ -27,7 +27,7 @@
             <div
               class="preview-card prev"
               v-if="prevVideoItem"
-              :style="previewCardStyle('prev')"
+              :style="prevCardStyle"
             >
               <img :src="getThumbnailUrl(prevVideoItem)" class="preview-bg" />
               <div class="preview-overlay">
@@ -155,6 +155,7 @@
                           class="gallery-media"
                           @click="handleGalleryMediaClick"
                           @load="onGalleryMediaLoad"
+                          @error="handleThumbnailError"
                         />
                         <video
                           v-else-if="
@@ -168,6 +169,7 @@
                           playsinline
                           @click="handleGalleryMediaClick"
                           @loadedmetadata="onGalleryMediaLoad"
+                          @error="handleThumbnailError"
                         ></video>
                       </div>
                     </transition>
@@ -481,7 +483,7 @@
             <div
               class="preview-card next"
               v-if="nextVideoItem"
-              :style="previewCardStyle('next')"
+              :style="nextCardStyle"
             >
               <img :src="getThumbnailUrl(nextVideoItem)" class="preview-bg" />
               <div class="preview-overlay">
@@ -662,7 +664,7 @@ import {
   watch,
   nextTick,
 } from "vue";
-import { useRouter, useRoute, onBeforeRouteLeave } from "vue-router";
+import { useRoute, onBeforeRouteLeave } from "vue-router";
 import { playerApi } from "@/api/player";
 import { systemApi } from "@/api/system";
 import { tasksApi } from "@/api/tasks";
@@ -686,7 +688,6 @@ import SettingsDrawer from "@/views/Player/components/SettingsDrawer.vue";
 
 defineOptions({ name: "Player" });
 
-const router = useRouter();
 const route = useRoute();
 
 // ── 桥接状态（在 usePlaylist ↔ useVideoPlayback 之间共享）──
@@ -730,22 +731,32 @@ const { lock: lockPageScrollOnMobile, unlock: forceUnlockPageScroll } = useScrol
 
 // 模板直引用的本地值与函数
 const sliderStyle = computed(() => ({}));
-const previewCardStyle = (type) => {
-  const base = type === "prev" ? -100 : 100;
-  const height =
-    containerHeight.value ||
-    videoContainerRef.value?.offsetHeight ||
-    window.innerHeight ||
-    600;
-  const percentOffset = (dragOffset.value / height) * 100;
-  return {
-    transform: `translate3d(0, ${base + percentOffset}%, 0)`,
-    opacity: Math.min(Math.abs(dragOffset.value) / (height * 0.16), 1),
-    transition: isTransitioning.value
-      ? "transform 0.3s ease-out, opacity 0.3s ease-out"
-      : "none",
-  };
-};
+const cardHeight = computed(() =>
+  containerHeight.value ||
+  videoContainerRef.value?.offsetHeight ||
+  window.innerHeight ||
+  600
+);
+const cardPercentOffset = computed(() => (dragOffset.value / cardHeight.value) * 100);
+const cardTransitionStyle = computed(() =>
+  isTransitioning.value
+    ? "transform 0.3s ease-out, opacity 0.3s ease-out"
+    : "none"
+);
+const cardBaseOpacity = computed(() =>
+  Math.min(Math.abs(dragOffset.value) / (cardHeight.value * 0.16), 1)
+);
+
+const prevCardStyle = computed(() => ({
+  transform: `translate3d(0, ${-100 + cardPercentOffset.value}%, 0)`,
+  opacity: cardBaseOpacity.value,
+  transition: cardTransitionStyle.value,
+}));
+const nextCardStyle = computed(() => ({
+  transform: `translate3d(0, ${100 + cardPercentOffset.value}%, 0)`,
+  opacity: cardBaseOpacity.value,
+  transition: cardTransitionStyle.value,
+}));
 
 const getSwitchPreviewHeight = () => {
   if (!containerHeight.value && videoContainerRef.value) {
@@ -1007,8 +1018,8 @@ const playIndex = (index, { force = false } = {}) => {
   }
 
   const targetFilename = String(targetVideo.filename || "").toLowerCase();
-  const isTargetAudio = !!targetFilename.match(/\.(mp3|flac|m4a|wav|aac|ogg)$/);
-  const isTargetImage = !!targetFilename.match(/\.(jpg|jpeg|png|webp|gif|bmp|avif)$/);
+  const isTargetAudio = !!targetFilename.match(/\.(mp3|flac|m4a|wav|aac|ogg|opus)$/);
+  const isTargetImage = isImageFilename(targetFilename);
   if (isTargetAudio || isTargetImage) {
     isVerticalVideo.value = false;
     videoAspectRatio.value = null;
@@ -1294,11 +1305,6 @@ const {
 
 
 
-// 界面功能
-const goBack = () => router.back();
-const rotateVideo = () => {
-  rotation.value = (rotation.value + 90) % 360;
-};
 
 
 
@@ -1674,7 +1680,7 @@ onBeforeUnmount(() => {
     stopGlobalBgMedia();
   }
 
-  window.removeEventListener("mousemove", resetTimer);
+  window.removeEventListener("mousemove", onMouseMove);
   window.removeEventListener("keydown", handleKeydown);
   document.removeEventListener("fullscreenchange", syncFullscreenState);
   document.removeEventListener("webkitfullscreenchange", syncFullscreenState);

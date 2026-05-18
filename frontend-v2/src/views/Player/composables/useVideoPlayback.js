@@ -259,6 +259,18 @@ export function useVideoPlayback({
     return String(path).split("/").filter((p) => p).map((part) => encodeURIComponent(part)).join("/")
   }
 
+  function isInstagramTask(video) {
+    const source = String(video?.source || video?.platform || "").toLowerCase()
+    const filename = String(video?.filename || "").toLowerCase()
+    return source === "instagram" || filename.includes("subscriptions/instagram/")
+  }
+
+  function getParentDownloadPath(filename) {
+    const parts = String(filename || "").split("/").filter((p) => p)
+    parts.pop()
+    return parts.join("/")
+  }
+
   function getThumbnailUrl(video) {
     if (!video) return "/static/default_thumbnail.png"
     if (video.filename && /\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i.test(video.filename)) {
@@ -268,6 +280,12 @@ export function useVideoPlayback({
       if (video.filename) {
         const base = video.filename.substring(0, video.filename.lastIndexOf("."))
         const isAudioFile = /\.(mp3|flac|m4a|wav|aac|ogg|opus)$/i.test(video.filename)
+        if (isInstagramTask(video)) {
+          const parentPath = getParentDownloadPath(video.filename)
+          if (parentPath) {
+            return `/downloads/${encodeDownloadPath(`${parentPath}/poster.jpg`)}`
+          }
+        }
         const guess = isAudioFile ? `${base}.jpg` : `${base}-poster.jpg`
         return `/downloads/${encodeDownloadPath(guess)}`
       }
