@@ -866,8 +866,6 @@ const segments = ref([])
 const analyzedAt = ref('')
 const selectedSegmentIds = ref([])
 const previewVisible = ref(false)
-const previewUrl = ref('')
-const previewPath = ref('')
 const previewSegment = ref(null)
 const previewVideoRef = ref(null)
 const recordStreamUrl = ref('')
@@ -891,7 +889,6 @@ const recordStatusSocket = ref(null)
 const recordStatusPingTimer = ref(null)
 const recordStatusReconnectTimer = ref(null)
 const recordStatusSocketEnabled = ref(false)
-const exportingSegmentId = ref('')
 const durationTicker = ref(null)
 const nowTickSec = ref(Math.floor(Date.now() / 1000))
 const analyzeProgress = ref(0)
@@ -1000,7 +997,7 @@ async function loadManualThumbnail(task) {
       manualThumbnailCache.value = { ...manualThumbnailCache.value, [task.id]: `${fullPath}?t=${ts}` }
     }
   } catch (e) {
-    // 缩略图加载失败静默处理
+    console.warn('缩略图加载失败', e)
   }
 }
 
@@ -1099,12 +1096,12 @@ const editorStartSec = computed(() => {
   if (previewSegment.value) return Number(previewSegment.value.start_sec || 0)
   return 0
 })
-const editorEndSec = computed(() => {
 const clipEditorTsMode = computed(() => {
   const fp = selectedRecord.value?.file_path || manualSelectedVideo.value?.file_path || ''
   return /\.ts$/i.test(fp)
 })
 
+const editorEndSec = computed(() => {
   if (previewSegment.value) return Number(previewSegment.value.end_sec || 30)
   return 30
 })
@@ -1742,7 +1739,7 @@ function restoreAnalyzePreference() {
     form.value.l2_editor_config.max_concurrency = clampModelConcurrency(parsed?.l2_max_concurrency, 4)
     showAdvancedModelOptions.value = !!parsed?.show_advanced_model_options
   } catch (_) {
-    // ignore corrupted cache
+    // noop
   }
 }
 
@@ -1895,7 +1892,7 @@ async function restoreStoredTabState(tab) {
     selectedStreamerId.value = streamerId
     await loadRecords(streamerId)
   } catch (_) {
-    // ignore corrupted cache for tab restore
+    // noop
   }
 }
 
@@ -2036,7 +2033,7 @@ async function recoverAnalyzeTask(recordId) {
       startAnalyzePoll(recordId)
     }
   } catch (_) {
-    // 没有历史任务是正常情况
+    // noop
   }
 }
 
@@ -2845,8 +2842,6 @@ async function confirmSlice() {
 
 function closePreview() {
   previewVisible.value = false
-  previewUrl.value = ''
-  previewPath.value = ''
   recordStreamUrl.value = ''
   previewSegment.value = null
   manualSelectedVideo.value = null
@@ -3632,6 +3627,12 @@ onBeforeUnmount(() => {
   if (durationTicker.value) {
     clearInterval(durationTicker.value)
     durationTicker.value = null
+  }
+  if (seekUrlRebuildTimer) { clearTimeout(seekUrlRebuildTimer); seekUrlRebuildTimer = null }
+  if (danmuLoadTimer) { clearTimeout(danmuLoadTimer); danmuLoadTimer = null }
+  if (closePreview._keyHandler) {
+    document.removeEventListener('keydown', closePreview._keyHandler)
+    closePreview._keyHandler = null
   }
   recordStatusSocketEnabled.value = false
   closeRecordStatusSocket()

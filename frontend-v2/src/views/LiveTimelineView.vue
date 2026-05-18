@@ -1320,8 +1320,8 @@ watch(subscriptions, () => {
 
 .streamer-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* 缩小最小宽度 */
-  gap: 20px; /* 缩小间距 */
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 24px;
   width: 100%;
   max-width: 1860px;
   margin: 0 auto; /* 如果空间足够，仍然居中显示 */
@@ -1489,11 +1489,11 @@ watch(subscriptions, () => {
     max-width: 2300px;
   }
   .streamer-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 32px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 24px;
   }
   .grid-card {
-    padding: 40px 24px;
+    padding: 32px 20px;
   }
 }
 
