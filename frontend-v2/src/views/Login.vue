@@ -51,15 +51,15 @@
               <button class="unraid-btn" :disabled="loading" type="submit">
                 {{ loading ? '请 稍 候' : (isRegisterMode ? '注 册' : '登 录') }}
               </button>
-
-              <!-- 环境变量提示：放在按钮后面，不换行 -->
-              <div v-if="envOverrideEnabled" class="env-status-tip-inline">
-                 <Icon name="shield" :size="14" />
-                 <span class="env-text-inline">已启用 ENV 账户登录覆盖</span>
-              </div>
             </div>
-            
-            <a v-if="!isRegisterMode" href="#" class="forgot-link" @click.prevent="toast.info('请联系系统管理员重置密码')">找回密码</a>
+
+            <div class="form-footer">
+              <a v-if="!isRegisterMode" href="#" class="forgot-link" @click.prevent="toast.info('请联系系统管理员重置密码')">找回密码</a>
+              <span v-if="envOverrideEnabled" class="env-status-tip">
+                <Icon name="shield" :size="14" />
+                <span>已启用环境变量账户验证</span>
+              </span>
+            </div>
           </form>
         </div>
       </div>
@@ -480,18 +480,13 @@ async function handleLogin() {
   transition: opacity 0.2s;
 }
 
-.env-status-tip-inline {
+.form-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--color-error);
-  font-size: 13px;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-.env-text-inline {
-  letter-spacing: 0.5px;
+  justify-content: flex-start;
+  gap: 16px;
+  margin-top: 15px;
+  flex-wrap: wrap;
 }
 
 .unraid-btn:hover {
@@ -505,7 +500,6 @@ async function handleLogin() {
 
 .forgot-link {
   display: inline-block;
-  margin-top: 15px;
   color: var(--color-primary);
   text-decoration: none;
   font-weight: bold;
@@ -517,13 +511,13 @@ async function handleLogin() {
 }
 
 .env-status-tip {
-  margin-bottom: 20px;
-  padding: 10px 15px;
-  background: var(--color-error-light);
-  border-left: 4px solid var(--color-error);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  color: var(--color-error);
+  font-size: 13px;
+  font-weight: bold;
+  white-space: nowrap;
 }
 
 .env-text {
@@ -561,7 +555,7 @@ async function handleLogin() {
   .form-actions {
     flex-wrap: wrap;
   }
-  .env-status-tip-inline {
+  .env-status-tip {
     white-space: normal;
     word-break: break-word;
   }
