@@ -131,7 +131,6 @@ docker buildx build \
     --platform "$PLATFORM" \
     --load \
     --build-arg ENABLE_OBFUSCATION="$ENABLE_OBFUSCATION" \
-    # --build-arg FFMPEG_RELEASE_BRANCH 已移除，Dockerfile 直接使用 master 分支
     --build-arg BUILD_VERSION="$BUILD_VERSION" \
     --build-arg BUILD_TIME="$BUILD_TIME" \
     -f "$DOCKERFILE" \
