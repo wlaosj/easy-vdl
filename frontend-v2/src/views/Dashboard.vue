@@ -240,7 +240,7 @@
 
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Icon from '@/components/common/Icon.vue'
 import { useSystemStore } from '@/stores/system'
@@ -260,6 +260,7 @@ import GpuMonitorCard from '@/components/dashboard/GpuMonitorCard.vue'
 import ServiceStatusCard from '@/components/dashboard/ServiceStatusCard.vue'
 import RecentActivityCard from '@/components/dashboard/RecentActivityCard.vue'
 import SystemStatusSection from '@/components/dashboard/SystemStatusSection.vue'
+import { pickPrimaryGpu } from '@/utils/gpu'
 
 const router = useRouter()
 const systemStore = useSystemStore()
@@ -270,17 +271,6 @@ const storageUnitMode = ref(localStorage.getItem(STORAGE_UNIT_MODE_KEY) === 'bin
 const gpuStats = computed(() => systemStore.metrics?.gpu_stats || { summary: { has_gpu: false }, gpus: [] })
 const gpuLoading = computed(() => !systemStore.metrics?.timestamp)
 
-// 意见反馈处理（高级版专属：强制在当前页面弹出模拟框）
-const handleFeedbackClick = () => {
-  if (typeof window.showFeedbackForm === 'function') {
-    window.showFeedbackForm()
-  } else {
-    // 如果全局反馈组件尚未挂载或脚本未就绪，提示用户稍后重试
-    // 避免回退到新标签页打开，保证体验一致
-    window.alert('反馈表单正在初始化，请稍后再试一次～')
-  }
-}
-
 // 饼图交互
 const hoveredSegment = ref(null)
 const hoveredLiveSegment = ref(null)
@@ -289,15 +279,6 @@ const hoveredLiveSegment = ref(null)
 const showAnnouncementModal = ref(false)
 const selectedAnnouncement = ref(null)
 const isLoadingAnnouncements = ref(false)
-
-// 直播统计
-
-
-const getNoticeIcon = (sev) => {
-  if (sev === 'error') return 'alert-circle'
-  if (sev === 'warn') return 'alert-triangle'
-  return 'info'
-}
 
 // 显示公告列表（参考旧版本的 showAnnouncements：用户点击查看时才获取）
 const showAnnouncementsModal = async () => {
@@ -324,17 +305,6 @@ const showAnnouncementsModal = async () => {
     systemStore.markAnnouncementsRead()
   } else {
     selectedAnnouncement.value = null
-  }
-}
-
-// 打开公告详情模态框（从列表中选择时调用）
-const openAnnouncementModal = (ann) => {
-  selectedAnnouncement.value = ann
-  // 如果模态框还没打开，先打开
-  if (!showAnnouncementModal.value) {
-    showAnnouncementModal.value = true
-    // 标记为已读
-    systemStore.markAnnouncementsRead()
   }
 }
 
@@ -496,17 +466,6 @@ async function fetchLivePlatformStats() {
   }
 }
 
-// 获取直播统计（已改为 WebSocket 推送，此函数保留用于兼容，但不再调用）
-// 直播统计数据通过 metrics 频道的 live_stats 字段推送
-async function fetchLiveStats() {
-  // 已改为 WebSocket 推送，但保留此函数用于获取平台分布
-  // 平台分布数据仍需要通过 HTTP 获取（数据量大，不适合频繁推送）
-  try {
-    fetchLivePlatformStats()
-  } catch (err) {
-    console.warn('Failed to fetch live platform stats:', err)
-  }
-}
 
 // 最近活动
 const recentActivity = ref([])
@@ -515,11 +474,6 @@ const recentActivity = ref([])
 const totalCompleted = ref(0)
 const totalFailed = ref(0)
 
-// 获取已下载总数（已改为 WebSocket 推送，此函数保留用于兼容，但不再调用）
-// async function fetchTotalCompleted() { ... }
-
-// 获取失败总数（已改为 WebSocket 推送，此函数保留用于兼容，但不再调用）
-// async function fetchTotalFailed() { ... }
 
 // 格式化数据大小
 function formatBytes(bytes, decimals = 2) {
@@ -552,118 +506,6 @@ function toggleStorageUnit() {
   storageUnitMode.value = storageUnitMode.value === 'decimal' ? 'binary' : 'decimal'
 }
 
-// 格式化速率
-function formatSpeed(bps) {
-  if (!bps || isNaN(bps) || bps === null || bps === undefined) return '0 B/s'
-  if (bps === 0) return '0 B/s'
-  if (bps < 1024) return bps.toFixed(0) + ' B/s'
-  if (bps < 1024 * 1024) return (bps / 1024).toFixed(1) + ' KB/s'
-  return (bps / (1024 * 1024)).toFixed(2) + ' MB/s'
-}
-
-// 获取数据库连接池状态
-// 获取数据库连接池状态 (已移至 WebSocket 推送)
-// async function fetchDatabasePoolStatus() { ... }
-
-// 根据使用率返回颜色类名
-function getUsageClass(usage) {
-  if (usage > 90) return 'usage-critical'  // 红色
-  if (usage > 75) return 'usage-warning'   // 橙色
-  if (usage > 60) return 'usage-caution'   // 黄色
-  return 'usage-normal'  // 绿色
-}
-
-// 获取连接池容量显示（完全依赖后端数据，自适应配置）
-function getPoolCapacity() {
-  const db = systemStore.metrics.database
-  if (!db) return '加载中...'
-  
-  const current = (db.checked_out || 0) + (db.checked_in || 0)
-  
-  // 完全依赖后端返回的配置，不使用硬编码默认值
-  if (db.pool_size !== undefined && db.max_overflow !== undefined) {
-    const max = db.pool_size + db.max_overflow
-    return `${current}/${max}`
-  }
-  
-  // 如果后端未返回配置信息，只显示当前连接数
-  return `${current}/?`
-}
-
-// 获取连接池信息文本（完全依赖后端数据，自适应配置）
-function getPoolInfoText() {
-  const db = systemStore.metrics.database
-  if (!db) return '等待数据加载...'
-  
-  const current = (db.checked_out || 0) + (db.checked_in || 0)
-  const parts = []
-  
-  // 实际创建连接数
-  parts.push(`实际创建连接: ${current}`)
-  
-  // 池配置信息（完全依赖后端返回的数据）
-  if (db.pool_size !== undefined && db.max_overflow !== undefined) {
-    parts.push(`池配置: ${db.pool_size}+${db.max_overflow}`)
-  }
-  
-  // 连接回收信息
-  if (db.total_connections !== undefined && db.total_connections > 0) {
-    const diff = current - db.total_connections
-    if (diff > 0) {
-      parts.push(`已回收: ${diff}个连接`)
-    }
-  }
-  
-  return parts.join(' | ')
-}
-
-// 格式化运行时长
-function formatUptime(seconds) {
-  if (!seconds || seconds === 0) return '0分钟'
-  
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  const parts = []
-  if (days > 0) parts.push(`${days}天`)
-  if (hours > 0) parts.push(`${hours}小时`)
-  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}分钟`)
-  
-  return parts.join('')
-}
-
-// 获取内存使用率百分比
-function getMemoryUsagePercent() {
-  const memoryMB = systemStore.metrics.memory_mb || 0
-  // 优先使用动态限额，若为0则使用 2GB 保底
-  const totalMB = systemStore.metrics.memory_limit_mb || 2048 
-  const percent = (memoryMB / totalMB) * 100
-  return Math.round(percent)
-}
-
-// 获取存储使用率百分比
-function getStorageUsagePercent() {
-  return systemStore.storage.usage_percentage || 0
-}
-
-// 获取授权进度百分比
-function getLicenseUsagePercent() {
-  const days = systemStore.license.remaining_days || 0
-  if (days === -1 || days > 365) return 100
-  return Math.max(0, Math.min(100, (days / 365) * 100))
-}
-
-
-
-// 根据存储使用率返回颜色类名
-function getStorageUsageClass() {
-  const usage = getStorageUsagePercent()
-  if (usage >= 90) return 'storage-critical'
-  if (usage >= 75) return 'storage-warning'
-  if (usage >= 60) return 'storage-caution'
-  return 'storage-normal'
-}
 
 // 核心版本检测相关
 const isCheckingCore = ref(false)
@@ -829,7 +671,7 @@ function normalizePlatform(source) {
   if (platform.includes('tiktok')) return 'tiktok'
   if (platform.includes('instagram')) return 'instagram'
   if (platform.includes('xiaohongshu')) return 'xiaohongshu'
-   if (platform.includes('netease')) return 'netease'
+  if (platform.includes('netease')) return 'netease'
   return 'others'
 }
 
@@ -890,67 +732,6 @@ const gridScrollX = ref(0)
 const gridTickCount = ref(0)
 const chartGap = 200 / 59 // chartWidth / (maxPoints - 1)
 
-const normalizeGpuVendor = (value) => {
-  const text = String(value || '').trim().toLowerCase()
-  if (!text) return ''
-  if (text.includes('intel')) return 'intel'
-  if (text.includes('nvidia')) return 'nvidia'
-  if (text.includes('amd')) return 'amd'
-  return text
-}
-
-const parseGpuIndex = (value) => {
-  if (value === undefined || value === null || value === '') return null
-  const parsed = Number.parseInt(String(value).trim(), 10)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-const pickPrimaryGpuFromStats = (gpuStatsPayload) => {
-  const gpuList = Array.isArray(gpuStatsPayload?.gpus) ? gpuStatsPayload.gpus : []
-  if (!gpuList.length) return null
-  const pickPreferred = (list) => {
-    if (!Array.isArray(list) || list.length === 0) return null
-    const ok = list.find((gpu) => String(gpu?.status || '').toLowerCase() === 'ok')
-    if (ok) return ok
-    const degradedUsable = list.find((gpu) => {
-      const status = String(gpu?.status || '').toLowerCase()
-      return status === 'degraded' && Boolean(gpu?.transcode_enabled)
-    })
-    if (degradedUsable) return degradedUsable
-    const nonError = list.find((gpu) => String(gpu?.status || '').toLowerCase() !== 'error')
-    return nonError || list[0] || null
-  }
-
-  const explicitActive = gpuList.find((gpu) => Boolean(gpu?.is_active))
-  if (explicitActive) return explicitActive
-
-  const summary = gpuStatsPayload?.summary || {}
-  const activeTranscoder = summary.active_transcoder || {}
-  const activeVendor = normalizeGpuVendor(summary.active_vendor || activeTranscoder.vendor)
-  const activeHwaccel = String(summary.active_hwaccel || activeTranscoder.hardware || '').trim().toLowerCase()
-  const activeGpuIndex = parseGpuIndex(summary.active_gpu_index ?? activeTranscoder.gpu_index)
-
-  if (activeVendor) {
-    const sameVendor = gpuList.filter((gpu) => normalizeGpuVendor(gpu?.vendor) === activeVendor)
-    if (sameVendor.length > 0) {
-      if (activeVendor === 'nvidia' && activeGpuIndex !== null) {
-        const exact = sameVendor.find((gpu) => parseGpuIndex(gpu?.index) === activeGpuIndex)
-        if (exact) return exact
-      }
-      return pickPreferred(sameVendor)
-    }
-  }
-
-  if (activeHwaccel === 'vaapi') {
-    const vaapiCapable = gpuList.filter((gpu) => {
-      const backends = Array.isArray(gpu?.transcode_backends) ? gpu.transcode_backends : []
-      return backends.map((item) => String(item || '').toLowerCase()).includes('vaapi')
-    })
-    if (vaapiCapable.length > 0) return pickPreferred(vaapiCapable)
-  }
-
-  return pickPreferred(gpuList)
-}
 
 /**
  * 核心指标接收器：不再直接计算，只负责“喂”数据
@@ -966,7 +747,7 @@ function onMetricsReceived(payload) {
   // 1.1 GPU 数据入队（主卡利用率）
   gpuHistory.value.push(gpuTargetValue.value)
   if (gpuHistory.value.length > 60) gpuHistory.value.shift()
-  const primaryGpu = pickPrimaryGpuFromStats(payload.gpu_stats || {})
+  const primaryGpu = pickPrimaryGpu(payload.gpu_stats || {})
   const nextGpuTarget = Number(primaryGpu?.util_percent ?? 0)
   gpuTargetValue.value = Number.isFinite(nextGpuTarget) ? Math.max(0, Math.min(100, nextGpuTarget)) : 0
   

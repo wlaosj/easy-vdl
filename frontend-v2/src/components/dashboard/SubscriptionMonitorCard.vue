@@ -93,6 +93,7 @@
 import { useRouter } from 'vue-router'
 import PieChart from './PieChart.vue'
 import Icon from '../common/Icon.vue'
+import { formatBytes } from '@/utils/dashboard'
 
 const props = defineProps({
   segments: {
@@ -146,15 +147,6 @@ const subscriptionGradients = [
   { id: 'x', startColor: '#111827', endColor: '#4b5563' }, // X 深色渐变
   { id: 'instagram', startColor: '#F58529', endColor: '#DD2A7B' } // Instagram 橙粉渐变
 ]
-
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 B'
-  const k = 1000
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
-}
 
 function handleSegmentClick(segment) {
   handlePlatformClick(segment.platform)

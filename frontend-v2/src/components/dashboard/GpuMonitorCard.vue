@@ -111,6 +111,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { systemApi } from '@/api/system'
+import { normalizeGpuVendor, parseGpuIndex, pickPrimaryGpu } from '@/utils/gpu'
 
 const props = defineProps({
   gpuStats: {
@@ -141,71 +142,8 @@ const props = defineProps({
 
 const hasGpu = computed(() => Boolean(props.gpuStats?.summary?.has_gpu))
 const gpus = computed(() => Array.isArray(props.gpuStats?.gpus) ? props.gpuStats.gpus : [])
-const normalizeVendor = (value) => {
-  const text = String(value || '').trim().toLowerCase()
-  if (!text) return ''
-  if (text.includes('intel')) return 'intel'
-  if (text.includes('nvidia')) return 'nvidia'
-  if (text.includes('amd')) return 'amd'
-  return text
-}
 
-const parseGpuIndex = (value) => {
-  if (value === undefined || value === null || value === '') return null
-  const parsed = Number.parseInt(String(value).trim(), 10)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-const activeSelector = computed(() => {
-  const summary = props.gpuStats?.summary || {}
-  const activeTranscoder = summary.active_transcoder || {}
-  const activeVendor = normalizeVendor(summary.active_vendor || activeTranscoder.vendor)
-  const activeHwaccel = String(summary.active_hwaccel || activeTranscoder.hardware || '').trim().toLowerCase()
-  const activeGpuIndex = parseGpuIndex(summary.active_gpu_index ?? activeTranscoder.gpu_index)
-  return { activeVendor, activeHwaccel, activeGpuIndex }
-})
-
-const primaryGpu = computed(() => {
-  const gpuList = gpus.value || []
-  if (!gpuList.length) return null
-  const pickPreferred = (list) => {
-    if (!Array.isArray(list) || list.length === 0) return null
-    const ok = list.find((gpu) => String(gpu?.status || '').toLowerCase() === 'ok')
-    if (ok) return ok
-    const degradedUsable = list.find((gpu) => {
-      const status = String(gpu?.status || '').toLowerCase()
-      return status === 'degraded' && Boolean(gpu?.transcode_enabled)
-    })
-    if (degradedUsable) return degradedUsable
-    const nonError = list.find((gpu) => String(gpu?.status || '').toLowerCase() !== 'error')
-    return nonError || list[0] || null
-  }
-
-  const explicitActive = gpuList.find((gpu) => Boolean(gpu?.is_active))
-  if (explicitActive) return explicitActive
-
-  const { activeVendor, activeHwaccel, activeGpuIndex } = activeSelector.value
-  if (activeVendor) {
-    const sameVendor = gpuList.filter((gpu) => normalizeVendor(gpu?.vendor) === activeVendor)
-    if (sameVendor.length > 0) {
-      if (activeVendor === 'nvidia' && activeGpuIndex !== null) {
-        const exact = sameVendor.find((gpu) => parseGpuIndex(gpu?.index) === activeGpuIndex)
-        if (exact) return exact
-      }
-      return pickPreferred(sameVendor)
-    }
-  }
-
-  if (activeHwaccel === 'vaapi') {
-    const vaapiCapable = gpuList.filter((gpu) => {
-      const backends = Array.isArray(gpu?.transcode_backends) ? gpu.transcode_backends : []
-      return backends.map((item) => String(item || '').toLowerCase()).includes('vaapi')
-    })
-    if (vaapiCapable.length > 0) return pickPreferred(vaapiCapable)
-  }
-
-  return pickPreferred(gpuList)
-})
+const primaryGpu = computed(() => pickPrimaryGpu(props.gpuStats))
 const primaryGpuName = computed(() => primaryGpu.value?.name || primaryGpu.value?.vendor?.toUpperCase() || 'GPU')
 const mobileHwLabel = computed(() => {
   const rawVendor = String(primaryGpu.value?.vendor || '').trim().toLowerCase()

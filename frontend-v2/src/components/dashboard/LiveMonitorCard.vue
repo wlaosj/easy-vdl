@@ -78,10 +78,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import PieChart from './PieChart.vue'
 import Icon from '../common/Icon.vue'
+import { formatBytes } from '@/utils/dashboard'
 
 const props = defineProps({
   segments: {
@@ -132,15 +132,6 @@ const liveGradients = [
   { id: 'weibo', startColor: '#EB0028', endColor: '#EB0028' },
   { id: 'other', startColor: '#999', endColor: '#666' }
 ]
-
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 B'
-  const k = 1000
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
-}
 
 function handleSegmentClick(segment) {
   router.push(`/live-record?platform=${segment.platform}`)

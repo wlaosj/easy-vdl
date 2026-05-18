@@ -1,5 +1,5 @@
 <template>
-  <div class="pie-chart-container" :class="{ 'is-dark': isDarkTheme }">
+  <div class="pie-chart-container">
     <svg viewBox="0 0 100 100" class="pie-chart">
       <!-- 渐变定义 -->
       <defs>
@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
 const props = defineProps({
   segments: {
@@ -93,32 +93,10 @@ const props = defineProps({
 const emit = defineEmits(['segment-click'])
 
 const hoveredSegment = ref(null)
-const isDarkTheme = ref(false)
-let themeObserver = null
 
 function handleSegmentClick(segment) {
   emit('segment-click', segment)
 }
-
-function syncTheme() {
-  isDarkTheme.value = document.documentElement.getAttribute('data-theme') === 'dark'
-}
-
-onMounted(() => {
-  syncTheme()
-  themeObserver = new MutationObserver(syncTheme)
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme']
-  })
-})
-
-onUnmounted(() => {
-  if (themeObserver) {
-    themeObserver.disconnect()
-    themeObserver = null
-  }
-})
 </script>
 
 <style scoped>
@@ -241,32 +219,6 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-.pie-chart-container.is-dark {
-  --pie-empty-ring-stroke: rgba(148, 163, 184, 0.45);
-  --pie-center-bg: rgba(22, 27, 34, 0.92);
-  --pie-center-border: rgba(148, 163, 184, 0.35);
-  --pie-center-shadow: 0 12px 28px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --pie-total-color: #f8fafc;
-  --pie-label-color: rgba(226, 232, 240, 0.78);
-  --pie-hover-name-color: #f8fafc;
-  --pie-hover-data-color: #ffffff;
-}
-
-.pie-chart-container.is-dark .pie-center-text {
-  background: rgba(22, 27, 34, 0.92) !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
-}
-
-.pie-chart-container.is-dark .pie-total,
-.pie-chart-container.is-dark .pie-hover-name,
-.pie-chart-container.is-dark .pie-hover-data {
-  color: #f8fafc !important;
-}
-
-.pie-chart-container.is-dark .pie-label {
-  color: rgba(226, 232, 240, 0.78) !important;
-}
 
 @keyframes segment-in {
   from {
@@ -286,5 +238,34 @@ onUnmounted(() => {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
+}
+</style>
+
+<style>
+:root[data-theme="dark"] .pie-chart-container {
+  --pie-empty-ring-stroke: rgba(148, 163, 184, 0.45);
+  --pie-center-bg: rgba(22, 27, 34, 0.92);
+  --pie-center-border: rgba(148, 163, 184, 0.35);
+  --pie-center-shadow: 0 12px 28px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --pie-total-color: #f8fafc;
+  --pie-label-color: rgba(226, 232, 240, 0.78);
+  --pie-hover-name-color: #f8fafc;
+  --pie-hover-data-color: #ffffff;
+}
+
+:root[data-theme="dark"] .pie-chart-container .pie-center-text {
+  background: rgba(22, 27, 34, 0.92) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+:root[data-theme="dark"] .pie-chart-container .pie-total,
+:root[data-theme="dark"] .pie-chart-container .pie-hover-name,
+:root[data-theme="dark"] .pie-chart-container .pie-hover-data {
+  color: #f8fafc !important;
+}
+
+:root[data-theme="dark"] .pie-chart-container .pie-label {
+  color: rgba(226, 232, 240, 0.78) !important;
 }
 </style>

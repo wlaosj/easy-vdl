@@ -2,7 +2,7 @@
   <div class="dashboard-right">
     <div class="system-status-section">
       <!-- 系统/内存卡片 -->
-      <div class="status-card" :style="{ '--usage-percent': getMemoryUsagePercent() + '%' }">
+      <div class="status-card" :style="{ '--usage-percent': getMemoryUsagePercent(metrics.memory_mb, metrics.memory_limit_mb) + '%' }">
         <div class="status-header">
           <div class="status-icon memory battery-fill">
             <Icon name="chip-dip" :size="30" />
@@ -13,7 +13,7 @@
           </div>
           <div class="status-badge memory-badge">
             <span class="badge-title">内存使用率</span>
-            <span class="badge-value">{{ getMemoryUsagePercent() }}%</span>
+            <span class="badge-value">{{ getMemoryUsagePercent(metrics.memory_mb, metrics.memory_limit_mb) }}%</span>
             <span class="badge-total" v-if="metrics.memory_limit_mb">共 {{ (metrics.memory_limit_mb / 1024).toFixed(1) }}GB</span>
           </div>
         </div>
@@ -102,7 +102,7 @@
             <h4>数据库</h4>
             <span class="status-subtitle">连接池状态</span>
           </div>
-          <div class="status-badge">{{ getPoolCapacity() }}</div>
+          <div class="status-badge">{{ getPoolCapacity(metrics.database) }}</div>
         </div>
         <div class="db-stats-row">
           <div class="db-stat-item">
@@ -121,7 +121,7 @@
           </div>
         </div>
         <div class="db-info-text">
-          {{ getPoolInfoText() }}
+          {{ getPoolInfoText(metrics.database) }}
         </div>
       </div>
 
@@ -190,6 +190,7 @@
 <script setup>
 import { computed } from 'vue'
 import Icon from '../common/Icon.vue'
+import { formatBytes, formatSpeed, formatUptime, getMemoryUsagePercent, getPoolCapacity, getPoolInfoText, getUsageClass } from '@/utils/dashboard'
 
 const props = defineProps({
   metrics: {
@@ -248,89 +249,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['core-update'])
-
-function formatUptime(seconds) {
-  if (!seconds || seconds === 0) return '0分钟'
-  
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  const parts = []
-  if (days > 0) parts.push(`${days}天`)
-  if (hours > 0) parts.push(`${hours}小时`)
-  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}分钟`)
-  
-  return parts.join('')
-}
-
-function getMemoryUsagePercent() {
-  const memoryMB = props.metrics.memory_mb || 0
-  const totalMB = props.metrics.memory_limit_mb || 2048
-  const percent = (memoryMB / totalMB) * 100
-  return Math.round(percent)
-}
-
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 B'
-  const k = 1000
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
-}
-
-function formatSpeed(bps) {
-  if (!bps || isNaN(bps) || bps === null || bps === undefined) return '0 B/s'
-  if (bps === 0) return '0 B/s'
-  if (bps < 1024) return bps.toFixed(0) + ' B/s'
-  if (bps < 1024 * 1024) return (bps / 1024).toFixed(1) + ' KB/s'
-  return (bps / (1024 * 1024)).toFixed(2) + ' MB/s'
-}
-
-function getUsageClass(usage) {
-  if (usage > 90) return 'usage-critical'
-  if (usage > 75) return 'usage-warning'
-  if (usage > 60) return 'usage-caution'
-  return 'usage-normal'
-}
-
-function getPoolCapacity() {
-  const db = props.metrics.database
-  if (!db) return '加载中...'
-  
-  const current = (db.checked_out || 0) + (db.checked_in || 0)
-  
-  if (db.pool_size !== undefined && db.max_overflow !== undefined) {
-    const max = db.pool_size + db.max_overflow
-    return `${current}/${max}`
-  }
-  
-  return `${current}/?`
-}
-
-function getPoolInfoText() {
-  const db = props.metrics.database
-  if (!db) return '等待数据加载...'
-  
-  const current = (db.checked_out || 0) + (db.checked_in || 0)
-  const parts = []
-  
-  parts.push(`实际创建连接: ${current}`)
-  
-  if (db.pool_size !== undefined && db.max_overflow !== undefined) {
-    parts.push(`池配置: ${db.pool_size}+${db.max_overflow}`)
-  }
-  
-  if (db.total_connections !== undefined && db.total_connections > 0) {
-    const diff = current - db.total_connections
-    if (diff > 0) {
-      parts.push(`已回收: ${diff}个连接`)
-    }
-  }
-  
-  return parts.join(' | ')
-}
 
 function getCoreDisplayText() {
   if (props.isCheckingCore) return '检测中...'
@@ -414,16 +332,11 @@ function handleCoreUpdate() {
   z-index: 0;
 }
 
-/* 动态颜色变化 - 针对不同负载段 */
-.status-card[style*="--usage-percent: 5"],
-.status-card[style*="--usage-percent: 6"],
-.status-card[style*="--usage-percent: 7"] {
-  .status-icon::before { background: linear-gradient(to top, #f39c12, #f1c40f); }
-}
-
-.status-card[style*="--usage-percent: 8"],
-.status-card[style*="--usage-percent: 9"] {
-  .status-icon::before { background: linear-gradient(to top, #e74c3c, #c0392b); }
+/* 动态颜色变化 — 使用 color-mix 根据使用率渐变 */
+.status-icon::before {
+  background: linear-gradient(to top,
+    color-mix(in srgb, #27ae60 calc((100 - var(--usage-percent, 0)) * 1%), #e74c3c)
+  ) !important;
 }
 
 .status-icon :deep(svg) {
