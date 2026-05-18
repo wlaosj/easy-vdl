@@ -1,0 +1,7 @@
+interface:
+  display_name: "Easy-VDL Token Download API"
+  short_description: "Use API Token to call Easy-VDL download/live/websocket endpoints"
+  default_prompt: "Use $easy-vdl-api-token-download and ask me for custom BASE_URL and API_TOKEN before generating API calls (download, live, websocket)."
+
+policy:
+  allow_implicit_invocation: true

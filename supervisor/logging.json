@@ -1,0 +1,81 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s.%(msecs)03d | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "default",
+            "stream": "ext://sys.stdout"
+        },
+        "general_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "INFO",
+            "formatter": "default",
+            "filename": "/app/logs/easy-vdl.log",
+            "maxBytes": 10485760,
+            "backupCount": 1,
+            "encoding": "utf8"
+        }
+    },
+    "loggers": {
+        "uvicorn": {
+            "level": "WARNING"
+        },
+        "uvicorn.access": {
+            "level": "WARNING"
+        },
+        "uvicorn.error": {
+            "level": "WARNING"
+        },
+        "httpx": {
+            "level": "WARNING"
+        },
+        "httpcore": {
+            "level": "WARNING"
+        },
+        "httpcore.http2": {
+            "level": "WARNING"
+        },
+        "hpack": {
+            "level": "WARNING"
+        },
+        "h2": {
+            "level": "WARNING"
+        },
+        "sqlalchemy.engine": {
+            "level": "WARNING"
+        },
+        "sqlalchemy.pool": {
+            "level": "WARNING"
+        },
+        "sqlalchemy.dialects": {
+            "level": "WARNING"
+        },
+        "aiohttp": {
+            "level": "WARNING"
+        },
+        "asyncio": {
+            "level": "WARNING"
+        },
+        "urllib3": {
+            "level": "WARNING"
+        },
+        "requests": {
+            "level": "WARNING"
+        }
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": [
+            "console",
+            "general_file"
+        ]
+    }
+}

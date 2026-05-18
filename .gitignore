@@ -1,0 +1,9 @@
+# 运行时数据（不存档）
+downloads/
+database/
+logs/
+live/
+__pycache__/
+*.pyc
+.DS_Store
+.agent/

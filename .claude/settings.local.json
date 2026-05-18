@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('/mnt/boot/appdata/xing/easy-vdl/live/highlights/router.py'\\).read\\(\\)\\)\")",
+      "Bash(python3 -m py_compile /mnt/boot/appdata/xing/easy-vdl/live/danmu/douyu_danmu.py)",
+      "Bash(docker exec *)",
+      "Bash(docker cp *)",
+      "Bash(curl -s --connect-timeout 5 -v https://danmuproxy.douyu.com:8500)",
+      "Bash(nslookup danmuproxy.douyu.com)",
+      "Bash(curl -s \"https://m.huya.com/910323\")",
+      "Bash(curl -s \"https://www.huya.com/910323\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Linux; Android 5.1.1; Nexus 6 Build/LYZ28E\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/63.0.3239.84 Mobile Safari/537.36\" \"https://m.huya.com/910323\")",
+      "Bash(python3 -c \"import sys,json,re; data=re.search\\(r'HNF_GLOBAL_INIT\\\\s*=\\\\s*\\({.+}\\)', sys.stdin.read\\(\\)\\); print\\(data.group\\(1\\)[:500] if data else 'not found'\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(Linux; Android 5.1.1; Nexus 6 Build/LYZ28E\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/63.0.3239.84 Mobile Safari/537.36\" \"https://m.huya.com/690\")",
+      "Bash(npm view *)",
+      "Bash(node -e \"let d=''; process.stdin.on\\('data',c=>d+=c\\); process.stdin.on\\('end',\\(\\)=>{const v=JSON.parse\\(d\\);console.log\\('latest:', v[v.length-1]\\)}\\)\")",
+      "Bash(node node_modules/vite/bin/vite.js build --logLevel error)",
+      "Bash(grep -v ':0\\\\s*$')"
+    ]
+  }
+}

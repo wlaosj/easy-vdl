@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/**)",
+      "Bash(node -e ' *)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(timeout 15 node -e ' *)",
+      "Bash(node -e \"const vueCompiler = require\\('vue/compiler-sfc'\\); vueCompiler.parse\\(require\\('fs'\\).readFileSync\\('src/components/settings/LicenseSettings.vue','utf8'\\)\\); console.log\\('✓'\\)\")",
+      "Bash(python3)",
+      "Bash(grep -n \"^\\\\}$\" /mnt/boot/appdata/xing/easy-vdl/frontend-v2/src/views/LiveHighlights.vue)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -sL \"https://github.com/BtbN/FFmpeg-Builds/releases/latest\")",
+      "WebFetch(domain:github.com)",
+      "Bash(awk '/activeTab.*manual.*manual-slice-container/{found=1} found && /^      <\\\\/div>$/{print NR\": \"$0; exit}' /mnt/boot/appdata/xing/easy-vdl/frontend-v2/src/views/LiveHighlights.vue)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Easy-VDL",
+  "short_name": "Easy-VDL",
+  "description": "高效视频下载神器",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#e67e22",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "150x150",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

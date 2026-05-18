@@ -1,0 +1,7 @@
+__title__ = "streamget"
+__description__ = "A Multi-Platform Live Stream Parser Library."
+__version__ = "4.0.9"
+__author__ = "Hmily"
+__license__ = "MIT"
+__copyright__ = "Copyright Hmily"
+__url__ = "https://github.com/ihmily/streamget"

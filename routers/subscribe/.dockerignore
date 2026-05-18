@@ -1,0 +1,26 @@
+# Docker 构建时排除的文件
+# 备份文件和文档文件不应该被打包到生产镜像
+
+# 备份文件
+旧版完整，供排查参考使用subscribe.py
+*.backup
+*备份*
+*backup*
+
+# 文档文件
+*.md
+!README.md
+
+# 临时文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

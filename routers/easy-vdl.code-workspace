@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../biliLive-tools-master"
+		}
+	],
+	"settings": {
+		"chatgpt.openOnStartup": true
+	}
+}
