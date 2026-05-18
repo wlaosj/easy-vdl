@@ -64,10 +64,10 @@ if ! docker info 2>/dev/null | grep -q "Username:"; then
 fi
 
 echo "[2/3] 构建并推送 ARM64 镜像..."
+# FFmpeg: BtbN master 分支已内置于 Dockerfile 中，无需在此传参 FFMPEG_RELEASE_BRANCH
 docker buildx build \
     --platform "$PLATFORM" \
     --build-arg ENABLE_OBFUSCATION="$ENABLE_OBFUSCATION" \
-    # --build-arg FFMPEG_RELEASE_BRANCH 已移除，Dockerfile 直接使用 master 分支
     --build-arg BUILD_VERSION="$BUILD_VERSION" \
     --build-arg BUILD_TIME="$BUILD_TIME" \
     -f "$DOCKERFILE" \
