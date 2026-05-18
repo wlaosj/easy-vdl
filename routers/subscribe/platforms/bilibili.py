@@ -44,13 +44,14 @@ class BilibiliAdapter(PlatformAdapter):
                     return None
                 # 参考旧版实现，返回完整信息包括is_collection和owner字段
                 # 注意：需要保留完整的collection_info，因为get_collection_videos方法需要访问owner字段
+                collection_title = collection_info.get('collection_title') or collection_info.get('title', '')
                 return {
-                    "nickname": collection_info.get('title', ''),
+                    "nickname": collection_title,
                     "video_count": collection_info.get('videos_count', 0),
-                    "signature": f"B站合集: {collection_info.get('title', '')}",
+                    "signature": f"B站合集: {collection_title}",
                     "avatar_url": collection_info.get('cover_url', ''),
                     "is_collection": collection_info.get('is_collection', False),  # 关键字段，用于判断是否为合集
-                    "collection_title": collection_info.get('collection_title', collection_info.get('title', '')),  # 合集标题
+                    "collection_title": collection_title,  # 合集标题
                     "bvid": collection_info.get('bvid', user_id),  # BV号
                     "title": collection_info.get('title', ''),  # 标题
                     "owner": collection_info.get('owner', {}),  # UP主信息，get_collection_videos方法需要

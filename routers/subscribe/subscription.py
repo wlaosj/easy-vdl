@@ -1079,7 +1079,7 @@ async def add_subscription(
                         raise HTTPException(status_code=400, detail="该视频不是合集，请使用多P视频合集链接")
                     
                     subscription.user_id = bvid
-                    subscription.nickname = collection_info.get("title") or collection_info.get("collection_title") or f"合集 {bvid}"
+                    subscription.nickname = collection_info.get("collection_title") or collection_info.get("title") or f"合集 {bvid}"
                     bilibili_user_info = collection_info
                 elif subscription.platform == Platform.TIKTOK.value:
                     # 使用适配器获取TikTok用户信息
@@ -1599,7 +1599,8 @@ async def add_subscription(
                     raise HTTPException(status_code=400, detail="无法获取B站合集信息")
                 
                 subscription.user_id = collection_info.get("bvid", subscription.user_id)
-                subscription.nickname = collection_info.get("nickname") or collection_info.get("title", "")
+                collection_title = collection_info.get("collection_title") or collection_info.get("nickname") or collection_info.get("title", "")
+                subscription.nickname = collection_title
                 
                 # 优先使用适配器返回的avatar_url，如果没有则使用cover_url
                 avatar_url = collection_info.get('avatar_url') or collection_info.get('cover_url', '')
@@ -1607,7 +1608,7 @@ async def add_subscription(
                     'follower_count': 0,
                     'video_count': collection_info.get('videos_count', 0),
                     'like_count': 0,
-                    'signature': f"B站合集: {collection_info.get('title', '')}",
+                    'signature': f"B站合集: {collection_title}",
                     'avatar_url': avatar_url,
                     'following_count': 0,
                     'play_count': 0
@@ -1927,7 +1928,7 @@ async def add_subscription(
                 "collection" if subscription.platform == Platform.BILIBILI_COLLECTION.value else "user"
             ),
             collection_id=bilibili_user_info.get("bvid") if bilibili_user_info and subscription.platform == Platform.BILIBILI_COLLECTION.value else None,
-            collection_title=bilibili_user_info.get("title") if bilibili_user_info and subscription.platform == Platform.BILIBILI_COLLECTION.value else None,
+            collection_title=bilibili_user_info.get("collection_title") if bilibili_user_info and subscription.platform == Platform.BILIBILI_COLLECTION.value else None,
             author_id=str(bilibili_user_info["owner"]["mid"]) if bilibili_user_info and subscription.platform == Platform.BILIBILI_COLLECTION.value else None,
             author_name=bilibili_user_info["owner"]["name"] if bilibili_user_info and subscription.platform == Platform.BILIBILI_COLLECTION.value else None,
             skip_bilibili_upower=getattr(subscription, 'skip_bilibili_upower', 'false')
