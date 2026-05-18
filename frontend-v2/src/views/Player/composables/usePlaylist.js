@@ -811,10 +811,17 @@ export function usePlaylist({
   // Play author videos
   // =========================================================================
   function playAuthorVideos() {
-    const subId = currentVideo.value?.author?.id
+    const subId =
+      currentVideo.value?.subscription_id ||
+      currentVideo.value?.author_info?.subscription_id ||
+      currentVideo.value?.author?.subscription_id ||
+      currentVideo.value?.author?.id
     if (subId) {
-      if (subscriptionId.value === subId) return
-      router.replace({ query: { ...route.query, subscription_id: subId } })
+      const nextQuery = { ...route.query, subscription_id: subId }
+      delete nextQuery.task_id
+      delete nextQuery.reset_mode
+      if (subscriptionId.value === subId && !taskId.value) return
+      router.replace({ query: nextQuery })
     }
   }
 

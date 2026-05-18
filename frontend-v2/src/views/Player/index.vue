@@ -700,6 +700,7 @@ const showControls = ref(true);
 const isDragging = ref(false);
 const isSwitchingMedia = ref(false);
 const pendingRestorePIP = ref(false);
+const pendingSwitchDirection = ref("");
 const primaryContentRef = ref(null);
 const videoContainerRef = ref(null);
 const galleryAudioRef = ref(null);
@@ -1007,6 +1008,7 @@ const playIndex = (index, { force = false } = {}) => {
     return;
   }
 
+  pendingSwitchDirection.value = "";
   beginMediaSwitch();
 
   // 先清理旧的视频连接（断开转码进程）
@@ -1098,6 +1100,7 @@ const playByVideoId = (videoId) => {
 
 // ── 核心切换逻辑（提取自 prevVideo/nextVideo）──
 const applyVideoSwitch = (direction) => {
+  pendingSwitchDirection.value = direction;
   markPIPForSourceSwitch();
   cleanupVideoConnection();
 
@@ -1158,6 +1161,19 @@ const applyVideoSwitch = (direction) => {
         };
         videoRef.value.addEventListener("canplay", canPlayHandler);
       }
+      if (!isGallery.value && !isImage.value && !isAudio.value) {
+        const readyHandler = () => {
+          pendingSwitchDirection.value = "";
+          endMediaSwitch();
+          videoRef.value?.removeEventListener("playing", readyHandler);
+          videoRef.value?.removeEventListener("canplay", readyHandler);
+        };
+        videoRef.value.addEventListener("playing", readyHandler);
+        videoRef.value.addEventListener("canplay", readyHandler);
+      } else {
+        pendingSwitchDirection.value = "";
+        endMediaSwitch();
+      }
     }
   });
 };
@@ -1186,12 +1202,9 @@ const switchVideo = (direction, { animated = false } = {}) => {
       if (token !== switchSequence) return;
       isTransitioning.value = false;
       dragOffset.value = 0;
-      // 延迟 120ms 启动新视频的加载，彻底避开动画未完全归位时硬件解码重置的开销重合
-      setTimeout(() => {
-        if (token === switchSequence) {
-          applyVideoSwitch(direction);
-        }
-      }, 120);
+      if (token === switchSequence) {
+        applyVideoSwitch(direction);
+      }
     }, 300);
   } else {
     cancelPendingSlideSwitch();

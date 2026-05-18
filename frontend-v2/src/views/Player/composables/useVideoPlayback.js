@@ -445,6 +445,15 @@ export function useVideoPlayback({
 
   function handleMediaReady() {
     nudgeFullscreenVideoLayer()
+    if (showTripleScreen.value) {
+      if (!mirrorSrc.value) mirrorSrc.value = currentSrc.value
+      syncTripleMirrors()
+      if (!isPaused.value) startTripleScreenLoop()
+    }
+    if (isSwitchingMedia?.value) {
+      onMediaSwitchEnd?.()
+      return
+    }
     onMediaSwitchEnd?.()
   }
 
@@ -458,7 +467,6 @@ export function useVideoPlayback({
       audioContext.resume().catch((err) => console.warn("恢复 AudioContext 失败:", err))
     }
     if (showTripleScreen.value) {
-      // 主视频开始播放后才给镜像赋值 src，避免镜像各自独立触发转码
       if (!mirrorSrc.value) mirrorSrc.value = currentSrc.value
       syncTripleMirrors()
       startTripleScreenLoop()
@@ -856,8 +864,16 @@ export function useVideoPlayback({
 
   // Triple-screen on/off
   watch(showTripleScreen, (active) => {
-    if (active) { nextTick(() => { syncTripleMirrors(); if (!isPaused.value) startTripleScreenLoop() }) }
-    else stopTripleScreenLoop()
+    if (active) {
+      nextTick(() => {
+        if (!mirrorSrc.value) mirrorSrc.value = currentSrc.value
+        syncTripleMirrors()
+        if (!isPaused.value) startTripleScreenLoop()
+      })
+    } else {
+      stopTripleScreenLoop()
+      mirrorSrc.value = ''
+    }
   })
 
   // Audio mode → init/cleanup audio analyzer
