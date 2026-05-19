@@ -702,21 +702,21 @@ video.enhance-on {
 }
 
 /* 操作栏 */
-.action-bar {
+.player-page .action-bar {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-shrink: 0; /* Keep actions stable and non-shrinking on narrow screens */
 }
 
-.action-group {
+.player-page .action-group {
   display: flex;
   background: var(--color-bg-tertiary);
   border-radius: 20px;
   overflow: hidden;
 }
 
-.action-btn {
+.player-page .action-btn {
   padding: 8px 16px;
   background: var(--color-bg-tertiary);
   border-radius: 20px;
@@ -729,23 +729,23 @@ video.enhance-on {
   color: var(--color-text-primary);
 }
 
-.action-group .action-btn {
+.player-page .action-group .action-btn {
   border-radius: 0;
   background: transparent;
 }
 
-.divider {
+.player-page .divider {
   width: 1px;
   height: 20px;
   background: var(--color-border);
   align-self: center;
 }
 
-.action-btn:hover {
+.player-page .action-btn:hover {
   background: var(--color-bg-hover);
 }
 
-.action-btn:active {
+.player-page .action-btn:active {
   transform: scale(0.94);
 }
 
@@ -2120,7 +2120,7 @@ video.enhance-on {
   }
 
   /* 操作按钮栏 - 移动端横向紧凑布局 */
-  .action-bar {
+  .player-page .action-bar {
     display: flex;
     flex-wrap: nowrap;
     width: 100%;
@@ -2131,11 +2131,11 @@ video.enhance-on {
     padding: 4px 0 8px;
     margin: 0;
   }
-  .action-bar::-webkit-scrollbar {
+  .player-page .action-bar::-webkit-scrollbar {
     display: none;
   }
 
-  .action-btn {
+  .player-page .action-btn {
     border-radius: 50%;
     width: clamp(34px, 10vw, 44px);
     height: clamp(34px, 10vw, 44px);
@@ -2149,22 +2149,22 @@ video.enhance-on {
     min-width: 0;
   }
 
-  .action-btn .btn-text {
+  .player-page .action-btn .btn-text {
     display: none; /* 移除文字 */
   }
 
-  .action-group {
+  .player-page .action-group {
     display: flex;
     flex: 1 1 auto;
     min-width: 0;
     gap: clamp(4px, 1.4vw, 8px);
     justify-content: space-between;
   }
-  .action-group .action-btn {
+  .player-page .action-group .action-btn {
     border-radius: 50%;
     background: var(--color-bg-tertiary);
   }
-  .action-group .divider {
+  .player-page .action-group .divider {
     display: none;
   }
 
@@ -2749,16 +2749,16 @@ video.enhance-on {
     gap: 12px;
   }
 
-  .action-bar {
+  .player-page .action-bar {
     gap: 4px;
   }
 
-  .action-btn {
+  .player-page .action-btn {
     padding: 6px 12px;
     font-size: 0.82rem;
   }
 
-  .action-group {
+  .player-page .action-group {
     gap: 0;
   }
 
@@ -2860,7 +2860,7 @@ video.enhance-on {
     padding: 0;
   }
 
-  .action-btn {
+  .player-page .action-btn {
     padding: 6px 10px;
     font-size: 0.8rem;
   }
@@ -2932,7 +2932,7 @@ video.enhance-on {
   .video-controls-container,
   .info-bar,
   .author-area,
-  .action-bar {
+  .player-page .action-bar {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -2957,11 +2957,11 @@ video.enhance-on {
     min-width: 0;
   }
 
-  .action-bar {
+  .player-page .action-bar {
     justify-content: space-between;
   }
 
-  .action-bar > .action-btn.mobile-only {
+  .player-page .action-bar > .action-btn.mobile-only {
     flex: 0 1 clamp(34px, 10vw, 44px);
   }
 }
