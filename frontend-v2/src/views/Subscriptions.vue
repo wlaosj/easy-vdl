@@ -5930,14 +5930,14 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   }
   
   /* 恢复 panel 的实体容器属性 */
-  .primary-panel, .secondary-panel {
+  .action-panel-container .primary-panel, .action-panel-container .secondary-panel {
       display: flex;
       flex-direction: column;
       width: 100%;
       gap: 6px; /* 减小组件间距 */
   }
   
-  .primary-panel {
+  .action-panel-container .primary-panel {
       background: #fff;
       padding: 10px 8px; /* 进一步减小内边距 */
       border-radius: 8px;
@@ -5948,12 +5948,12 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
       overflow: visible !important;
   }
 
-  [data-theme="dark"] .primary-panel {
+  [data-theme="dark"] .action-panel-container .primary-panel {
       background: var(--color-bg-card);
       border: 1px solid var(--color-border);
   }
 
-  .secondary-panel {
+  .action-panel-container .secondary-panel {
       background: var(--color-bg-tertiary);
       padding: 4px 8px; /* 进一步减小内外边距 */
       border-radius: 0 0 12px 12px;
@@ -5967,7 +5967,7 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
       opacity: 1;
   }
 
-  .secondary-panel.mobile-collapsed {
+  .action-panel-container .secondary-panel.mobile-collapsed {
       max-height: 0;
       opacity: 0;
       margin: 0;
