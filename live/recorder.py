@@ -14,7 +14,7 @@ import time
 import re
 import glob
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -966,6 +966,23 @@ class LiveRecorder:
     def get_all_recording_ids(self) -> list:
         """获取所有正在录制的订阅ID"""
         return list(self.recording_tasks.keys())
+
+    def collect_recording_snapshot(self) -> tuple[Set[str], Dict[str, dict]]:
+        """一次遍历收集所有活跃录制的 ID 集合和状态（替代多次独立调用）"""
+        now = datetime.now()
+        active_ids: Set[str] = set()
+        statuses: Dict[str, dict] = {}
+        for sub_id, task in self.recording_tasks.items():
+            if task['process'].poll() is None:
+                active_ids.add(sub_id)
+                statuses[sub_id] = {
+                    'status': 'recording',
+                    'duration': int((now - task['start_time']).total_seconds()),
+                    'file_size': self._get_recording_file_size(subscription_id=sub_id, task=task),
+                    'quality': task['quality'],
+                    'start_time': task['start_time'].isoformat()
+                }
+        return active_ids, statuses
     
     async def stop_all_recordings(self, convert_to_mp4: bool = False):
         """停止所有录制"""

@@ -1,6 +1,11 @@
 import client from './client'
 
 export const subscriptionsApi = {
+    // 获取订阅统计（轻量级，供仪表盘使用）
+    async getStats() {
+        return await client.get('/subscribe/stats')
+    },
+
     // 获取订阅列表
     async getList() {
         return await client.get('/subscribe/list')

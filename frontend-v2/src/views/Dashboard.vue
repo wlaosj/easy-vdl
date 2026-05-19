@@ -84,7 +84,7 @@
           <!-- 视频订阅系统监控 -->
           <SubscriptionMonitorCard
             :segments="pieChartSegments"
-            :total="subscriptionsStore.stats.total"
+            :total="subscriptionStats?.total || subscriptionsStore.stats.total"
             :platform-distribution="platformDistribution"
             :status-stats="subscriptionStatusStats"
             :storage-size="systemStore.storage.directory_size_bytes || 0"
@@ -246,6 +246,7 @@ import Icon from '@/components/common/Icon.vue'
 import { useSystemStore } from '@/stores/system'
 import { useDownloadsStore } from '@/stores/downloads'
 import { useSubscriptionsStore } from '@/stores/subscriptions'
+import { subscriptionsApi } from '@/api/subscriptions'
 import { wsService } from '@/utils/websocket'
 import { tasksApi } from '@/api/tasks'
 import { systemApi as coreApi } from '@/api/index'
@@ -266,6 +267,7 @@ const router = useRouter()
 const systemStore = useSystemStore()
 const downloadsStore = useDownloadsStore()
 const subscriptionsStore = useSubscriptionsStore()
+const subscriptionStats = ref(null)
 const STORAGE_UNIT_MODE_KEY = 'dashboard_storage_unit_mode'
 const storageUnitMode = ref(localStorage.getItem(STORAGE_UNIT_MODE_KEY) === 'binary' ? 'binary' : 'decimal')
 const gpuStats = computed(() => systemStore.metrics?.gpu_stats || { summary: { has_gpu: false }, gpus: [] })
@@ -419,6 +421,19 @@ const livePieChartSegments = computed(() => {
   
   return segments
 })
+
+// 获取订阅轻量统计（替代全量 fetchSubscriptions）
+async function fetchSubscriptionStats() {
+  try {
+    const data = await subscriptionsApi.getStats()
+    subscriptionStats.value = data
+  } catch (err) {
+    console.error('Failed to fetch subscription stats:', err)
+    try {
+      await subscriptionsStore.fetchSubscriptions()
+    } catch (_) {}
+  }
+}
 
 // 获取直播平台分布
 async function fetchLivePlatformStats() {
@@ -910,111 +925,73 @@ function animateCharts() {
 
 
 // 订阅系统监控
-const platformDistribution = computed(() => {
-  const grouped = subscriptionsStore.groupedByPlatform
-  const total = subscriptionsStore.stats.total || 1 // 避免除以0
-  
+function normalizePlatformKey(platform) {
+  if (platform.startsWith('youtube')) return 'youtube'
+  if (platform.startsWith('douyin')) return 'douyin'
+  if (platform.startsWith('bilibili')) return 'bilibili'
+  if (['xiaohongshu', 'redbook', 'xhs'].includes(platform)) return 'xiaohongshu'
+  return platform
+}
+
+function mergePlatformDistribution(entries, total) {
   const platformNames = {
-    'youtube': 'YouTube',
-    'douyin': '抖音',
-    'tiktok': 'TikTok',
-    'instagram': 'Instagram',
-    'netease': '网易云',
-    'youtube_channel': 'YouTube',
-    'youtube_videos': 'YouTube',
-    'youtube_shorts': 'YouTube短视频',
-    'youtube_playlist': 'YouTube合集',
-    'bilibili': 'Bilibili',
-    'bilibili_collection': 'B站合集',
-    'bilibili_favorite': 'B站收藏',
-    'migu': '咪咕',
-    'xiaohongshu': '小红书',
-    'redbook': '小红书',
-    'xhs': '小红书',
-    'x': 'X'
+    'youtube': 'YouTube', 'douyin': '抖音', 'tiktok': 'TikTok',
+    'instagram': 'Instagram', 'netease': '网易云', 'bilibili': 'Bilibili',
+    'xiaohongshu': '小红书', 'redbook': '小红书', 'xhs': '小红书', 'x': 'X',
+    'migu': '咪咕'
   }
-  
-  // 合并同类平台
   const merged = {}
-  Object.keys(grouped).forEach(platform => {
-    let key = platform
-    // 合并YouTube相关平台
-    if (platform.startsWith('youtube')) {
-      key = 'youtube'
-    }
-    // 合并抖音相关平台
-    else if (platform.startsWith('douyin')) {
-      key = 'douyin'
-    }
-    // 合并B站相关平台
-    else if (platform.startsWith('bilibili')) {
-      key = 'bilibili'
-    }
-    // 合并小红书相关平台
-    else if (platform === 'xiaohongshu' || platform === 'redbook' || platform === 'xhs') {
-      key = 'xiaohongshu'
-    }
-    
+  entries.forEach(([platform, count]) => {
+    const key = normalizePlatformKey(platform)
     if (!merged[key]) {
-      merged[key] = {
-        name: platformNames[key] || key,
-        count: 0,
-        percent: 0
-      }
+      merged[key] = { name: platformNames[key] || key, count: 0, percent: 0 }
     }
-    merged[key].count += grouped[platform].length
+    merged[key].count += count
   })
-  
-  // 计算百分比
-  Object.keys(merged).forEach(key => {
-    merged[key].percent = Math.round((merged[key].count / total) * 100)
-  })
-  
-  // 按数量排序
-  const sorted = Object.entries(merged)
+  Object.values(merged).forEach(d => { d.percent = Math.round((d.count / total) * 100) })
+  return Object.entries(merged)
     .sort((a, b) => b[1].count - a[1].count)
-    .reduce((obj, [key, value]) => {
-      obj[key] = value
-      return obj
-    }, {})
-  
-  return sorted
+    .reduce((obj, [key, value]) => { obj[key] = value; return obj }, {})
+}
+
+const platformDistribution = computed(() => {
+  const stats = subscriptionStats.value
+  if (stats && stats.by_platform) {
+    const entries = Object.entries(stats.by_platform)
+    return mergePlatformDistribution(entries, stats.total || 1)
+  }
+  // 降级：从 store 中获取全量数据计算
+  const grouped = subscriptionsStore.groupedByPlatform
+  const total = subscriptionsStore.stats.total || 1
+  const entries = Object.entries(grouped).map(([platform, subs]) => [platform, subs.length])
+  return mergePlatformDistribution(entries, total)
 })
 
 const subscriptionStatusStats = computed(() => {
+  const stats = subscriptionStats.value
+  if (stats) {
+    const total = stats.total || 0
+    const active = stats.active_count || 0
+    const error = stats.by_status?.error || 0
+    const invalid = stats.by_status?.invalid || 0
+    const paused = Math.max(0, total - active - error - invalid)
+    return { active, paused, error, invalid }
+  }
+  // 降级：从 store 中获取全量数据计算
   const subs = subscriptionsStore.subscriptions
-  
-  let active = 0
-  let paused = 0
-  let error = 0
-  let invalid = 0
-  
+  let active = 0, paused = 0, error = 0, invalid = 0
   subs.forEach(sub => {
-    if (sub.status === 'invalid') {
-      invalid++
-    }
-    // 异常状态
-    else if (sub.status === 'error') {
-      error++
-    }
-    // 正常运行：状态为active，且开启了自动检测和自动下载
-    else if (
-      sub.status === 'active' && 
-      (sub.check_interval > 0 || sub.update_interval > 0) && 
-      (sub.auto_download === true || sub.auto_download === 'true')
-    ) {
-      active++
-    }
-    // 休眠：其他所有情况
-    else {
-      paused++
-    }
+    if (sub.status === 'invalid') invalid++
+    else if (sub.status === 'error') error++
+    else if (sub.status === 'active' && (sub.check_interval > 0 || sub.update_interval > 0) && (sub.auto_download === true || sub.auto_download === 'true')) active++
+    else paused++
   })
-  
   return { active, paused, error, invalid }
 })
 
 const autoDownloadEnabledCount = computed(() => {
+  const stats = subscriptionStats.value
+  if (stats) return stats.auto_download_enabled || 0
   return subscriptionsStore.subscriptions.filter(
     sub => sub.auto_download === true || sub.auto_download === 'true'
   ).length
@@ -1023,7 +1000,7 @@ const autoDownloadEnabledCount = computed(() => {
 // 饼图分段计算
 const pieChartSegments = computed(() => {
   const platforms = platformDistribution.value
-  const total = subscriptionsStore.stats.total || 1
+  const total = subscriptionStats.value?.total || subscriptionsStore.stats.total || 1
   const circumference = 2 * Math.PI * 40 // r=40
   
   let currentOffset = 0
@@ -1172,7 +1149,8 @@ onMounted(() => {
   // - 公告状态和版本信息 (announcement) - 通过 metrics 频道推送（60秒缓存）
   systemStore.fetchCoreVersion() // 保持 HTTP：静态数据，变化频率极低
   systemStore.fetchBuildVersion() // 保持 HTTP：静态数据，变化频率极低
-  subscriptionsStore.fetchSubscriptions() // 保持 HTTP：初始加载需要完整列表
+  // 改用轻量统计接口替代全量订阅列表，减少首屏数据传输量
+  fetchSubscriptionStats()
   fetchLivePlatformStats() // 获取直播平台分布数据（用于显示饼图和开启录播数量）
   // 公告列表不在页面加载时主动获取，参考旧版本逻辑：
   // - 只通过 checkAnnouncementState() 检查状态

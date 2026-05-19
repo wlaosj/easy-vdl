@@ -550,12 +550,17 @@ async def get_live_subscriptions(
         query = query.filter(LiveSubscription.platform == platform)
     
     subscriptions = query.order_by(LiveSubscription.created_at.desc()).all()
-    
+
+    # 批量获取录制状态：一次遍历替代逐条 N+1 调用
+    recording_ids, recording_statuses = live_recorder.collect_recording_snapshot()
+
     # 添加实时录制状态
     result = []
     for sub in subscriptions:
+        sub_id = sub.id
+        is_recording = sub_id in recording_ids
         sub_dict = {
-            "id": sub.id,
+            "id": sub_id,
             "platform": sub.platform,
             "room_url": sub.room_url,
             "room_id": sub.room_id,
@@ -566,20 +571,19 @@ async def get_live_subscriptions(
             "monitor_enabled": getattr(sub, "monitor_enabled", None) or "true",
             "check_interval": sub.check_interval,
             "is_live": sub.is_live,
-            "is_recording": "true" if live_recorder.is_recording(sub.id) else "false",
+            "is_recording": "true" if is_recording else "false",
             "last_check_time": sub.last_check_time.isoformat() if sub.last_check_time else None,
             "last_live_time": sub.last_live_time.isoformat() if sub.last_live_time else None,
             "notification_enabled": sub.notification_enabled,
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
         }
-        
-        # 如果正在录制,添加录制状态
-        recording_status = live_recorder.get_recording_status(sub.id)
-        if recording_status:
-            sub_dict["recording_status"] = recording_status
-        
+
+        # 从批量结果中直接取录制状态（无需再次查询）
+        if is_recording and sub_id in recording_statuses:
+            sub_dict["recording_status"] = recording_statuses[sub_id]
+
         result.append(sub_dict)
-    
+
     return {"success": True, "data": result}
 
 

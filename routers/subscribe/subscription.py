@@ -10,6 +10,7 @@ import httpx
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session
 from sql.database_postgresql import get_db, get_session
 from sql.models import Subscription, SubscriptionVideo, Platform, SubscriptionStatus, SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse
@@ -122,9 +123,57 @@ async def list_subscriptions(
             sub.avatar_url = _proxy_avatar_url(sub.platform, sub.avatar_url)
 
         return subscriptions
-        
+
     except Exception as e:
         logger.error(f"获取订阅列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats")
+@require_license_api
+async def get_subscription_stats(db: Session = Depends(get_db)):
+    """获取订阅统计信息（轻量级，供仪表盘使用）"""
+    try:
+        # 1) 平台分布 + 状态分布 + total (3合1聚合查询)
+        agg_rows = db.query(
+            Subscription.platform,
+            Subscription.status,
+            func.count(Subscription.id).label('count')
+        ).group_by(Subscription.platform, Subscription.status).all()
+
+        total = 0
+        by_platform: dict = {}
+        by_status: dict = {}
+        for row in agg_rows:
+            c = row.count
+            total += c
+            by_platform[row.platform] = by_platform.get(row.platform, 0) + c
+            by_status[row.status] = by_status.get(row.status, 0) + c
+
+        # 2) 自动下载 + 活跃订阅 (1 条组合查询)
+        auto_dl_filter = or_(Subscription.auto_download == True, Subscription.auto_download == 'true')
+        active_filter = and_(
+            Subscription.status == SubscriptionStatus.ACTIVE.value,
+            or_(Subscription.check_interval > 0, Subscription.update_interval > 0),
+            auto_dl_filter,
+        )
+        combined = db.query(
+            func.count(Subscription.id).filter(auto_dl_filter).label('auto_download_enabled'),
+            func.count(Subscription.id).filter(active_filter).label('active_count'),
+        ).first()
+        auto_download_enabled = combined.auto_download_enabled or 0
+        active_count = combined.active_count or 0
+
+        return {
+            "total": total,
+            "by_platform": by_platform,
+            "by_status": by_status,
+            "auto_download_enabled": auto_download_enabled,
+            "active_count": active_count
+        }
+
+    except Exception as e:
+        logger.error(f"获取订阅统计失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
