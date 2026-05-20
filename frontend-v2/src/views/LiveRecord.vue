@@ -991,7 +991,12 @@
       >
         <!-- 主播放区域 -->
         <div class="player-main">
-          <div class="player-container" ref="playerContainerRef">
+          <div class="player-container" :class="{ 'triple-screen-active': showLiveTripleScreen && isLiveVerticalVideo }" ref="playerContainerRef">
+            <canvas 
+              v-show="showLiveTripleScreen && isLiveVerticalVideo" 
+              ref="liveCanvasLeftRef" 
+              class="live-triple-mirror left"
+            ></canvas>
             <video 
               ref="videoPlayer" 
               :controls="videoControlsEnabled"
@@ -999,9 +1004,18 @@
               class="live-player"
               @loadedmetadata="onVideoMetadata"
               @dblclick.prevent="toggleLiveFullscreen"
+              @play="startLiveTripleScreenLoop"
+              @playing="startLiveTripleScreenLoop"
+              @pause="stopLiveTripleScreenLoop"
+              @ended="stopLiveTripleScreenLoop"
               controlsList="nofullscreen"
               disablepictureinpicture
             ></video>
+            <canvas 
+              v-show="showLiveTripleScreen && isLiveVerticalVideo" 
+              ref="liveCanvasRightRef" 
+              class="live-triple-mirror right"
+            ></canvas>
             <div v-if="!liveDanmuUnsupported && liveDanmuMode === 'marquee' && liveMarqueeItems.length" class="live-danmu-layer danmu-marquee-layer">
               <div
                 v-for="item in liveMarqueeItems"
@@ -1112,6 +1126,15 @@
               :title="liveDanmuModeLabel"
             >
               {{ liveDanmuStatusText }}
+            </button>
+            <button
+              v-if="isLiveVerticalVideo"
+              class="btn btn-primary triple-screen-btn player-action-btn player-action-btn-text"
+              :class="{ active: showLiveTripleScreen }"
+              @click="toggleLiveTripleScreen"
+              title="三连屏预览"
+            >
+              三连屏：{{ showLiveTripleScreen ? '开' : '关' }}
             </button>
             <button class="btn btn-primary player-action-btn player-action-btn-confirm" @click="closePlayer">关闭</button>
           </div>
@@ -2082,6 +2105,81 @@ const videoPlayer = ref(null)
 const videoMetadata = ref({ width: 0, height: 0 })
 const currentPlayerSub = ref(null)
 const playerContainerRef = ref(null)
+
+// 直播预览三连屏相关状态
+const showLiveTripleScreen = ref(localStorage.getItem('easyvdl_live_triple_screen') === 'true')
+const liveCanvasLeftRef = ref(null)
+const liveCanvasRightRef = ref(null)
+let liveTripleScreenRAF = null
+
+const isLiveVerticalVideo = computed(() => {
+  return videoMetadata.value.width > 0 && videoMetadata.value.height > videoMetadata.value.width
+})
+
+function startLiveTripleScreenLoop() {
+  stopLiveTripleScreenLoop()
+  if (!showLiveTripleScreen.value || !isLiveVerticalVideo.value) return
+
+  const drawFrame = () => {
+    const video = videoPlayer.value
+    if (!video || video.paused || video.ended) {
+      liveTripleScreenRAF = requestAnimationFrame(drawFrame)
+      return
+    }
+
+    const canvasLeft = liveCanvasLeftRef.value
+    const canvasRight = liveCanvasRightRef.value
+
+    if (canvasLeft) {
+      const ctxLeft = canvasLeft.getContext('2d')
+      if (ctxLeft) {
+        if (canvasLeft.width !== video.videoWidth || canvasLeft.height !== video.videoHeight) {
+          canvasLeft.width = video.videoWidth
+          canvasLeft.height = video.videoHeight
+        }
+        ctxLeft.drawImage(video, 0, 0, canvasLeft.width, canvasLeft.height)
+      }
+    }
+
+    if (canvasRight) {
+      const ctxRight = canvasRight.getContext('2d')
+      if (ctxRight) {
+        if (canvasRight.width !== video.videoWidth || canvasRight.height !== video.videoHeight) {
+          canvasRight.width = video.videoWidth
+          canvasRight.height = video.videoHeight
+        }
+        ctxRight.drawImage(video, 0, 0, canvasRight.width, canvasRight.height)
+      }
+    }
+
+    liveTripleScreenRAF = requestAnimationFrame(drawFrame)
+  }
+
+  liveTripleScreenRAF = requestAnimationFrame(drawFrame)
+}
+
+function stopLiveTripleScreenLoop() {
+  if (liveTripleScreenRAF) {
+    cancelAnimationFrame(liveTripleScreenRAF)
+    liveTripleScreenRAF = null
+  }
+}
+
+function toggleLiveTripleScreen() {
+  showLiveTripleScreen.value = !showLiveTripleScreen.value
+  localStorage.setItem('easyvdl_live_triple_screen', String(showLiveTripleScreen.value))
+}
+
+// 监听三连屏开启状态和是否为竖屏视频，自动启停 loop
+watch([showLiveTripleScreen, isLiveVerticalVideo], ([show, isVertical]) => {
+  if (show && isVertical) {
+    nextTick(() => {
+      startLiveTripleScreenLoop()
+    })
+  } else {
+    stopLiveTripleScreenLoop()
+  }
+})
 const playerFullscreenRef = ref(null)
 const isPlayerFullscreen = ref(false)
 const videoControlsEnabled = computed(() => !isPlayerFullscreen.value)
@@ -4381,6 +4479,7 @@ function closePlayer() {
     document.exitFullscreen().catch(() => {})
   }
   showPlayerModal.value = false
+  stopLiveTripleScreenLoop()
   closeLiveDanmuSocket()
   resetLiveDanmuBuffer()
   destroyPlayer()
@@ -4388,6 +4487,7 @@ function closePlayer() {
 }
 
 function destroyPlayer() {
+  stopLiveTripleScreenLoop()
   if (flvPlayer) {
     try {
       flvPlayer.pause()
@@ -7287,6 +7387,32 @@ function getStatusText(status) {
   display: block;
 }
 
+.player-container.triple-screen-active {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: #0a0a0c;
+}
+
+.player-container.triple-screen-active .live-player,
+.player-container.triple-screen-active .live-triple-mirror {
+  max-width: calc(33.33% - 8px) !important;
+  width: auto !important;
+  height: 100% !important;
+  object-fit: contain;
+  flex: 1 1 auto;
+}
+
+.live-triple-mirror {
+  display: block;
+  pointer-events: none;
+  border-radius: 4px;
+  opacity: 1;
+}
+
 /* 引导使用自定义全屏，避免原生全屏导致弹幕层被隐藏 */
 .live-player::-webkit-media-controls-fullscreen-button {
   display: none;
@@ -7513,6 +7639,21 @@ function getStatusText(status) {
   min-width: 110px;
   padding: 0 16px;
   white-space: nowrap;
+}
+
+.player-footer-controls .triple-screen-btn {
+  background: linear-gradient(135deg, #707070 0%, #505050 100%);
+  box-shadow: 0 3px 10px rgba(80, 80, 80, 0.2);
+  transition: all 0.3s ease;
+}
+
+.player-footer-controls .triple-screen-btn:hover {
+  background: linear-gradient(135deg, #808080 0%, #606060 100%);
+}
+
+.player-footer-controls .triple-screen-btn.active {
+  background: linear-gradient(135deg, #e96a2e 0%, #f39c12 100%);
+  box-shadow: 0 3px 10px rgba(233, 106, 46, 0.28);
 }
 
 .player-footer-controls .player-action-btn-confirm {
