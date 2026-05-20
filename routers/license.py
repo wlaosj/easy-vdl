@@ -119,6 +119,7 @@ class LicenseManager:
         )
         self._verify_lock = asyncio.Lock()     # 验证锁，防止并发验证
         self._warned_missing_key = False       # 缺少密钥提示仅打印一次
+        self._gate_log_last_at = {}            # 门禁拒绝日志节流
         # 反调试节流：避免高频 verify() 每次都执行重检测
         self.anti_debug_check_interval = max(
             1,
@@ -420,6 +421,60 @@ class LicenseManager:
         async with self._verify_lock:  # 使用锁防止并发验证
             return await self._do_verify()
 
+    def _log_gate_denied(self, feature: str, reason: str, require_lifetime: bool):
+        """记录授权门禁拒绝原因，按 feature/reason 节流避免后台任务刷屏。"""
+        now = time.time()
+        log_key = f"{feature}|{reason}|{require_lifetime}"
+        if now - self._gate_log_last_at.get(log_key, 0) < 60:
+            return
+        self._gate_log_last_at[log_key] = now
+        logger.warning(
+            "授权门禁拒绝: feature=%s reason=%s require_lifetime=%s status=%s permanently_expired=%s remaining_days=%s",
+            feature,
+            reason,
+            str(require_lifetime).lower(),
+            self.status,
+            str(self.permanently_expired).lower(),
+            self.remaining_days,
+        )
+
+    async def is_active_for(self, feature: str, require_lifetime: bool = False) -> bool:
+        """非 HTTP 场景授权门禁：失败返回 False 并记录日志。"""
+        feature = (feature or "unknown").strip() or "unknown"
+        try:
+            verified = await self.verify()
+        except Exception as e:
+            self.last_error = str(e)
+            self._log_gate_denied(feature, f"verify_exception:{type(e).__name__}", require_lifetime)
+            return False
+
+        if not verified:
+            self._log_gate_denied(feature, "verify_failed", require_lifetime)
+            return False
+        if self.status != LicenseStatus.VALID:
+            self._log_gate_denied(feature, f"status_{self.status}", require_lifetime)
+            return False
+        if self.permanently_expired:
+            self._log_gate_denied(feature, "permanently_expired", require_lifetime)
+            return False
+        if require_lifetime and not self.is_lifetime:
+            self._log_gate_denied(feature, "lifetime_required", require_lifetime)
+            return False
+
+        return True
+
+    async def ensure_active_or_403(self, feature: str, require_lifetime: bool = False):
+        """HTTP API 授权门禁：失败抛出 403。"""
+        if await self.is_active_for(feature=feature, require_lifetime=require_lifetime):
+            return True
+
+        detail = (
+            "高光切片当前仅对永久高级版用户开放"
+            if require_lifetime
+            else "服务未授权或授权已过期，请联系管理员"
+        )
+        raise HTTPException(status_code=403, detail=detail)
+
     async def _do_verify(self) -> bool:
         """执行验证请求"""
         self.last_verify_time = time.time()
@@ -598,11 +653,7 @@ def require_license(func):
     """要求有效授权的装饰器"""
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        if not await license_manager.verify():
-            raise HTTPException(
-                status_code=403,
-                detail="服务未授权或授权已过期，请联系管理员"
-            )
+        await license_manager.ensure_active_or_403(feature=f"{func.__module__}.{func.__name__}")
         return await func(*args, **kwargs)
     return wrapper
 

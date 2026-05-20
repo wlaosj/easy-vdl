@@ -137,7 +137,7 @@ class SubscriptionScheduler:
         while self.running:
             try:
                 # 首先检查授权状态
-                is_licensed = await license_manager.verify()
+                is_licensed = await license_manager.is_active_for("scheduler.check_loop")
                 if not is_licensed:
                     if not self._license_error_logged:
                         if license_manager.permanently_expired:
@@ -205,7 +205,7 @@ class SubscriptionScheduler:
         """
         try:
             # 再次检查授权状态
-            is_licensed = await license_manager.verify()
+            is_licensed = await license_manager.is_active_for(f"scheduler.check_subscription:{subscription_id}")
             if not is_licensed:
                 logger.warning(f"授权已过期，跳过订阅[{subscription_id}]的检查")
                 return

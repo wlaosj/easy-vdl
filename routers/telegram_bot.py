@@ -523,7 +523,7 @@ class TelegramBotService:
                 )
             elif command == '/lives':
                 from routers.license import license_manager
-                if not await license_manager.verify():
+                if not await license_manager.is_active_for("telegram.command.lives"):
                     await self.send_message(chat_id, "🔒 **功能限制**\n\n直播订阅功能是高级功能，您的授权无效或已过期。")
                     return
                 await self._handle_lives_command(chat_id)
@@ -584,7 +584,7 @@ class TelegramBotService:
 
             elif command == '/live':
                 from routers.license import license_manager
-                if not await license_manager.verify():
+                if not await license_manager.is_active_for("telegram.command.live"):
                     await self.send_message(chat_id, "🔒 **功能限制**\n\n直播订阅功能是高级功能，您的授权无效或已过期。")
                     return
                 if not args:
@@ -1411,7 +1411,7 @@ class TelegramBotService:
             'li:', 'lar:', 'ldel:', 'ldel_confirm:', 'lstart:', 'lstop:'
         )):
             from routers.license import license_manager
-            if not await license_manager.verify():
+            if not await license_manager.is_active_for("telegram.callback.subscription_live"):
                 await self._answer_callback_query(query_id, "🔒 需要高级版授权\n请前往爱发电获取授权", show_alert=True)
                 return
 
@@ -2680,7 +2680,7 @@ class TelegramBotService:
             # 如果是 others (通用解析)，需要检查 License
             if source == 'others':
                 from routers.license import license_manager
-                if not await license_manager.verify():
+                if not await license_manager.is_active_for("telegram.download.generic_link"):
                     await self.send_message(chat_id, "🔒 **功能限制**\n\n通用链接解析是高级功能，您的授权无效或已过期。\n请检查授权状态或联系管理员。")
                     return
             
@@ -2762,7 +2762,7 @@ class TelegramBotService:
         
         # 1. 授权检查
         from routers.license import license_manager
-        if not await license_manager.verify():
+        if not await license_manager.is_active_for("telegram.command.subscribe"):
             await self.send_message(chat_id, "🔒 **功能限制**\n\n订阅功能是高级功能，您的授权无效或已过期。\n请检查授权状态或联系管理员。")
             return
             
@@ -3918,7 +3918,7 @@ class TelegramBotService:
         """处理添加直播订阅"""
         try:
             from routers.license import license_manager
-            if not await license_manager.verify():
+            if not await license_manager.is_active_for("telegram.command.add_live_subscription"):
                 await self.send_message(chat_id, "🔒 **功能限制**\n\n直播订阅功能是高级功能，您的授权无效或已过期。")
                 return
 

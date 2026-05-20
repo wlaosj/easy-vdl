@@ -18,6 +18,7 @@ IMAGE_NAME="${IMAGE_NAME:-easy-vdl:arm64}"
 
 # ARM64 本地调试默认不混淆；生产发布可手动选择启用
 ENABLE_OBFUSCATION="false"
+REQUIRE_OBFUSCATION="false"
 
 # ARM64 脚本默认使用独立端口，避免和 x86 本地容器冲突
 FRONTEND_PORT="${FRONTEND_PORT:-5858}"
@@ -92,7 +93,9 @@ case "$OBF_INPUT" in
         ENABLE_OBFUSCATION="false"
         ;;
 esac
+REQUIRE_OBFUSCATION="$ENABLE_OBFUSCATION"
 echo ">>> 混淆开关: ENABLE_OBFUSCATION=$ENABLE_OBFUSCATION"
+echo ">>> 强制混淆校验: REQUIRE_OBFUSCATION=$REQUIRE_OBFUSCATION"
 if [ "$ENABLE_OBFUSCATION" != "true" ]; then
     echo ">>> ⚠️ 当前将构建明文 ARM64 调试镜像（仅建议本地使用）"
 fi
@@ -131,6 +134,7 @@ docker buildx build \
     --platform "$PLATFORM" \
     --load \
     --build-arg ENABLE_OBFUSCATION="$ENABLE_OBFUSCATION" \
+    --build-arg REQUIRE_OBFUSCATION="$REQUIRE_OBFUSCATION" \
     --build-arg BUILD_VERSION="$BUILD_VERSION" \
     --build-arg BUILD_TIME="$BUILD_TIME" \
     -f "$DOCKERFILE" \

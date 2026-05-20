@@ -16,6 +16,7 @@ IMAGE_NAME="qq918652593/easy-vdl"  # 修改为完整的镜像名称
 # 是否启用代码混淆（运行时交互选择，默认 false）
 # 注意：这是本地调试脚本，默认不混淆；生产发布请使用 push 脚本（固定启用混淆）
 ENABLE_OBFUSCATION="false"
+REQUIRE_OBFUSCATION="false"
 # 前端(网页)端口，传入容器作为 EASY_VDL_PORT，默认 888
 FRONTEND_PORT=5858
 # 是否启用 /dev/dri 核显映射（true/false）。用于测试可临时关闭。
@@ -76,7 +77,9 @@ case "$OBF_INPUT" in
         ENABLE_OBFUSCATION="false"
         ;;
 esac
+REQUIRE_OBFUSCATION="$ENABLE_OBFUSCATION"
 echo ">>> 混淆开关: ENABLE_OBFUSCATION=$ENABLE_OBFUSCATION"
+echo ">>> 强制混淆校验: REQUIRE_OBFUSCATION=$REQUIRE_OBFUSCATION"
 if [ "$ENABLE_OBFUSCATION" != "true" ]; then
     echo ">>> ⚠️ 当前将构建明文调试镜像（仅建议本地使用）"
 fi
@@ -118,6 +121,7 @@ else
 fi
 DOCKER_BUILDKIT=1 docker build \
     --build-arg ENABLE_OBFUSCATION="$ENABLE_OBFUSCATION" \
+    --build-arg REQUIRE_OBFUSCATION="$REQUIRE_OBFUSCATION" \
     --build-arg BUILD_VERSION="$BUILD_VERSION" \
     --build-arg BUILD_TIME="$BUILD_TIME" \
     -t $IMAGE_NAME \

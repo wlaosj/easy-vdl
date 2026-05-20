@@ -1218,7 +1218,7 @@ async def _start_youtube_auto_update():
             
             # 执行更新
             from routers.license import license_manager
-            if not await license_manager.verify():
+            if not await license_manager.is_active_for("cookie.youtube_auto_update"):
                 logger.warning("授权已失效，跳过YouTube Cookie自动更新")
             else:
                 await _update_youtube_cookie_task()
@@ -1269,7 +1269,7 @@ async def _start_bilibili_auto_update():
             
             # 执行更新
             from routers.license import license_manager
-            if not await license_manager.verify():
+            if not await license_manager.is_active_for("cookie.bilibili_auto_update"):
                 logger.warning("授权已失效，跳过B站 Cookie自动更新")
             else:
                 await _update_bilibili_cookie_task()
@@ -1318,7 +1318,7 @@ async def _start_xiaohongshu_auto_update():
             
             # 执行更新
             from routers.license import license_manager
-            if not await license_manager.verify():
+            if not await license_manager.is_active_for("cookie.xiaohongshu_auto_update"):
                 logger.warning("授权已失效，跳过小红书 Cookie自动更新")
             else:
                 await _update_xiaohongshu_cookie_task()

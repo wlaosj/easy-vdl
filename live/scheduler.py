@@ -416,7 +416,7 @@ class LiveScheduler:
         while self.running:
             try:
                 # 0. 授权检查 (新增)
-                if not await license_manager.verify():
+                if not await license_manager.is_active_for(f"live.scheduler.monitor:{subscription_id}"):
                     # 如果授权无效，检查是否正在录制，如果是则强制停止
                     if live_recorder.is_recording(subscription_id):
                         logger.warning(f"检测到授权失效，强制停止录制: {subscription_id}")

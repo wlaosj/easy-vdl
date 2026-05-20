@@ -16,6 +16,7 @@
 
 # 构建参数定义
 ARG ENABLE_OBFUSCATION=true
+ARG REQUIRE_OBFUSCATION=true
 
 # =================================================================
 # 第一阶段: 前端构建 (Frontend Builder)
@@ -290,6 +291,11 @@ RUN /bin/bash -c '\
 # =================================================================
 FROM ubuntu:24.04
 
+ARG BUILD_VERSION
+ARG REQUIRE_OBFUSCATION=true
+LABEL org.easy-vdl.obfuscated="true" \
+      org.easy-vdl.build.version="${BUILD_VERSION}"
+
 # --- 环境设置 ---
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Shanghai
@@ -432,6 +438,33 @@ RUN find /opt/venv/lib -type f -path "*/streamget-*.dist-info/direct_url.json" -
 # --- 物理隔离：只从Builder阶段拉取最终混淆后的代码，杜绝源码泄露 ---
 COPY --from=builder /app_build /app/
 
+# --- 最终镜像混淆校验：生产构建必须确认关键代码已混淆 ---
+RUN if [ "$REQUIRE_OBFUSCATION" = "true" ]; then \
+        echo "🔒 验证最终镜像混淆状态..." && \
+        if ! find /app -maxdepth 1 -type d -name "pyarmor_runtime_*" | grep -q .; then \
+            echo "❌ 未找到 pyarmor_runtime_*，生产镜像拒绝构建"; \
+            exit 1; \
+        fi && \
+        for file in \
+            /app/routers/license.py \
+            /app/routers/auth.py \
+            /app/routers/subscribe/subscription.py \
+            /app/live/routers.py \
+            /app/live/scheduler.py; do \
+            if [ ! -f "$file" ]; then \
+                echo "❌ 关键文件不存在: $file"; \
+                exit 1; \
+            fi; \
+            if ! grep -qE "pyarmor_runtime|__pyarmor__" "$file"; then \
+                echo "❌ 关键文件未混淆: $file"; \
+                exit 1; \
+            fi; \
+        done && \
+        echo "✅ 最终镜像混淆校验通过"; \
+    else \
+        echo "⚠️  最终镜像混淆校验已禁用（REQUIRE_OBFUSCATION=$REQUIRE_OBFUSCATION）"; \
+    fi
+
 # 安装 Node.js 斗鱼弹幕依赖
 RUN cd /app/live/douyu_danmu && npm install --omit=dev
 
@@ -442,7 +475,6 @@ RUN cd /app/live/huya_danmu && npm install --omit=dev
 COPY --from=frontend-builder /app/frontend-v2/dist /app/frontend/public
 
 # --- 设置执行权限并生成构建版本 ---
-ARG BUILD_VERSION
 ARG BUILD_TIME
 RUN chmod +x /app/docker-entrypoint.sh && \
     chmod +x /app/healthcheck.sh && \

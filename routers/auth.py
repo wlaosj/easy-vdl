@@ -281,11 +281,7 @@ def require_license_api(func):
         # 延迟导入 license_manager 避免循环导入
         from routers.license import license_manager
         # 检查系统授权状态（无论认证方式如何，都检查系统授权）
-        if not await license_manager.verify():
-            raise HTTPException(
-                status_code=403,
-                detail="服务未授权或授权已过期，请联系管理员"
-            )
+        await license_manager.ensure_active_or_403(feature=f"{func.__module__}.{func.__name__}")
         return await func(*args, **kwargs)
     return wrapper
 
@@ -296,16 +292,10 @@ def require_lifetime_license_api(func):
     async def wrapper(*args, **kwargs):
         # 延迟导入 license_manager 避免循环导入
         from routers.license import license_manager
-        if not await license_manager.verify():
-            raise HTTPException(
-                status_code=403,
-                detail="服务未授权或授权已过期，请联系管理员"
-            )
-        if not getattr(license_manager, "is_lifetime", False):
-            raise HTTPException(
-                status_code=403,
-                detail="高光切片当前仅对永久高级版用户开放"
-            )
+        await license_manager.ensure_active_or_403(
+            feature=f"{func.__module__}.{func.__name__}",
+            require_lifetime=True,
+        )
         return await func(*args, **kwargs)
     return wrapper
 

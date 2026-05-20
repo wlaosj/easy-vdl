@@ -25,6 +25,8 @@ else
 fi
 echo "   - BUILD_VERSION: $BUILD_VERSION"
 echo "   - BUILD_TIME: $BUILD_TIME"
+echo "   - ENABLE_OBFUSCATION: true"
+echo "   - REQUIRE_OBFUSCATION: true"
 
 # 直接使用 vendored streamget 源码（不依赖 ../streamget-main）
 echo "[0/2] 校验 vendored streamget 源码..."
@@ -42,6 +44,7 @@ fi
 echo "[1/2] 开始构建 Docker 镜像..."
 docker build \
     --build-arg ENABLE_OBFUSCATION=true \
+    --build-arg REQUIRE_OBFUSCATION=true \
     --build-arg BUILD_VERSION="$BUILD_VERSION" \
     --build-arg BUILD_TIME="$BUILD_TIME" \
     -t $IMAGE_NAME:$TAG \

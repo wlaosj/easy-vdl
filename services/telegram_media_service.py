@@ -512,7 +512,7 @@ class TelegramMediaService:
 
     async def ingest_update(self, update: Dict[str, Any], db: Session) -> Dict[str, Any]:
         from routers.license import license_manager
-        is_valid_license = await license_manager.verify()
+        is_valid_license = await license_manager.is_active_for("telegram_media.transfer")
 
         message = update.get("message") or {}
         if not message:
@@ -573,7 +573,7 @@ class TelegramMediaService:
             )
             raise PermissionError("需要激活高级版才能使用 Bot 转存功能")
 
-        if not getattr(license_manager, 'is_lifetime', False):
+        if not await license_manager.is_active_for("telegram_media.transfer", require_lifetime=True):
             promo_text = (
                 "⚠️ **提示：当前大文件直连转存功能处于优先测试阶段**\n\n"
                 "作为硬核进阶通讯功能，目前仅向**永久授权用户**优先开放测试。\n\n"

@@ -14,7 +14,8 @@ PLATFORM="${PLATFORM:-linux/arm64}"
 IMAGE_NAME="${IMAGE_NAME:-qq918652593/easy-vdl}"
 TAG="${TAG:-arm64}"
 # FFmpeg 使用 BtbN master 分支构建（Dockerfile 内置），此处无需额外参数
-ENABLE_OBFUSCATION="${ENABLE_OBFUSCATION:-true}"
+ENABLE_OBFUSCATION="true"
+REQUIRE_OBFUSCATION="true"
 VERSION_FILE="${VERSION_FILE:-build-version.env}"
 
 if [ -f "$VERSION_FILE" ]; then
@@ -28,6 +29,8 @@ else
 fi
 echo "   - BUILD_VERSION: $BUILD_VERSION"
 echo "   - BUILD_TIME: $BUILD_TIME"
+echo "   - ENABLE_OBFUSCATION: $ENABLE_OBFUSCATION"
+echo "   - REQUIRE_OBFUSCATION: $REQUIRE_OBFUSCATION"
 
 echo "[0/3] 校验 ARM64 构建环境..."
 if ! command -v docker >/dev/null 2>&1; then
@@ -57,6 +60,7 @@ echo "   - 平台: $PLATFORM"
 echo "   - 镜像: $IMAGE_NAME:$TAG"
 echo "   - FFmpeg: BtbN master 分支（Dockerfile内置）"
 echo "   - 混淆: $ENABLE_OBFUSCATION"
+echo "   - 强制混淆校验: $REQUIRE_OBFUSCATION"
 
 echo "[1/3] 确认 DockerHub 登录状态..."
 if ! docker info 2>/dev/null | grep -q "Username:"; then
@@ -68,6 +72,7 @@ echo "[2/3] 构建并推送 ARM64 镜像..."
 docker buildx build \
     --platform "$PLATFORM" \
     --build-arg ENABLE_OBFUSCATION="$ENABLE_OBFUSCATION" \
+    --build-arg REQUIRE_OBFUSCATION="$REQUIRE_OBFUSCATION" \
     --build-arg BUILD_VERSION="$BUILD_VERSION" \
     --build-arg BUILD_TIME="$BUILD_TIME" \
     -f "$DOCKERFILE" \
