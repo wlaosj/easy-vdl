@@ -272,6 +272,14 @@
                     </span>
                   </h3>
                 </a>
+                <span 
+                  v-if="sub.danmu_enabled" 
+                  class="danmu-badge-mini"
+                  :class="{ 'is-recording': sub.is_recording === 'true' }"
+                  title="已开启弹幕录制"
+                >
+                  弹幕
+                </span>
               </div>
               
               <!-- 录制状态/画质信息 -->
@@ -5571,10 +5579,39 @@ function getStatusText(status) {
   animation: pulse 2s infinite;
 }
 
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+.danmu-badge-mini {
+  font-size: 10px;
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: all 0.3s ease;
+}
+
+.danmu-badge-mini.is-recording {
+  background: rgba(14, 165, 233, 0.15);
+  border-color: rgba(14, 165, 233, 0.45);
+  animation: pulse-danmu 2s infinite;
+}
+
+@keyframes pulse-danmu {
+  0% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.2);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0);
+    opacity: 0.7;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.2);
+    opacity: 1;
+  }
 }
 
 .live-status-text {
