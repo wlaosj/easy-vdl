@@ -6,7 +6,7 @@
     :show-confirm="false"
     width="400px"
     persistent
-    z-index="30000"
+    z-index="50000"
   >
     <div class="dialog-content">
       <p v-html="state.message"></p>
