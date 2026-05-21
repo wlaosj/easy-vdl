@@ -759,6 +759,27 @@ class LiveRecorder:
                 timeout=3600  # 1小时超时
             )
             
+            if result.returncode != 0:
+                logger.warning(
+                    f"流复制转码失败（返回值={result.returncode}），可能是非标准音频流。尝试重新编码音频兜底: {ts_path}"
+                )
+                ffmpeg_command_fallback = [
+                    'ffmpeg',
+                    '-y',
+                    '-i', ts_path,
+                    '-c:v', 'copy',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-movflags', '+faststart',
+                    '-f', 'mp4',
+                    mp4_path
+                ]
+                result = subprocess.run(
+                    ffmpeg_command_fallback,
+                    capture_output=True,
+                    timeout=3600
+                )
+            
             if result.returncode == 0:
                 logger.info(f"转码成功: {mp4_path}")
                 success = True
@@ -769,7 +790,7 @@ class LiveRecorder:
                     os.remove(ts_path)
                     logger.info(f"已删除原文件: {ts_path}")
             else:
-                logger.error(f"转码失败: {result.stderr.decode()}")
+                logger.error(f"转码失败: {result.stderr.decode(errors='ignore')}")
                 
         except subprocess.TimeoutExpired:
             logger.error(f"转码超时: {ts_path}")
@@ -829,6 +850,23 @@ class LiveRecorder:
             
             result = subprocess.run(ffmpeg_command, capture_output=True, timeout=7200) # 给 2 小时
             
+            if result.returncode != 0:
+                logger.warning(
+                    f"合并分段流复制失败（返回值={result.returncode}），可能是非标准音频流。尝试重新编码音频兜底: {final_mp4_path}"
+                )
+                ffmpeg_command_fallback = [
+                    'ffmpeg', '-y',
+                    '-f', 'concat',
+                    '-safe', '0',
+                    '-i', concat_file,
+                    '-c:v', 'copy',
+                    '-c:a', 'aac',
+                    '-b:a', '128k',
+                    '-movflags', '+faststart',
+                    final_mp4_path
+                ]
+                result = subprocess.run(ffmpeg_command_fallback, capture_output=True, timeout=7200)
+            
             if result.returncode == 0:
                 logger.info(f"分段合并转码成功: {final_mp4_path}")
                 success = True
@@ -841,7 +879,7 @@ class LiveRecorder:
                         except: pass
                     logger.info(f"已清理 {len(ts_files)} 个原始分段文件")
             else:
-                logger.error(f"分段合并失败: {result.stderr.decode()}")
+                logger.error(f"分段合并失败: {result.stderr.decode(errors='ignore')}")
                 
         except Exception as e:
             logger.error(f"合并分段过程出错: {e}")
