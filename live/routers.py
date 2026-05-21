@@ -560,8 +560,9 @@ async def get_live_subscriptions(
         sub_id = sub.id
         is_recording = sub_id in recording_ids
         
-        # 解析 extra_data 获取 danmu_enabled 状态
+        # 解析 extra_data 获取 danmu_enabled 和 compat_mode 状态
         danmu_enabled = False
+        compat_mode = False
         if sub.extra_data:
             try:
                 extra = json.loads(sub.extra_data) if isinstance(sub.extra_data, str) else sub.extra_data
@@ -569,6 +570,10 @@ async def get_live_subscriptions(
                     danmu_enabled = extra.get('danmu_enabled', False)
                     if isinstance(danmu_enabled, str):
                         danmu_enabled = danmu_enabled.strip().lower() not in ("false", "0", "no")
+                    
+                    compat_mode = extra.get('compat_mode', False)
+                    if isinstance(compat_mode, str):
+                        compat_mode = compat_mode.strip().lower() not in ("false", "0", "no")
             except Exception:
                 pass
 
@@ -590,6 +595,7 @@ async def get_live_subscriptions(
             "notification_enabled": sub.notification_enabled,
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
             "danmu_enabled": danmu_enabled,
+            "compat_mode": compat_mode,
         }
 
         # 从批量结果中直接取录制状态（无需再次查询）

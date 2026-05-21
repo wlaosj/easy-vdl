@@ -40,7 +40,7 @@
                 <div class="stat-divider-vertical"></div>
                 <div class="live-stat-item" @click="router.push('/downloads')">
                   <span class="stat-mini-label">存储</span>
-                  <div class="live-stat-val" style="min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px !important;">{{ formatBytes(systemStore.storage.directory_size_bytes || 0, 0).replace(' ', '') }}</div>
+                  <div class="live-stat-val" style="min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px !important;">{{ formatBytes(systemStore.storage.directory_size_bytes || 0, 2).replace(' ', '') }}</div>
                 </div>
               </div>
               <div class="live-stats-row mobile-stats-append">
@@ -66,7 +66,7 @@
                 <div class="stat-divider-vertical"></div>
                 <div class="live-stat-item" @click="router.push('/live-record')">
                   <span class="stat-mini-label">空间</span>
-                  <div class="live-stat-val" style="min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px !important;">{{ formatBytes(liveStats.total_size, 0).replace(' ', '') }}</div>
+                  <div class="live-stat-val" style="min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px !important;">{{ formatBytes(liveStats.total_size, 2).replace(' ', '') }}</div>
                 </div>
               </div>
             </template>

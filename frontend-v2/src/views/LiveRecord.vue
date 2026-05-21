@@ -263,7 +263,7 @@
                 <a :href="sub.room_url" target="_blank" rel="noopener noreferrer" class="name-link">
                   <h3
                     class="room-name"
-                    :class="{ 'is-marquee': (sub._anchorName || '').length > (sub.danmu_enabled ? 7 : 10) }"
+                    :class="{ 'is-marquee': (sub._anchorName || '').length > 10 }"
                     :title="sub._anchorName"
                   >
                     <span class="room-name-track">
@@ -272,14 +272,6 @@
                     </span>
                   </h3>
                 </a>
-                <span 
-                  v-if="sub.danmu_enabled" 
-                  class="danmu-badge-mini"
-                  :class="{ 'is-recording': sub.is_recording === 'true' }"
-                  title="已开启弹幕录制"
-                >
-                  弹幕
-                </span>
               </div>
               
               <!-- 录制状态/画质信息 -->
@@ -288,13 +280,13 @@
                   <div class="recording-row-main">
                     <span class="recording-text">录制中</span>
                     <span class="dot">·</span>
-                    <span>{{ sub._duration }}</span>
+                    <span class="recording-duration">{{ sub._duration }}</span>
                     <span class="dot">·</span>
-                    <span>{{ sub._fileSize }}</span>
+                    <span class="recording-size">{{ sub._fileSize }}</span>
                   </div>
                   <div class="recording-row-sub">
                     <template v-if="sub.recording_status.resolution || sub.recording_status.fps">
-                      <span class="quality-label">实时画质：</span>
+                      <span class="quality-label">画质：</span>
                       <span class="quality-value">
                         {{ sub.recording_status.resolution || '' }}
                         <span v-if="sub.recording_status.resolution && sub.recording_status.fps" style="margin: 0 4px;"></span>
@@ -302,6 +294,26 @@
                       </span>
                     </template>
                     <span v-else class="getting-info">正在获取流信息...</span>
+                    <template v-if="sub.compat_mode">
+                      <span class="dot">·</span>
+                      <span 
+                        class="compat-badge-mini"
+                        :class="{ 'is-recording': sub.is_recording === 'true' }"
+                        title="已开启兼容模式（实时重编码）"
+                      >
+                        兼容
+                      </span>
+                    </template>
+                    <template v-if="sub.danmu_enabled">
+                      <span class="dot">·</span>
+                      <span 
+                        class="danmu-badge-mini"
+                        :class="{ 'is-recording': sub.is_recording === 'true' }"
+                        title="已开启弹幕录制"
+                      >
+                        弹幕
+                      </span>
+                    </template>
                   </div>
                 </div>
                 <div v-else class="metric-item">
@@ -315,6 +327,26 @@
                   <template v-if="sub.auto_record !== 'true' || sub.is_live === 'true'">
                     <span class="dot">·</span>
                     <span>{{ sub.auto_record === 'true' ? '自动录制' : '手动' }}</span>
+                  </template>
+                  <template v-if="sub.compat_mode">
+                    <span class="dot">·</span>
+                    <span 
+                      class="compat-badge-mini"
+                      :class="{ 'is-recording': sub.is_recording === 'true' }"
+                      title="已开启兼容模式（实时重编码）"
+                    >
+                      兼容
+                    </span>
+                  </template>
+                  <template v-if="sub.danmu_enabled">
+                    <span class="dot">·</span>
+                    <span 
+                      class="danmu-badge-mini"
+                      :class="{ 'is-recording': sub.is_recording === 'true' }"
+                      title="已开启弹幕录制"
+                    >
+                      弹幕
+                    </span>
                   </template>
                 </div>
                 <!-- 自动监控提示独立一行 -->
@@ -4524,7 +4556,7 @@ function retryPlay() {
 }
 
 function formatSize(bytes) {
-  return formatBytes(bytes, 0)
+  return formatBytes(bytes, 2)
 }
 
 function formatDuration(seconds) {
@@ -5606,7 +5638,7 @@ function getStatusText(status) {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-right: 32px; /* 同样为指标行预留空间，防止长时长/大小显示重叠 */
+  padding-right: 8px; /* 降低为8px，因为设置按钮在title行，title行已有44px右边距 */
 }
 
 .metric-item {
@@ -5646,10 +5678,26 @@ function getStatusText(status) {
   white-space: nowrap;
 }
 
+.recording-duration {
+  font-family: Consolas, Monaco, "Courier New", Courier, monospace;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 60px;
+  text-align: center;
+}
+
+.recording-size {
+  font-family: Consolas, Monaco, "Courier New", Courier, monospace;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 45px;
+  text-align: left;
+}
+
 .recording-row-sub {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px; /* 降低间距，防止文字和标签溢出卡片 */
   font-size: 11px;
   color: var(--color-text-tertiary);
   opacity: 0.8;
@@ -5664,7 +5712,7 @@ function getStatusText(status) {
   color: #ff4d4f;
   font-weight: 500;
   background: rgba(255, 77, 79, 0.08);
-  padding: 1px 6px;
+  padding: 1px 4px; /* 缩减左右边距 */
   border-radius: 4px;
   border: 1px solid rgba(255, 77, 79, 0.15);
 }
@@ -5683,7 +5731,7 @@ function getStatusText(status) {
   font-size: 10px;
   color: #0ea5e9;
   background: rgba(14, 165, 233, 0.08);
-  padding: 2px 5px;
+  padding: 1.5px 4px; /* 缩减边距 */
   border-radius: 4px;
   border: 1px solid rgba(14, 165, 233, 0.25);
   font-weight: 600;
@@ -5710,6 +5758,41 @@ function getStatusText(status) {
   }
   100% {
     box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.2);
+    opacity: 1;
+  }
+}
+
+.compat-badge-mini {
+  font-size: 10px;
+  color: #e96a2e;
+  background: rgba(233, 106, 46, 0.08);
+  padding: 1.5px 4px; /* 缩减边距 */
+  border-radius: 4px;
+  border: 1px solid rgba(233, 106, 46, 0.25);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: all 0.3s ease;
+}
+
+.compat-badge-mini.is-recording {
+  background: rgba(233, 106, 46, 0.15);
+  border-color: rgba(233, 106, 46, 0.45);
+  animation: pulse-compat 2s infinite;
+}
+
+@keyframes pulse-compat {
+  0% {
+    box-shadow: 0 0 0 0 rgba(233, 106, 46, 0.2);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(233, 106, 46, 0);
+    opacity: 0.7;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(233, 106, 46, 0.2);
     opacity: 1;
   }
 }
