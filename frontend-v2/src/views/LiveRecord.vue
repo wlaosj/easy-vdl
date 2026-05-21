@@ -655,7 +655,7 @@
             <input type="checkbox" v-model="editForm.compat_mode" />
             <span>兼容模式（实时重编码）</span>
           </label>
-          <p class="form-hint">应对网络丢包导致的花屏问题，会增加 CPU 开销和文件大小</p>
+          <p class="form-hint">应对网络丢包导致的花屏问题。<strong>默认不建议开启</strong>，开启后会显著增加录制后的文件大小（录制容量增加）并增加 CPU 开销。</p>
         </div>
 
         <!-- 自动转码 -->
