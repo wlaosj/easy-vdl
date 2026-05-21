@@ -21,8 +21,15 @@
           <span class="streamer-name">{{ subDisplayName || '无缝时间轴回放' }}</span>
         </div>
       </div>
-      <video ref="video0" class="nvr-video" :class="{ 'active': activeVideo === 0 }" @ended="onVideoEnded" @timeupdate="onTimeUpdate" @play="onVideoPlay" @pause="onVideoPause"></video>
-      <video ref="video1" class="nvr-video" :class="{ 'active': activeVideo === 1 }" @ended="onVideoEnded" @timeupdate="onTimeUpdate" @play="onVideoPlay" @pause="onVideoPause"></video>
+      <div class="player-content-layout" :class="{ 'triple-mode': tripleScreenMode > 0 }" :style="tripleLayoutStyle">
+        <canvas v-if="showTripleScreen && tripleScreenMode === 4" ref="mirrorCanvasFarLeft" class="triple-mirror"></canvas>
+        <canvas v-if="showTripleScreen" ref="mirrorCanvasLeft" class="triple-mirror"></canvas>
+        <div class="video-stack">
+          <video ref="video0" class="nvr-video" :class="{ 'active': activeVideo === 0 }" @ended="onVideoEnded" @timeupdate="onTimeUpdate" @play="onVideoPlay" @pause="onVideoPause" @loadedmetadata="onVideoLoadedMetadata"></video>
+          <video ref="video1" class="nvr-video" :class="{ 'active': activeVideo === 1 }" @ended="onVideoEnded" @timeupdate="onTimeUpdate" @play="onVideoPlay" @pause="onVideoPause" @loadedmetadata="onVideoLoadedMetadata"></video>
+        </div>
+        <canvas v-if="showTripleScreen" ref="mirrorCanvasRight" class="triple-mirror"></canvas>
+      </div>
       <div v-if="danmuMode === 'marquee' && marqueeItems.length" class="danmu-marquee-layer">
         <div
           v-for="item in marqueeItems"
@@ -89,6 +96,9 @@
           <span class="danmu-status">{{ danmuStatusText }}</span>
           <button class="btn btn-outline btn-sm pip-btn" @click="togglePip" :title="isPipActive ? '退出小窗' : '小窗播放'">
             <Icon name="pip" :size="16" />
+          </button>
+          <button v-if="isVerticalVideo" class="btn btn-outline btn-sm triple-btn" :class="{ 'active': tripleScreenMode > 0 }" @click="cycleTripleScreenMode" :title="tripleScreenModeLabel">
+            {{ tripleScreenModeShort }}
           </button>
           <span class="time-display">
             <span class="time-line time-line-current">{{ formatTime(playTimeOfDay) }}</span>
@@ -271,6 +281,9 @@
               </button>
               <button class="btn btn-outline btn-sm pip-btn" @click="togglePip" :title="isPipActive ? '退出小窗' : '小窗播放'">
                 <Icon name="pip" :size="16" />
+              </button>
+              <button v-if="isVerticalVideo" class="btn btn-outline btn-sm triple-btn" :class="{ 'active': tripleScreenMode > 0 }" @click="cycleTripleScreenMode" :title="tripleScreenModeLabel">
+                {{ tripleScreenModeShort }}
               </button>
               <span class="time-display">
                 <span class="time-line time-line-current">{{ formatTime(playTimeOfDay) }}</span>
@@ -579,6 +592,14 @@ const formatDanmuLine = (item) => {
 const isFullscreen = ref(false);
 const isMuted = ref(localStorage.getItem(TIMELINE_MUTED_KEY) === 'true');
 const isPipActive = ref(false);
+const tripleScreenMode = ref(Number(localStorage.getItem('timeline_triple_screen') || '0'));
+if (![0, 3, 4].includes(tripleScreenMode.value)) tripleScreenMode.value = 0;
+const isVerticalVideo = ref(false);
+const videoAspectRatio = ref(0);
+const mirrorCanvasLeft = ref(null);
+const mirrorCanvasRight = ref(null);
+const mirrorCanvasFarLeft = ref(null);
+let tripleScreenRAF = null;
 const fullscreenControlsVisible = ref(false);
 const fullscreenControlsHovering = ref(false);
 const fullscreenControlsTouching = ref(false);
@@ -747,6 +768,22 @@ const subInitial = computed(() => {
 });
 const todayDate = computed(() => getLocalDateString());
 const yesterdayDate = computed(() => getDateOffsetString(-1));
+const showTripleScreen = computed(() => tripleScreenMode.value > 0 && isVerticalVideo.value);
+const tripleScreenModeShort = computed(() => {
+  if (tripleScreenMode.value === 3) return '三连';
+  if (tripleScreenMode.value === 4) return '四连';
+  return '多屏：关';
+});
+const tripleScreenModeLabel = computed(() => {
+  if (tripleScreenMode.value === 3) return '三连屏模式';
+  if (tripleScreenMode.value === 4) return '四连屏模式';
+  return '关闭多连屏';
+});
+const tripleLayoutStyle = computed(() => {
+  if (!showTripleScreen.value) return {};
+  const ar = videoAspectRatio.value > 0 ? videoAspectRatio.value : 0.5625;
+  return { '--video-aspect-ratio': String(ar) };
+});
 const latestAvailableDate = computed(() => {
   if (!availableDateItems.value.length) return '';
   return availableDateItems.value[availableDateItems.value.length - 1].date;
@@ -1584,6 +1621,7 @@ const stopAll = () => {
   playing.value = false;
   isTimelineSeeking.value = false;
   currentSegmentMediaTimeBase.value = 0;
+  stopTripleScreenLoop();
 };
 
 const getAllVideoElements = () => [video0.value, video1.value].filter(Boolean);
@@ -1961,6 +1999,95 @@ const onVideoPlay = (e) => {
 const onVideoPause = (e) => {
   syncPlayingFromMedia();
 };
+
+const onVideoLoadedMetadata = (e) => {
+  const vw = e.target.videoWidth;
+  const vh = e.target.videoHeight;
+  if (vw > 0 && vh > 0) {
+    isVerticalVideo.value = vh > vw * 1.05;
+    videoAspectRatio.value = vw / vh;
+  }
+};
+
+function getActiveVideoEl() {
+  return activeVideo.value === 0 ? video0.value : video1.value;
+}
+
+function startTripleScreenLoop() {
+  if (tripleScreenRAF) return;
+  const doFrame = () => {
+    if (tripleScreenMode.value === 0) { stopTripleScreenLoop(); return; }
+    const video = getActiveVideoEl();
+    // 每帧检测竖屏（不依赖事件，兼容 mpegts）
+    if (video && !isVerticalVideo.value) {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw > 0 && vh > 0) {
+        isVerticalVideo.value = vh > vw * 1.05;
+        videoAspectRatio.value = vw / vh;
+      }
+    }
+    if (!showTripleScreen.value) { tripleScreenRAF = requestAnimationFrame(doFrame); return; }
+    if (!video) { tripleScreenRAF = requestAnimationFrame(doFrame); return; }
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const videoAspect = vw > 0 && vh > 0 ? vw / vh : (videoAspectRatio.value || 0.5625);
+    const canvases = [mirrorCanvasFarLeft.value, mirrorCanvasLeft.value, mirrorCanvasRight.value].filter(Boolean);
+    for (const cvs of canvases) {
+      if (!cvs || !cvs.parentNode) continue;
+      // 同步 canvas 缓冲区与 CSS 尺寸
+      const cw = Math.round(cvs.clientWidth);
+      const ch = Math.round(cvs.clientHeight);
+      if (cw > 0 && ch > 0 && (cvs.width !== cw || cvs.height !== ch)) {
+        cvs.width = cw;
+        cvs.height = ch;
+      }
+      if (cvs.width < 1 || cvs.height < 1) continue;
+      const ctx = cvs.getContext('2d');
+      if (!ctx) continue;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+      try {
+        let drawW, drawH, ox, oy;
+        if (cvs.width / cvs.height > videoAspect) {
+          drawH = cvs.height;
+          drawW = drawH * videoAspect;
+          ox = (cvs.width - drawW) / 2;
+          oy = 0;
+        } else {
+          drawW = cvs.width;
+          drawH = drawW / videoAspect;
+          ox = 0;
+          oy = (cvs.height - drawH) / 2;
+        }
+        ctx.drawImage(video, ox, oy, drawW, drawH);
+      } catch (_) {}
+    }
+    tripleScreenRAF = requestAnimationFrame(doFrame);
+  };
+  tripleScreenRAF = requestAnimationFrame(doFrame);
+}
+
+function stopTripleScreenLoop() {
+  if (tripleScreenRAF) {
+    cancelAnimationFrame(tripleScreenRAF);
+    tripleScreenRAF = null;
+  }
+  [mirrorCanvasLeft.value, mirrorCanvasRight.value, mirrorCanvasFarLeft.value].filter(Boolean).forEach((cvs) => {
+    if (cvs.width > 0 && cvs.height > 0) {
+      const ctx = cvs.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
+      }
+    }
+  });
+}
+
+function cycleTripleScreenMode() {
+  tripleScreenMode.value = tripleScreenMode.value === 0 ? 3 : (tripleScreenMode.value === 3 ? 4 : 0);
+  localStorage.setItem('timeline_triple_screen', String(tripleScreenMode.value));
+}
 
 const onTimeUpdate = (e) => {
   if (isTimelineSeeking.value) return;
@@ -2704,6 +2831,11 @@ onBeforeUnmount(() => {
   stopAll();
 });
 
+watch(tripleScreenMode, (val) => {
+  if (val > 0) startTripleScreenLoop();
+  else stopTripleScreenLoop();
+}, { immediate: true });
+
 watch(isFullscreen, (value) => {
   if (value) {
     fullscreenControlsVisible.value = true;
@@ -3119,6 +3251,43 @@ watch(showAvailableDatePanel, (visible) => {
 .nvr-video.active {
   opacity: 1;
   z-index: 2;
+}
+
+.player-content-layout {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.player-content-layout.triple-mode {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.player-content-layout.triple-mode .video-stack {
+  height: 100%;
+  aspect-ratio: var(--video-aspect-ratio, 0.5625);
+  flex: 0 0 auto;
+  position: relative;
+}
+
+.player-content-layout.triple-mode .video-stack .nvr-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.player-content-layout.triple-mode > canvas.triple-mirror {
+  height: 100%;
+  aspect-ratio: var(--video-aspect-ratio, 0.5625);
+  flex: 0 0 auto;
+  pointer-events: none;
+  user-select: none;
 }
 
 .nvr-loading {
@@ -3628,6 +3797,17 @@ watch(showAvailableDatePanel, (visible) => {
   font-variant-numeric: tabular-nums;
 }
 
+.triple-btn {
+  min-width: 64px;
+  font-size: 13px;
+}
+
+.triple-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
 .runtime-quality-btn {
   flex: 0 0 auto;
 }
@@ -3975,6 +4155,12 @@ watch(showAvailableDatePanel, (visible) => {
   }
   .pip-btn {
     order: 5;
+  }
+  .triple-btn {
+    order: 6;
+    min-width: 52px;
+    height: 40px;
+    font-size: 12px;
   }
   .date-picker-wrap {
     grid-area: date;
