@@ -462,7 +462,7 @@ const props = defineProps({
   resumeAt: [String, Number],
 });
 
-const emit = defineEmits(['date-change']);
+const emit = defineEmits(['date-change', 'fullscreen-change']);
 
 // 视频组件 ref
 const video0 = ref(null);
@@ -2848,6 +2848,10 @@ watch(isFullscreen, (value) => {
     fullscreenControlsTouching.value = false;
     if (fullscreenHideTimer) clearTimeout(fullscreenHideTimer);
   }
+  emit('fullscreen-change', value);
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
 });
 
 watch(
