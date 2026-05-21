@@ -7392,7 +7392,7 @@ function getStatusText(status) {
   flex-direction: row !important;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 4px;
   padding: 0 12px;
   background: #0a0a0c;
 }
