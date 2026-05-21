@@ -263,7 +263,7 @@
                 <a :href="sub.room_url" target="_blank" rel="noopener noreferrer" class="name-link">
                   <h3
                     class="room-name"
-                    :class="{ 'is-marquee': (sub._anchorName || '').length > 10 }"
+                    :class="{ 'is-marquee': (sub._anchorName || '').length > (sub.danmu_enabled ? 7 : 10) }"
                     :title="sub._anchorName"
                   >
                     <span class="room-name-track">
