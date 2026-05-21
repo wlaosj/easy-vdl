@@ -2455,7 +2455,8 @@ async def get_subscription_config(sub_id: str, db: Session = Depends(get_session
             "proxy": sub.proxy,
             "generate_subtitle": extra.get('generate_subtitle', False),
             "auto_convert_mp4": extra.get('auto_convert_mp4', True),
-            "danmu_enabled": extra.get('danmu_enabled', False)
+            "danmu_enabled": extra.get('danmu_enabled', False),
+            "compat_mode": extra.get('compat_mode', False)
         }
     }
 
