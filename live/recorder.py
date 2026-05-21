@@ -779,6 +779,26 @@ class LiveRecorder:
                     capture_output=True,
                     timeout=3600
                 )
+                
+                if result.returncode != 0:
+                    logger.warning(
+                        f"重新编码音频转码失败（返回值={result.returncode}），可能是物理损坏的音频轨。尝试丢弃音频兜底: {ts_path}"
+                    )
+                    ffmpeg_command_fallback_an = [
+                        'ffmpeg',
+                        '-y',
+                        '-i', ts_path,
+                        '-c:v', 'copy',
+                        '-an',
+                        '-movflags', '+faststart',
+                        '-f', 'mp4',
+                        mp4_path
+                    ]
+                    result = subprocess.run(
+                        ffmpeg_command_fallback_an,
+                        capture_output=True,
+                        timeout=3600
+                    )
             
             if result.returncode == 0:
                 logger.info(f"转码成功: {mp4_path}")
@@ -866,6 +886,22 @@ class LiveRecorder:
                     final_mp4_path
                 ]
                 result = subprocess.run(ffmpeg_command_fallback, capture_output=True, timeout=7200)
+                
+                if result.returncode != 0:
+                    logger.warning(
+                        f"合并分段重新编码音频失败（返回值={result.returncode}），可能是物理损坏的音频轨。尝试丢弃音频兜底: {final_mp4_path}"
+                    )
+                    ffmpeg_command_fallback_an = [
+                        'ffmpeg', '-y',
+                        '-f', 'concat',
+                        '-safe', '0',
+                        '-i', concat_file,
+                        '-c:v', 'copy',
+                        '-an',
+                        '-movflags', '+faststart',
+                        final_mp4_path
+                    ]
+                    result = subprocess.run(ffmpeg_command_fallback_an, capture_output=True, timeout=7200)
             
             if result.returncode == 0:
                 logger.info(f"分段合并转码成功: {final_mp4_path}")
