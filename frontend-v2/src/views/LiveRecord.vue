@@ -7121,8 +7121,8 @@ function getStatusText(status) {
   .search-container {
     width: auto;
     min-width: 0;
-    flex: 0 0 240px;
-    max-width: 260px;
+    flex: 1 1 180px;
+    max-width: 240px;
     order: 2;
   }
 
