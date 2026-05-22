@@ -55,9 +55,9 @@ def _parse_cookie_content(cookie_str: Optional[str]) -> Optional[str]:
     """
     if not cookie_str:
         return None
-        
+
     cookie_str = cookie_str.strip()
-    
+
     # 1. 检测 Netscape 格式
     if '\t' in cookie_str or cookie_str.startswith('#'):
         try:
@@ -66,23 +66,38 @@ def _parse_cookie_content(cookie_str: Optional[str]) -> Optional[str]:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                
+
                 parts = line.split('\t')
                 if len(parts) >= 7:
                     name = parts[5]
                     value = parts[6]
                     cookies.append(f"{name}={value}")
-            
+
             if cookies:
                 return "; ".join(cookies)
         except Exception:
             pass
-    
+
     # 2. 处理标准格式: 去除换行和 "Cookie:" 前缀
     if cookie_str.lower().startswith("cookie:"):
         cookie_str = cookie_str[7:].strip()
-        
+
     return cookie_str.replace('\n', '').replace('\r', '').strip()
+
+
+def _load_cookies_for_adapter(adapter) -> Optional[str]:
+    """加载适配器对应平台的 Cookie（如果已配置）"""
+    try:
+        from routers.cookie_manager import COOKIE_PATHS
+        if getattr(adapter, "platform_name", None) and adapter.platform_name in COOKIE_PATHS:
+            cookie_path = COOKIE_PATHS[adapter.platform_name]
+            if cookie_path and os.path.exists(cookie_path):
+                with open(cookie_path, 'r', encoding='utf-8') as f:
+                    raw_content = f.read().strip()
+                    return _parse_cookie_content(raw_content) or None
+    except Exception as e:
+        logger.warning(f"读取/解析 Cookie 失败: {adapter.platform_name}, {e}")
+    return None
 
 
 class LiveBatchAddItem(BaseModel):
@@ -1172,7 +1187,8 @@ async def refresh_live_status(
             raise Exception(f"找不到平台适配器: {subscription.platform}")
 
         # 使用适配器获取最新信息
-        info = await adapter.get_room_info(subscription.room_url)
+        refresh_cookies = _load_cookies_for_adapter(adapter)
+        info = await adapter.get_room_info(subscription.room_url, cookies=refresh_cookies)
         
         subscription.is_live = "true" if info['is_live'] else "false"
         subscription.anchor_name = info['anchor_name'] or subscription.anchor_name
@@ -1221,7 +1237,8 @@ async def start_recording(
 
         resolved_room_id = getattr(subscription, "room_id", None) or ""
         try:
-            room_info = await adapter.get_room_info(subscription.room_url)
+            record_cookies = _load_cookies_for_adapter(adapter)
+            room_info = await adapter.get_room_info(subscription.room_url, cookies=record_cookies)
             if room_info:
                 fetched_room_id = room_info.get("room_id") or ""
                 if fetched_room_id and fetched_room_id != resolved_room_id:
@@ -1234,7 +1251,7 @@ async def start_recording(
             logger.debug(f"手动录制获取 room_id 失败，继续使用缓存值: {room_err}")
 
         # 使用适配器获取流地址
-        stream_data = await adapter.get_stream_url(subscription.room_url, subscription.quality)
+        stream_data = await adapter.get_stream_url(subscription.room_url, subscription.quality, cookies=record_cookies)
         
         if not stream_data.get('is_live'):
             raise HTTPException(status_code=400, detail="主播未开播或无法获取流")
@@ -1432,10 +1449,11 @@ async def get_play_url(sub_id: str, db: Session = Depends(get_session)):
         if not adapter:
             return {"success": False, "message": "不支持的平台"}
 
-        stream_data = await adapter.get_stream_url(subscription.room_url, "OD")  # 默认原画播放
-        
+        play_cookies = _load_cookies_for_adapter(adapter)
+        stream_data = await adapter.get_stream_url(subscription.room_url, "OD", cookies=play_cookies)  # 默认原画播放
+
         if not stream_data.get('is_live'):
-             return {"success": False, "message": "主播当前未开播"}
+            return {"success": False, "message": "主播当前未开播"}
              
         # 实时播放优先使用适配器给出的播放链路（与录制链路解耦）
         url = stream_data.get('play_url') or stream_data.get('url')
@@ -1517,8 +1535,9 @@ async def proxy_live_stream(sub_id: str, db: Session = Depends(get_session)):
         if not adapter:
             raise HTTPException(status_code=400, detail="不支持的平台")
 
+        play_cookies = _load_cookies_for_adapter(adapter)
         # 重新获取一遍最新流地址，确保直播仍然在线
-        stream_data = await adapter.get_stream_url(subscription.room_url, "原画")
+        stream_data = await adapter.get_stream_url(subscription.room_url, "原画", cookies=play_cookies)
         if not stream_data.get("is_live"):
             raise HTTPException(status_code=400, detail="主播当前未开播")
 
