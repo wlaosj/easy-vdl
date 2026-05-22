@@ -50,7 +50,7 @@
 
     <div v-else class="page-content">
       <!-- 模式切换标签 -->
-      <div class="mode-tabs">
+      <div v-if="(!selectedStreamerId && activeTab === 'ai') || (!manualStreamerId && activeTab === 'manual')" class="mode-tabs">
         <button class="mode-tab" :class="{ active: activeTab === 'ai' }" @click="activeTab = 'ai'">
           <Icon name="zap" :size="15" />
           <span>智能切片</span>
@@ -125,32 +125,52 @@
       </div>
 
       <template v-if="activeTab === 'ai' && selectedStreamerId">
-      <div class="page-header card mobile-sticky-header">
-        <button class="back-btn" @click="goBackToStreamerList">
-          <Icon name="chevron-left" :size="18" />
-          <span class="back-btn-text">返回博主选择</span>
-        </button>
-        <div class="header-divider"></div>
-        <div class="current-streamer">
-          <img v-if="selectedStreamer?.avatar_url" :src="selectedStreamer.avatar_url" class="header-avatar" referrerpolicy="no-referrer" />
-          <div v-else class="header-avatar-placeholder">{{ (selectedStreamer?.anchor_name || '播')[0] }}</div>
-          <div>
-            <div class="header-name">{{ selectedStreamer?.anchor_name || '未知主播' }}</div>
-            <div class="header-sub">
-              有弹幕录制
-              <template v-if="recordDateFilterMode === 'all'">
-                {{ selectedStreamerRecords.length }} 条
-              </template>
-              <template v-else>
-                {{ selectedStreamerRecordsFiltered.length }} / {{ selectedStreamerRecords.length }} 条
-              </template>
+      <div class="content-grid workspace-grid">
+        <div class="records-column">
+          <!-- 紧凑切换标签 -->
+          <div class="mode-tabs compact-mode-tabs">
+            <button class="mode-tab" :class="{ active: activeTab === 'ai' }" @click="activeTab = 'ai'">
+              <Icon name="zap" :size="14" />
+              <span>智能切片</span>
+            </button>
+            <button class="mode-tab" :class="{ active: activeTab === 'manual' }" @click="activeTab = 'manual'">
+              <Icon name="edit" :size="14" />
+              <span>手动切片</span>
+            </button>
+          </div>
+
+          <!-- 紧凑博主信息头部 -->
+          <div class="page-header card compact-page-header">
+            <button class="back-btn compact-back-btn" @click="goBackToStreamerList">
+              <Icon name="chevron-left" :size="16" />
+              <span class="back-btn-text">返回</span>
+            </button>
+            <div class="header-divider"></div>
+            <div class="current-streamer">
+              <img v-if="selectedStreamer?.avatar_url" :src="selectedStreamer.avatar_url" class="header-avatar compact-avatar" referrerpolicy="no-referrer" />
+              <div v-else class="header-avatar-placeholder compact-avatar">{{ (selectedStreamer?.anchor_name || '播')[0] }}</div>
+              <div class="streamer-info">
+                <div class="header-name compact-name">
+                  <span class="streamer-name-text">{{ selectedStreamer?.anchor_name || '未知主播' }}</span>
+                  <span v-if="selectedStreamer?.platform" class="header-platform-tag" :class="platformTagClass(selectedStreamer.platform)">
+                    {{ platformTagText(selectedStreamer.platform) }}
+                  </span>
+                </div>
+                <div class="header-sub compact-sub">
+                  有弹幕录制
+                  <template v-if="recordDateFilterMode === 'all'">
+                    {{ selectedStreamerRecords.length }} 条
+                  </template>
+                  <template v-else>
+                    {{ selectedStreamerRecordsFiltered.length }}/{{ selectedStreamerRecords.length }}
+                  </template>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="content-grid">
-        <div class="records-panel card mobile-records-panel">
+          <!-- 录制列表面板 -->
+          <div class="records-panel card mobile-records-panel flex-1">
           <div class="panel-title">录制记录</div>
           <div v-if="selectedStreamerRecords.length === 0" class="empty">该博主暂无可分析的弹幕录制记录</div>
           <template v-else>
@@ -194,9 +214,13 @@
                 @click="selectRecord(r)"
               >
                 <div class="record-line1">
-                  <span class="record-badge">{{ platformTagText(r.platform) }}</span>
                   <span class="record-time">{{ formatTime(r.start_time) }}</span>
-                  <span v-if="recordFormatExt(r.file_path)" class="record-format-tag">{{ recordFormatExt(r.file_path) }}</span>
+                  <span class="record-mid-tags">
+                    <span v-if="recordFormatExt(r.file_path)" class="record-format-tag">{{ recordFormatExt(r.file_path) }}</span>
+                    <span class="record-meta-info">
+                      <span>{{ recordDurationText(r) }}</span>
+                    </span>
+                  </span>
                   <span class="record-right-tags">
                     <span
                       v-if="recordHighlightTagText(r)"
@@ -205,19 +229,15 @@
                     >
                       {{ recordHighlightTagText(r) }}
                     </span>
-                    <span class="record-status">{{ recordStatusText(r.status) }}</span>
+                    <span class="record-status" :class="recordStatusTagClass(r.status)">{{ recordStatusText(r.status) }}</span>
                   </span>
-                </div>
-                <div class="record-line2">
-                  <span>{{ recordDurationText(r) }}</span>
-                  <span v-if="r.file_size" class="record-sep">·</span>
-                  <span v-if="r.file_size">{{ formatBytes(r.file_size) }}</span>
                 </div>
               </button>
             </div>
           </template>
         </template>
       </div>
+    </div> <!-- records-column ends here -->
 
         <div class="analysis-panel card mobile-analysis-panel">
           <div class="controls">
@@ -676,24 +696,44 @@
 
           <!-- 第二步：录制列表 -->
           <template v-else>
-            <div class="page-header card mobile-sticky-header">
-              <button class="back-btn" @click="backManualStreamerList">
-                <Icon name="chevron-left" :size="18" />
-                <span class="back-btn-text">返回博主选择</span>
-              </button>
-              <div class="header-divider"></div>
-              <div class="current-streamer">
-                <img v-if="manualStreamerAvatar" :src="manualStreamerAvatar" class="header-avatar" referrerpolicy="no-referrer" />
-                <div v-else class="header-avatar-placeholder">{{ (manualStreamerName || '播')[0] }}</div>
-                <div>
-                  <div class="header-name">{{ manualStreamerName }}</div>
-                  <div class="header-sub">{{ filteredManualStreamerRecords.length }} / {{ manualStreamerRecords.length }} 条录制</div>
+            <div class="content-grid workspace-grid">
+              <div class="records-column">
+                <!-- 紧凑切换标签 -->
+                <div class="mode-tabs compact-mode-tabs">
+                  <button class="mode-tab" :class="{ active: activeTab === 'ai' }" @click="activeTab = 'ai'">
+                    <Icon name="zap" :size="14" />
+                    <span>智能切片</span>
+                  </button>
+                  <button class="mode-tab" :class="{ active: activeTab === 'manual' }" @click="activeTab = 'manual'">
+                    <Icon name="edit" :size="14" />
+                    <span>手动切片</span>
+                  </button>
                 </div>
-              </div>
-            </div>
 
-            <div class="content-grid">
-              <div class="records-panel card mobile-records-panel">
+                <!-- 紧凑博主信息头部 -->
+                <div class="page-header card compact-page-header">
+                  <button class="back-btn compact-back-btn" @click="backManualStreamerList">
+                    <Icon name="chevron-left" :size="16" />
+                    <span class="back-btn-text">返回</span>
+                  </button>
+                  <div class="header-divider"></div>
+                  <div class="current-streamer">
+                    <img v-if="manualStreamerAvatar" :src="manualStreamerAvatar" class="header-avatar compact-avatar" referrerpolicy="no-referrer" />
+                    <div v-else class="header-avatar-placeholder compact-avatar">{{ (manualStreamerName || '播')[0] }}</div>
+                    <div class="streamer-info">
+                      <div class="header-name compact-name">
+                        <span class="streamer-name-text">{{ manualStreamerName }}</span>
+                        <span v-if="selectedManualStreamer?.platform" class="header-platform-tag" :class="platformTagClass(selectedManualStreamer.platform)">
+                          {{ platformTagText(selectedManualStreamer.platform) }}
+                        </span>
+                      </div>
+                      <div class="header-sub compact-sub">{{ filteredManualStreamerRecords.length }}/{{ manualStreamerRecords.length }}条录制</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 录制列表面板 -->
+                <div class="records-panel card mobile-records-panel flex-1">
                 <div class="panel-title">录制记录</div>
                 <div class="records-toolbar">
                   <div class="records-filter">
@@ -730,9 +770,13 @@
                       @click="selectManualRecord(r)"
                     >
                       <div class="record-line1">
-                        <span class="record-badge">{{ platformTagText(r.platform) }}</span>
                         <span class="record-time">{{ formatTime(r.start_time) }}</span>
-                        <span v-if="recordFormatExt(r.file_path)" class="record-format-tag">{{ recordFormatExt(r.file_path) }}</span>
+                        <span class="record-mid-tags">
+                          <span v-if="recordFormatExt(r.file_path)" class="record-format-tag">{{ recordFormatExt(r.file_path) }}</span>
+                          <span class="record-meta-info">
+                            <span>{{ recordDurationText(r) }}</span>
+                          </span>
+                        </span>
                         <span class="record-right-tags">
                           <span
                             v-if="recordManualClipTagText(r)"
@@ -741,18 +785,14 @@
                           >
                             {{ recordManualClipTagText(r) }}
                           </span>
-                          <span class="record-status">{{ recordStatusText(r.status) }}</span>
+                           <span class="record-status" :class="recordStatusTagClass(r.status)">{{ recordStatusText(r.status) }}</span>
                         </span>
-                      </div>
-                      <div class="record-line2">
-                        <span>{{ recordDurationText(r) }}</span>
-                        <span v-if="r.file_size" class="record-sep">·</span>
-                        <span v-if="r.file_size">{{ formatBytes(r.file_size) }}</span>
                       </div>
                     </button>
                   </div>
                 </template>
               </div>
+            </div> <!-- records-column ends here -->
 
               <!-- ===== 手动切片结果面板 ===== -->
               <div class="analysis-panel card mobile-analysis-panel">
@@ -1192,6 +1232,7 @@ const filteredStreamers = computed(() => {
 
 const selectedStreamer = computed(() => streamerList.value.find(s => s.id === selectedStreamerId.value) || null)
 const selectedRecord = computed(() => selectedStreamerRecords.value.find(r => String(r.id) === String(selectedRecordId.value || '')) || null)
+const selectedManualStreamer = computed(() => manualStreamerList.value.find(s => s.id === manualStreamerId.value) || null)
 
 function platformTagText(platform) {
   const key = String(platform || '').toLowerCase()
@@ -1524,11 +1565,11 @@ function recordDurationText(record) {
 function recordStatusText(status) {
   const s = String(status || '').toLowerCase()
   if (s === 'recording') return '录制中'
-  if (s === 'stopped') return '已中断'
-  if (s === 'completed') return '已完成'
+  if (s === 'stopped') return '录制中断'
+  if (s === 'completed') return '录制完成'
   if (s === 'failed') return '录制失败'
   if (s === 'queued') return '排队中'
-  if (s === 'running') return '进行中'
+  if (s === 'running') return '正在录制'
   return String(status || '-')
 }
 
@@ -1554,6 +1595,14 @@ function recordHighlightTagClass(record) {
   if (state === 'running') return 'is-running'
   if (state === 'failed') return 'is-failed'
   return ''
+}
+
+function recordStatusTagClass(status) {
+  const s = String(status || '').toLowerCase()
+  if (s === 'completed') return 'is-success'
+  if (s === 'recording' || s === 'running') return 'is-running'
+  if (s === 'failed') return 'is-failed'
+  return 'is-neutral'
 }
 
 function recordManualClipTagText(record) {
@@ -2355,6 +2404,7 @@ async function loadLiveVideos() {
         source: 'live',
         created_at: r.start_time,
         start_time: r.start_time,
+        status: r.status,
         statusRaw: r.status,
         subscription_id: r.subscription_id,
         anchor_name: r.anchor_name,
@@ -2405,6 +2455,7 @@ async function loadDownloadVideos() {
         source: 'download',
         created_at: t.created_at,
         author: t.author_info?.nickname,
+        status: t.status,
         statusRaw: t.status,
       }))
     // 异步加载缩略图
@@ -4063,6 +4114,22 @@ h2 {
 
 .header-name {
   font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.header-platform-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-left: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .header-sub {
@@ -4129,6 +4196,7 @@ h2 {
   gap: 8px;
   /* 左侧面板整体就是可滚动区域 */
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
 }
 
@@ -4193,25 +4261,51 @@ h2 {
   font-weight: 700;
 }
 
+.record-mid-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .record-right-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.record-meta-info {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  min-width: 80px;
-  justify-content: flex-end;
+  justify-content: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
 }
 
 .record-format-tag {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   height: 20px;
-  padding: 0 7px;
-  border-radius: 4px;
+  padding: 0 8px;
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   background: var(--color-bg-tertiary);
   color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
   flex-shrink: 0;
   letter-spacing: 0.5px;
 }
@@ -4230,9 +4324,9 @@ h2 {
 }
 
 .record-highlight-tag.is-success {
-  color: #0b7a44;
-  background: rgba(16, 185, 129, 0.14);
-  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--color-primary, #e67e22);
+  background: var(--color-primary-light, rgba(230, 126, 34, 0.1));
+  border-color: rgba(230, 126, 34, 0.25);
 }
 
 .record-highlight-tag.is-running {
@@ -4248,14 +4342,40 @@ h2 {
 }
 
 .record-status {
-  color: var(--color-text-secondary);
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
-.record-line2 {
-  margin-top: 6px;
-  font-size: 12px;
+.record-status.is-success {
+  color: #0b7a44;
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.record-status.is-running {
+  color: #9a6700;
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.record-status.is-failed {
+  color: #b42318;
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.record-status.is-neutral {
   color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border);
 }
 
 .record-sep {
@@ -4279,12 +4399,13 @@ h2 {
 }
 
 .records-filter-select {
-  min-width: 118px;
+  min-width: 100px;
   max-width: 180px;
 }
 
 .records-date-input {
-  min-width: 130px;
+  min-width: 110px;
+  width: 110px;
 }
 
 .records-count {
@@ -5911,8 +6032,7 @@ input[type="number"] {
     padding: 10px 12px;
   }
 
-  .record-line1,
-  .record-line2 {
+  .record-line1 {
     display: contents;
   }
 
@@ -5931,20 +6051,38 @@ input[type="number"] {
     line-height: 1.3;
   }
 
-  .record-format-tag {
+  .record-mid-tags {
     order: 3;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: auto;
+    margin-left: auto;
+    padding: 0;
+    border: none;
+  }
+
+  .record-format-tag {
     height: 18px;
     font-size: 10px;
+    padding: 0 6px;
+  }
+
+  .record-meta-info {
+    height: 18px;
+    font-size: 10px;
+    padding: 0 6px;
   }
 
   .record-right-tags {
     order: 4;
     display: inline-flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
     min-width: auto;
-    margin: 0;
+    margin: 0 0 0 12px;
     padding: 0;
     border: none;
   }
@@ -5958,16 +6096,13 @@ input[type="number"] {
   }
 
   .record-status {
-    font-size: 11px;
-    opacity: 0.7;
-    margin-right: 4px;
-  }
-
-  /* 使得 record-line2 的内容紧跟在 tags 后面 */
-  .record-line2 span {
-    order: 5;
-    font-size: 11px;
-    color: var(--color-text-tertiary);
+    height: 18px;
+    font-size: 10px;
+    padding: 0 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-right: 0;
+    opacity: 1;
   }
 
   .record-sep {
@@ -7014,5 +7149,107 @@ input[type="number"] {
   outline: none;
   cursor: pointer;
   height: 28px;
+}
+
+/* ============ 紧凑工作区网格布局 ============ */
+.workspace-grid {
+  height: calc(100vh - 76px) !important; /* 无顶部遮挡，让网格直达顶部，充分利用视口高度 */
+  margin-top: 0 !important;
+}
+
+.records-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  overflow: hidden;
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.records-column .flex-1 {
+  flex: 1;
+  min-height: 0; /* 防止 Flex 子元素溢出 */
+}
+
+/* ============ 紧凑模式标签 ============ */
+.compact-mode-tabs {
+  width: 100% !important;
+  display: flex !important;
+  margin-bottom: 0 !important;
+  box-sizing: border-box;
+}
+
+.compact-mode-tabs .mode-tab {
+  flex: 1;
+  justify-content: center;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+}
+
+/* ============ 紧凑博主信息头部 ============ */
+.compact-page-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px !important;
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--color-border-primary);
+  flex-shrink: 0;
+}
+
+.compact-page-header .current-streamer {
+  flex: 1;
+  min-width: 0;
+}
+
+.compact-back-btn {
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  white-space: nowrap;
+}
+
+.compact-back-btn .back-btn-text {
+  font-size: 12px !important;
+}
+
+.compact-avatar {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50%;
+}
+
+.streamer-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0; /* 允许截断 */
+}
+
+.compact-name {
+  font-size: 14px !important;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.streamer-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.compact-sub {
+  font-size: 11px !important;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 </style>
