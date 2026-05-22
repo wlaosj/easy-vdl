@@ -329,9 +329,18 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
         return {"type": 1, "is_live": False}
 
     try:
-        json_str = re.search('<script>window.__INITIAL_STATE__=(.*?);\\(function\\(\\)\\{var s;', html_str).group(1)
-        play_list = re.findall('(\\{"liveStream".*?),"gameInfo', json_str)[0] + "}"
-        play_list = json.loads(play_list)
+        match = re.search(r'window\.__INITIAL_STATE__\s*=\s*(.*?);\(function', html_str)
+        if not match:
+            match = re.search(r'window\.__INITIAL_STATE__\s*=\s*(.*?);', html_str)
+        if not match:
+            raise AttributeError("window.__INITIAL_STATE__ not found")
+        json_str = match.group(1)
+        json_str = re.sub(r':\s*undefined\b', ': null', json_str)
+        state_data = json.loads(json_str)
+        play_lists = state_data.get('liveroom', {}).get('playList', [])
+        if not play_lists:
+            raise IndexError("playList is empty")
+        play_list = play_lists[0]
     except (AttributeError, IndexError, json.JSONDecodeError) as e:
         print(f"Failed to parse JSON data from {url}. Error: {e}")
         return {"type": 1, "is_live": False}

@@ -48,6 +48,43 @@ def _apply_transcode_success_to_record(rec: LiveRecord, mp4_path: str) -> None:
         rec.file_size = os.path.getsize(mp4_path)
 
 
+def _parse_cookie_content(cookie_str: Optional[str]) -> Optional[str]:
+    """
+    统一 Cookie 解析逻辑
+    支持: 标准 HTTP Header 格式 和 Netscape 文件格式
+    """
+    if not cookie_str:
+        return None
+        
+    cookie_str = cookie_str.strip()
+    
+    # 1. 检测 Netscape 格式
+    if '\t' in cookie_str or cookie_str.startswith('#'):
+        try:
+            cookies = []
+            for line in cookie_str.splitlines():
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                parts = line.split('\t')
+                if len(parts) >= 7:
+                    name = parts[5]
+                    value = parts[6]
+                    cookies.append(f"{name}={value}")
+            
+            if cookies:
+                return "; ".join(cookies)
+        except Exception:
+            pass
+    
+    # 2. 处理标准格式: 去除换行和 "Cookie:" 前缀
+    if cookie_str.lower().startswith("cookie:"):
+        cookie_str = cookie_str[7:].strip()
+        
+    return cookie_str.replace('\n', '').replace('\r', '').strip()
+
+
 class LiveBatchAddItem(BaseModel):
     room_url: str = Field(..., description="直播间链接")
     platform: Optional[str] = Field(None, description="平台（可选，默认自动识别）")
@@ -439,17 +476,33 @@ async def _create_live_subscription(
 
     logger.info(f"使用适配器 [{platform}] 获取直播间信息")
 
+    # 获取该平台对应的 Cookie (如果有配置的话)
+    cookies = None
+    try:
+        from routers.cookie_manager import COOKIE_PATHS
+        if getattr(adapter, "platform_name", None) and adapter.platform_name in COOKIE_PATHS:
+            cookie_path = COOKIE_PATHS[adapter.platform_name]
+            if cookie_path and os.path.exists(cookie_path):
+                with open(cookie_path, 'r', encoding='utf-8') as f:
+                    raw_content = f.read().strip()
+                    cookies = _parse_cookie_content(raw_content) or None
+    except Exception as cookie_err:
+        logger.warning(f"获取直播间信息时读取/解析 Cookie 失败: {platform}, {cookie_err}")
+
     # 4. 获取直播间信息 (统一接口调用)
     try:
         info = await asyncio.wait_for(
-            adapter.get_room_info(room_url),
+            adapter.get_room_info(room_url, cookies=cookies),
             timeout=ROOM_INFO_TIMEOUT_SECONDS
         )
     except asyncio.TimeoutError:
         raise HTTPException(status_code=400, detail="获取直播间信息超时，请稍后重试")
     except Exception as e:
         logger.error(f"获取直播间信息失败: {e}", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"获取直播间信息失败: {str(e)}")
+        err_msg = f"获取直播间信息失败: {str(e)}"
+        if platform == 'kuaishou':
+            err_msg += " (快手平台通常必须在“系统设置 -> Cookie管理”中配置有效的 Cookie，请检查配置是否正确且未失效)"
+        raise HTTPException(status_code=400, detail=err_msg)
 
     anchor_name = info['anchor_name']
     room_id = info['room_id']
