@@ -44,6 +44,8 @@ class TelegramBotService:
             cls._instance._bot_batch_context = {}
             # 发送类错误的限频状态：key -> {"last_log": monotonic, "suppressed": int}
             cls._instance._tg_send_log_state = {}
+            # 临时挂起会话字典
+            cls._instance.pending_confirmations = {}
         return cls._instance
 
     @staticmethod
@@ -622,31 +624,9 @@ class TelegramBotService:
 
         # 3. 链接识别 (非命令文本)
         elif self._is_url(text):
-            # 提取 URL
-            url_match = re.search(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)
-            if url_match:
-                url = url_match.group(0)
-                
-                # 智能识别明确的直播链接。
-                # 注意：xhslink.com 是小红书通用短链，包含笔记/主页/直播，不能仅凭域名判定为直播。
-                if any(host in url for host in [
-                    'live.douyin.com',
-                    'live.bilibili.com',
-                    'huya.com',
-                    'xiaohongshu.com/livestream',
-                    'youtube.com/live/',
-                    'miguvideo.com',
-                ]):
-                    msg = (
-                        "💡 **检测到直播录制链接**\n\n"
-                        "这是一个直播间链接，建议使用直播订阅功能进行监控录制：\n"
-                        f"`/live {url}`\n\n"
-                        "订阅后系统将自动监控开播并录制。"
-                    )
-                    await self.send_message(chat_id, msg)
-                    return
-
-            await self._handle_download_request(chat_id, text)
+            # 异步检测并弹出确认卡片，绝不阻塞轮询主循环
+            asyncio.create_task(self._async_analyze_and_confirm_url(chat_id, text))
+            return
         
         else:
             # 只有在私聊时才回复闲聊，群组里不回复
@@ -656,6 +636,240 @@ class TelegramBotService:
     def _is_url(self, text: str) -> bool:
         """简单检查是否包含 URL"""
         return 'http://' in text or 'https://' in text
+
+    def _clean_expired_confirmations(self):
+        """自动清理 20 分钟前的挂起确认会话"""
+        now = time.time()
+        expired_keys = []
+        for k, v in self.pending_confirmations.items():
+            if now - v.get("created_at", 0) > 20 * 60:
+                expired_keys.append(k)
+        for k in expired_keys:
+            self.pending_confirmations.pop(k, None)
+
+    async def _async_resolve_url(self, url: str) -> str:
+        """异步还原短链接获取真实重定向 URL"""
+        if not url:
+            return url
+        
+        # 1. 抖音短链
+        if 'v.douyin.com' in url and '/note/' not in url and '/video/' not in url:
+            try:
+                import httpx
+                async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+                    response = await client.head(url)
+                    resolved = str(response.url)
+                    logger.debug(f"[TG Bot] 抖音短链接重定向: {url} -> {resolved}")
+                    return resolved
+            except Exception as e:
+                logger.warning(f"[TG Bot] 解析抖音短链接失败: {e}，使用原URL")
+                
+        # 2. 小红书短链
+        elif 'xhslink.com' in url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        url,
+                        allow_redirects=True,
+                        timeout=aiohttp.ClientTimeout(total=8)
+                    ) as resp:
+                        resolved = str(resp.url)
+                        logger.debug(f"[TG Bot] 小红书短链接重定向: {url} -> {resolved}")
+                        return resolved
+            except Exception as e:
+                logger.warning(f"[TG Bot] 解析小红书短链接失败: {e}，使用原URL")
+                
+        # 3. 快手短链
+        elif 'v.kuaishou.com' in url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+                    async with session.get(
+                        url,
+                        headers=headers,
+                        allow_redirects=True,
+                        timeout=aiohttp.ClientTimeout(total=8)
+                    ) as resp:
+                        resolved = str(resp.url)
+                        logger.debug(f"[TG Bot] 快手短链接重定向: {url} -> {resolved}")
+                        return resolved
+            except Exception as e:
+                logger.warning(f"[TG Bot] 解析快手短链接失败: {e}，使用原URL")
+                
+        # 4. B站短链接
+        elif 'b23.tv' in url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        url,
+                        allow_redirects=True,
+                        timeout=aiohttp.ClientTimeout(total=8)
+                    ) as resp:
+                        resolved = str(resp.url)
+                        logger.debug(f"[TG Bot] B站短链接重定向: {url} -> {resolved}")
+                        return resolved
+            except Exception as e:
+                logger.warning(f"[TG Bot] 解析B站短链接失败: {e}，使用原URL")
+                
+        return url
+
+    async def _async_analyze_and_confirm_url(self, chat_id: str, text: str):
+        """异步还原、分析 URL，并向用户展示确认卡片"""
+        try:
+            # 1. 提取 URL
+            url_match = re.search(
+                r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
+                text
+            )
+            if not url_match:
+                return
+            original_url = url_match.group(0)
+            
+            # 2. 发送过渡等待提示并获取消息 ID
+            loading_msg = f"🔍 正在智能识别与解析链接...\n`{original_url}`"
+            msg_id = await self.send_message(
+                chat_id,
+                loading_msg,
+                parse_mode="Markdown",
+                return_message_id=True
+            )
+            if not msg_id:
+                return
+                
+            # 3. 异步短链解析还原
+            resolved_url = await self._async_resolve_url(original_url)
+            
+            # 4. 链接判定分流
+            category = 'dl'
+            hint = None
+            
+            # 4.1 直播链接识别
+            if (
+                ('xhslink.com' in original_url or 'xiaohongshu.com/livestream' in resolved_url)
+                and ('正在直播' in text or 'livestream' in resolved_url)
+            ) or (
+                ('v.kuaishou.com' in original_url or 'live.kuaishou.com' in resolved_url)
+                and ('直播' in text or 'live.kuaishou.com' in resolved_url)
+            ):
+                category = 'live'
+            elif any(host in resolved_url for host in [
+                'live.douyin.com',
+                'webcast.amemv.com',
+                'live.bilibili.com',
+                'huya.com',
+                'xiaohongshu.com/livestream',
+                'youtube.com/live/',
+                'miguvideo.com',
+                'live.kuaishou.com',
+            ]):
+                category = 'live'
+                
+            # 4.2 订阅链接识别（如非直播链接）
+            if category != 'live':
+                # 预判明显的订阅类型链接
+                hint = self._detect_subscription_link(resolved_url)
+                
+                # 对抖音链接深入判定合集或博主主页
+                if not hint and 'douyin.com' in resolved_url and not any(p in resolved_url for p in ['/video/', '/note/']):
+                    try:
+                        is_collection = await asyncio.wait_for(
+                            self._check_if_douyin_collection(resolved_url),
+                            timeout=8.0
+                        )
+                        if is_collection:
+                            hint = "抖音合集"
+                        else:
+                            from routers.douyin import douyin_api
+                            user_info = await asyncio.wait_for(
+                                douyin_api.parse_user_profile(resolved_url),
+                                timeout=8.0
+                            )
+                            if user_info and user_info.get("user_id"):
+                                nickname = user_info.get('nickname', '未知')
+                                hint = f"抖音博主「{nickname}」"
+                    except Exception as e:
+                        logger.debug(f"[TG Bot] 抖音订阅类型解析出错: {e}")
+                        
+                # 对B站短链重定向进行更精细的解析
+                if not hint and ('space.bilibili.com' in resolved_url or '/space/' in resolved_url):
+                    hint = "B站UP主空间"
+                elif not hint and ('favlist' in resolved_url or 'fid=' in resolved_url):
+                    hint = "B站收藏夹"
+                    
+                if hint:
+                    category = 'sub'
+            
+            # 5. 清洗 URL 用于展示与处理
+            clean_url = self._clean_url(resolved_url)
+            
+            # 6. 生成挂起缓存会话
+            self._clean_expired_confirmations()
+            import uuid
+            temp_id = str(uuid.uuid4())[:8]
+            while temp_id in self.pending_confirmations:
+                temp_id = str(uuid.uuid4())[:8]
+                
+            self.pending_confirmations[temp_id] = {
+                "url": resolved_url,
+                "original_url": original_url,
+                "type": category,
+                "hint": hint,
+                "created_at": time.time()
+            }
+            
+            # 7. 组装内联键盘与卡片内容
+            inline_keyboard = []
+            escaped_url = self.escape_markdown(clean_url)
+            
+            if category == 'live':
+                card_text = (
+                    "📡 *【 直播监控确认 】*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "*检测到直播录制链接：*\n"
+                    f"🔗 `{escaped_url}`\n\n"
+                    "💡 *智能监控服务说明：*\n"
+                    "系统将自动开始 24 小时不间断监控该直播间。一旦该主播开启直播，即刻自动启动高清无损录制，不错过任何精彩瞬间！"
+                )
+                inline_keyboard = [
+                    [{"text": "⚡ 确认加入自动监控录制 📡", "callback_data": f"cfm:live:{temp_id}"}],
+                    [{"text": "❌ 放弃 / 取消本次操作", "callback_data": f"cfm:can:{temp_id}"}]
+                ]
+            elif category == 'sub':
+                escaped_hint = self.escape_markdown(hint)
+                card_text = (
+                    f"📺 *【 博主/合集订阅确认 】*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"*检测到 {escaped_hint}：*\n"
+                    f"🔗 `{escaped_url}`\n\n"
+                    f"💡 *全自动订阅服务说明：*\n"
+                    f"建议将该源加入订阅列表。系统将自动进行定时轮询监控，并为您自动下载后续发布的最新视频内容！"
+                )
+                inline_keyboard = [
+                    [{"text": "🔥 开启全自动监控与订阅 (推荐) 📺", "callback_data": f"cfm:sub:{temp_id}"}],
+                    [{"text": "⬇️ 仅下载当前这单个视频", "callback_data": f"cfm:dl:{temp_id}"}],
+                    [{"text": "❌ 放弃 / 取消本次操作", "callback_data": f"cfm:can:{temp_id}"}]
+                ]
+            else:
+                card_text = (
+                    "📥 *【 单视频下载确认 】*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "*检测到单视频下载链接：*\n"
+                    f"🔗 `{escaped_url}`\n\n"
+                    "💡 *下载任务服务说明：*\n"
+                    "确认后，系统将立即为您解析该视频，并创建高速后台下载任务。"
+                )
+                inline_keyboard = [
+                    [{"text": "🚀 立即创建后台下载任务 📥", "callback_data": f"cfm:dl:{temp_id}"}],
+                    [{"text": "❌ 放弃 / 取消本次操作", "callback_data": f"cfm:can:{temp_id}"}]
+                ]
+                
+            # 8. 更新临时过渡消息，展示完整卡片与内联键盘
+            await self._edit_message(chat_id, msg_id, card_text, inline_keyboard)
+            
+        except Exception as ex:
+            logger.error(f"处理异步 URL 识别失败: {ex}\n{traceback.format_exc()}")
 
     def _clean_url(self, url: str) -> str:
         """清洗 URL，剔除冗余的追踪参数"""
@@ -1180,7 +1394,7 @@ class TelegramBotService:
                         status_icon = "📡" # 监控中
                         
                     # 平台名称
-                    platform_map = {"douyin": "抖音", "bilibili": "B站", "youtube": "油管", "migu": "咪咕", "tiktok": "TK"}
+                    platform_map = {"douyin": "抖音", "bilibili": "B站", "youtube": "油管", "migu": "咪咕", "tiktok": "TK", "kuaishou": "快手"}
                     p_name = platform_map.get(sub.platform, sub.platform)
                     
                     # 避免 Markdown 报错
@@ -1435,6 +1649,48 @@ class TelegramBotService:
                     logger.error(f"取消下载失败: {e}")
                     await ack_once("取消失败", show_alert=False)
                 return
+
+            # 确认/分流交互回调 cfm:action:temp_id
+            if data.startswith('cfm:'):
+                parts = data.split(':')
+                if len(parts) >= 3:
+                    action = parts[1]
+                    temp_id = parts[2]
+                    
+                    if action == 'can':
+                        await ack_once("🛑 操作已取消")
+                        if temp_id in self.pending_confirmations:
+                            self.pending_confirmations.pop(temp_id, None)
+                        if message_id:
+                            await self._delete_message(chat_id, message_id)
+                        return
+                        
+                    conf = self.pending_confirmations.get(temp_id)
+                    if not conf:
+                        await self._answer_callback_query(query_id, "⚠️ 会话已过期或失效，请重新发送链接", show_alert=True)
+                        if message_id:
+                            await self._delete_message(chat_id, message_id)
+                        return
+                        
+                    target_url = conf.get("url")
+                    
+                    # 移出挂起缓存
+                    self.pending_confirmations.pop(temp_id, None)
+                    
+                    # 自动删除当前的交互卡片以防界面杂乱与二次点击
+                    if message_id:
+                        await self._delete_message(chat_id, message_id)
+                        
+                    if action == 'live':
+                        await ack_once("📡 正在添加监控录制...")
+                        asyncio.create_task(self._handle_add_live_subscription(chat_id, target_url))
+                    elif action == 'sub':
+                        await ack_once("📺 正在为您添加视频订阅...")
+                        asyncio.create_task(self._handle_subscribe_command(chat_id, target_url))
+                    elif action == 'dl':
+                        await ack_once("📥 正在创建下载任务...")
+                        asyncio.create_task(self._handle_download_request(chat_id, target_url, force_download=True))
+                    return
 
             # 1. 分页处理: sp:page:platform
             if data.startswith('sp:'):
@@ -2531,6 +2787,27 @@ class TelegramBotService:
                 except Exception as e:
                     logger.warning(f"[TG Bot] 解析小红书短链接失败: {e}，使用原URL")
 
+            # 快手短链需要先还原再判断类型
+            if 'v.kuaishou.com' in url:
+                await self.send_message(chat_id, f"🔍 正在识别链接类型...\n`{url}`")
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        }
+                        async with session.get(
+                            url,
+                            headers=headers,
+                            allow_redirects=True,
+                            timeout=aiohttp.ClientTimeout(total=8)
+                        ) as resp:
+                            resolved_url = str(resp.url)
+                            if resolved_url:
+                                logger.debug(f"[TG Bot] 快手短链接重定向: {url} -> {resolved_url}")
+                                url = resolved_url
+                except Exception as e:
+                    logger.warning(f"[TG Bot] 解析快手短链接失败: {e}，使用原URL")
+
             if force_download:
                 await self.send_message(chat_id, "⚙️ **强制下载模式**\n已跳过订阅/直播分流，直接加入下载队列。")
             else:
@@ -2543,6 +2820,19 @@ class TelegramBotService:
                     await self.send_message(
                         chat_id,
                         "💡 **检测到小红书直播分享链接**\n\n"
+                        "将自动按“直播订阅”方式处理（解决短链直播误入下载队列导致失败的问题）。"
+                    )
+                    await self._handle_add_live_subscription(chat_id, url)
+                    return
+
+                # 0.1 快手直播短链/分享文案：不要走“视频下载”，直接转为“直播订阅”
+                if (
+                    ('v.kuaishou.com' in original_input_url or 'live.kuaishou.com' in url)
+                    and ('直播' in text or 'live.kuaishou.com' in url)
+                ):
+                    await self.send_message(
+                        chat_id,
+                        "💡 **检测到快手直播分享链接**\n\n"
                         "将自动按“直播订阅”方式处理（解决短链直播误入下载队列导致失败的问题）。"
                     )
                     await self._handle_add_live_subscription(chat_id, url)
@@ -2675,6 +2965,7 @@ class TelegramBotService:
             elif 'tiktok' in url: source = 'tiktok'
             elif 'music.163.com' in url: source = 'netease'
             elif 'x.com' in url or 'twitter.com' in url: source = 'x'
+            elif 'kuaishou' in url or 'gifshow' in url: source = 'kuaishou'
             
             # 4. 版权/授权检查 (仅针对通用解析 others 和 订阅功能)
             # 如果是 others (通用解析)，需要检查 License
@@ -3937,9 +4228,11 @@ class TelegramBotService:
                     adapter = adapters.get_adapter_by_platform('xhs')
                 elif 'huya.com' in url:
                     adapter = adapters.get_adapter_by_platform('huya')
+                elif any(domain in url for domain in ['kuaishou.com', 'gifshow.com', 'chenzhongtech.com']):
+                    adapter = adapters.get_adapter_by_platform('kuaishou')
             
             if not adapter:
-                await self.send_message(chat_id, "❌ 无法识别的直播链接，目前支持：抖音、B站、虎牙、小红书、油管、咪咕")
+                await self.send_message(chat_id, "❌ 无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕")
                 return
 
             platform_name = adapter.platform_name

@@ -45,25 +45,25 @@ async def _is_douyin_collection_url(url: Optional[str]) -> bool:
         if not url:
             return False
         
-        # 优先检查：如果URL明显是用户主页格式，直接返回False，避免不必要的解析
-        # 这样可以避免对用户主页链接调用 parse_collection_url 产生错误日志
-        if "/user/" in url and "/collection/" not in url:
-            # 明确是用户主页链接，不是合集
+        # 优先检查：如果URL明显是用户主页、单个视频或单个图集格式，直接返回False，避免不必要的解析
+        # 这样可以避免对单视频/单主页调用 parse_collection_url 产生错误日志与误判
+        if ("/user/" in url or "/video/" in url or "/note/" in url) and "/collection/" not in url:
+            # 明确是用户主页、单个视频或图集链接，不是合集
             return False
         
         # 明确包含合集路径
         if "/collection/" in url:
             return True
         
-        # 对于短链接，先检查重定向后的URL是否为用户主页（参考旧版逻辑）
+        # 对于短链接，先检查重定向后的URL是否为用户主页/视频/图集（参考旧版逻辑）
         if "v.douyin.com" in url:
             try:
                 import httpx
                 async with httpx.AsyncClient() as client:
                     response = await client.get(url, follow_redirects=True, timeout=5.0)
                     real_url = str(response.url)
-                    # 如果重定向后是用户主页，直接返回False
-                    if "/user/" in real_url and "/collection/" not in real_url:
+                    # 如果重定向后是用户主页、视频或图集，直接返回False
+                    if ("/user/" in real_url or "/video/" in real_url or "/note/" in real_url) and "/collection/" not in real_url:
                         return False
                     # 如果重定向后是合集链接，返回True
                     if "/collection/" in real_url:
