@@ -288,7 +288,8 @@ const platforms = [
   { key: 'huya', name: '虎牙' },
   { key: 'xhs', name: '小红书' },
   { key: 'youtube', name: 'YouTube' },
-  { key: 'migu', name: '咪咕' }
+  { key: 'migu', name: '咪咕' },
+  { key: 'kuaishou', name: '快手' }
 ]
 
 // 授权状态 - 优先读取本地缓存，避免闪烁
@@ -542,7 +543,8 @@ function getPlatformName(p) {
     huya: '虎牙',
     xhs: '小红书',
     youtube: 'YouTube',
-    migu: '咪咕'
+    migu: '咪咕',
+    kuaishou: '快手'
   }
   return map[p] || p
 }
@@ -1461,6 +1463,7 @@ watch(subscriptions, () => {
 .tag-xhs { background: linear-gradient(135deg, #FF2442 0%, #FF8999 100%); }
 .tag-youtube { background: linear-gradient(135deg, #ff4d4d 0%, #ff0000 100%); }
 .tag-migu { background: linear-gradient(135deg, #1d8ef7 0%, #4aa7ff 100%); }
+.tag-kuaishou { background: linear-gradient(135deg, #FF7D00 0%, #FF5000 100%); }
 
 .loading-state {
   flex: 1;

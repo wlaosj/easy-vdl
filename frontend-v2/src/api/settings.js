@@ -198,6 +198,15 @@ export const cookieApi = {
             enabled,
             interval_minutes: intervalMinutes
         });
+    },
+
+    // 快手 Cookie
+    saveKuaishouCookie(cookieContent) {
+        return client.post('/cookie/save/kuaishou', { cookie_content: cookieContent });
+    },
+
+    clearKuaishouCookie() {
+        return client.delete('/cookie/clear/kuaishou');
     }
 };
 

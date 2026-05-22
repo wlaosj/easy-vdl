@@ -687,6 +687,7 @@ function normalizePlatform(source) {
   if (platform.includes('instagram')) return 'instagram'
   if (platform.includes('xiaohongshu')) return 'xiaohongshu'
   if (platform.includes('netease')) return 'netease'
+  if (platform.includes('kuaishou')) return 'kuaishou'
   return 'others'
 }
 
@@ -929,6 +930,7 @@ function normalizePlatformKey(platform) {
   if (platform.startsWith('youtube')) return 'youtube'
   if (platform.startsWith('douyin')) return 'douyin'
   if (platform.startsWith('bilibili')) return 'bilibili'
+  if (platform.startsWith('kuaishou')) return 'kuaishou'
   if (['xiaohongshu', 'redbook', 'xhs'].includes(platform)) return 'xiaohongshu'
   return platform
 }
@@ -938,7 +940,7 @@ function mergePlatformDistribution(entries, total) {
     'youtube': 'YouTube', 'douyin': '抖音', 'tiktok': 'TikTok',
     'instagram': 'Instagram', 'netease': '网易云', 'bilibili': 'Bilibili',
     'xiaohongshu': '小红书', 'redbook': '小红书', 'xhs': '小红书', 'x': 'X',
-    'migu': '咪咕'
+    'migu': '咪咕', 'kuaishou': '快手'
   }
   const merged = {}
   entries.forEach(([platform, count]) => {

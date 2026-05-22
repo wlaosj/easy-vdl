@@ -445,6 +445,43 @@
       </div>
     </div>
 
+    <!-- 快手 Cookie -->
+    <div class="card" id="cookie-platform-kuaishou" :class="{ 'highlight-card': highlightPlatform === 'kuaishou' }">
+      <div class="card-header">
+        <div class="header-main">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF5000" aria-label="kuaishou-logo">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.5 13.5h-7c-.83 0-1.5-.67-1.5-1.5v-4c0-.83.67-1.5 1.5-1.5h7c.83 0 1.5.67 1.5 1.5v4c0 .83-.67 1.5-1.5 1.5zm-5-5.5h3c.28 0 .5.22.5.5s-.22.5-.5.5h-3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5z"/>
+          </svg>
+          <span class="platform-name">快手 Cookie</span>
+          <span :class="['status-tag', settingsStore.cookieStatus.kuaishou.exists ? 'success' : 'error']">
+            {{ settingsStore.cookieStatus.kuaishou.exists ? '已配置' : '未配置' }}
+          </span>
+        </div>
+        <div class="header-stats" v-if="settingsStore.cookieStatus.kuaishou.exists">
+          <div class="stat-pill"><span class="label">大小:</span> {{ settingsStore.cookieStatus.kuaishou.fileSize }}</div>
+          <div class="stat-pill"><span class="label">最后更新:</span> {{ formatDate(settingsStore.cookieStatus.kuaishou.lastUpdate) }}</div>
+        </div>
+      </div>
+      
+      <div class="card-body">
+        <div class="manual-section no-border">
+          <div class="input-header">
+            <span class="title">手动输入</span>
+            <div class="input-actions">
+              <button @click="saveKuaishouCookie" :disabled="settingsStore.saving" class="btn btn-primary btn-xs">保存</button>
+              <button @click="openClearModal('kuaishou')" class="btn btn-danger btn-xs">清除</button>
+            </div>
+          </div>
+          <textarea 
+            v-model="kuaishouCookie" 
+            placeholder="粘贴 Netscape 格式的 Cookie..."
+            class="form-textarea"
+            style="min-height: 80px;"
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
     <!-- 清除确认弹窗 -->
     <Modal
       v-model:show="showClearModal"
@@ -488,6 +525,7 @@ const instagramPassword = ref('')
 const xCookie = ref('')
 const neteaseCookie = ref('')
 const xiaohongshuCookie = ref('')
+const kuaishouCookie = ref('')
 
 const youtubeInterval = ref(10)
 const bilibiliInterval = ref(10)
@@ -508,7 +546,8 @@ const platformNames = {
   instagram: 'Instagram',
   x: 'X',
   netease: '网易云音乐',
-  xiaohongshu: '小红书'
+  xiaohongshu: '小红书',
+  kuaishou: '快手'
 }
 
 const clearModalTitle = computed(() => {
@@ -656,6 +695,21 @@ async function saveXiaohongshuCookie() {
   if (result.success) {
     toast.success('小红书 Cookie 已保存')
     xiaohongshuCookie.value = ''
+  } else {
+    toast.error(`保存失败: ${result.error}`)
+  }
+}
+
+// 保存快手 Cookie
+async function saveKuaishouCookie() {
+  if (!kuaishouCookie.value.trim()) {
+    toast.warning('请输入 Cookie 内容')
+    return
+  }
+  const result = await settingsStore.saveKuaishouCookie(kuaishouCookie.value)
+  if (result.success) {
+    toast.success('快手 Cookie 已保存')
+    kuaishouCookie.value = ''
   } else {
     toast.error(`保存失败: ${result.error}`)
   }
@@ -1232,5 +1286,26 @@ onMounted(async () => {
 .confirm-content .sub-text {
   font-size: 0.85rem;
   color: var(--color-text-tertiary);
+}
+
+/* 快手专属精致样式 */
+#cookie-platform-kuaishou {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+#cookie-platform-kuaishou::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #FF7D00 0%, #FF5000 100%);
+}
+#cookie-platform-kuaishou:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 80, 0, 0.15);
+  border-color: rgba(255, 125, 0, 0.3);
 }
 </style>

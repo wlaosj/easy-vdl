@@ -7,6 +7,7 @@ from .huya import HuyaAdapter
 from .xhs import XhsAdapter
 from .youtube import YoutubeAdapter
 from .migu import MiguAdapter
+from .kuaishou import KuaishouAdapter
 
 
 # 注册所有适配器
@@ -18,6 +19,7 @@ _ADAPTERS = [
     XhsAdapter(),
     YoutubeAdapter(),
     MiguAdapter(),
+    KuaishouAdapter(),
 ]
 
 def get_adapter(url: str) -> Optional[BaseAdapter]:

@@ -33,7 +33,8 @@ COOKIE_PATHS = {
     "tiktok": "/app/database/cookie/tiktok_cookie.txt",
     "netease": "/app/database/cookie/netease_cookie.txt",
     "xiaohongshu": "/app/database/cookie/xiaohongshu_cookie.txt",
-    "x": "/app/database/cookie/x.txt"
+    "x": "/app/database/cookie/x.txt",
+    "kuaishou": "/app/database/cookie/kuaishou_cookie.txt"
 }
 
 CREDENTIALS_FILE = "/app/database/instagram/credentials.json"
@@ -230,8 +231,8 @@ def get_cookie_status(current_user: User = Depends(get_current_user), db: Sessio
             elif platform == "bilibili" or platform == "xiaohongshu":
                 # 任务状态通过配置来判断
                 cookie_info["task_status"] = "running" if db_config["enabled"] else "not_started"
-            elif platform == "tiktok" or platform == "instagram" or platform == "netease" or platform == "x":
-                # 这些平台不支持自动更新，任务状态始终为 not_started
+            elif platform == "tiktok" or platform == "instagram" or platform == "netease" or platform == "x" or platform == "kuaishou":
+                # These platforms do not support automatic update, task status is always not_started
                 cookie_info["task_status"] = "not_started"
             
             status[platform] = cookie_info
@@ -1019,6 +1020,77 @@ def save_xiaohongshu_cookie(
         logger.error(f"保存小红书 cookie失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"保存cookie失败: {str(e)}")
 
+@router.get("/content/kuaishou")
+def get_kuaishou_cookie_content(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """获取快手 cookie内容"""
+    file_path = COOKIE_PATHS["kuaishou"]
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="快手 cookie文件不存在")
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        return {
+            "platform": "kuaishou",
+            "content": content,
+            "size": len(content),
+            "last_modified": datetime.fromtimestamp(
+                os.path.getmtime(file_path), 
+                tz=timezone.utc
+            ).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"读取快手 cookie内容失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"读取cookie内容失败: {str(e)}")
+
+@router.post("/save/kuaishou")
+def save_kuaishou_cookie(
+    request: CookieSaveRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """手动保存快手 cookie（用户输入的Netscape格式）"""
+    try:
+        cookie_content = request.cookie_content
+        if not cookie_content.strip():
+            raise HTTPException(status_code=400, detail="Cookie内容不能为空")
+        
+        file_path = COOKIE_PATHS["kuaishou"]
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(cookie_content)
+        
+        # 更新配置缓存
+        now = datetime.now(tz=timezone.utc)
+        if "kuaishou" not in _cached_config:
+            _cached_config["kuaishou"] = {
+                "enabled": False,
+                "interval_minutes": 10,
+                "last_update": None,
+                "next_update": None
+            }
+        _cached_config["kuaishou"]["last_update"] = now.isoformat()
+        
+        # 保存配置到数据库
+        _save_config_to_db(db, "kuaishou", {
+            "last_update": now.isoformat()
+        })
+        
+        logger.info(f"快手 cookie已手动保存，文件大小: {len(cookie_content)} 字符")
+        
+        return {
+            "message": "快手 cookie已保存",
+            "size": len(cookie_content),
+            "last_update": now.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"保存快手 cookie失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"保存cookie失败: {str(e)}")
+
 @router.post("/auto-update/youtube")
 @require_license_api
 async def set_youtube_auto_update(
@@ -1580,6 +1652,42 @@ def clear_xiaohongshu_cookie(current_user: User = Depends(get_current_user), db:
         logger.error(f"清除小红书 cookie失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"清除cookie失败: {str(e)}")
 
+@router.delete("/clear/kuaishou")
+def clear_kuaishou_cookie(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """清除快手 cookie"""
+    file_path = COOKIE_PATHS["kuaishou"]
+    
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"快手 cookie文件已删除: {file_path}")
+        
+        # 重置配置缓存
+        if "kuaishou" not in _cached_config:
+            _cached_config["kuaishou"] = {
+                "enabled": False,
+                "interval_minutes": 10,
+                "last_update": None,
+                "next_update": None
+            }
+        _cached_config["kuaishou"]["last_update"] = None
+        _cached_config["kuaishou"]["next_update"] = None
+        
+        # 保存配置到数据库
+        _save_config_to_db(db, "kuaishou", {
+            "last_update": None,
+            "next_update": None
+        })
+        
+        return {
+            "message": "快手 cookie已清除",
+            "platform": "kuaishou"
+        }
+        
+    except Exception as e:
+        logger.error(f"清除快手 cookie失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"清除cookie失败: {str(e)}")
+
 @router.delete("/clear/all")
 def clear_all_cookies(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """清除所有cookie（YouTube、B站、TikTok和网易云音乐）"""
@@ -1744,6 +1852,9 @@ async def startup_event():
             # 检查是否有启用的小红书自动更新配置
             if _cached_config["xiaohongshu"]["enabled"]:
                 asyncio.create_task(_start_xiaohongshu_auto_update())
+                
+            # 加载快手配置
+            _load_config_from_db(db, "kuaishou")
         finally:
             try:
                 db.rollback()

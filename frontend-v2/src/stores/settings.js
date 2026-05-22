@@ -77,6 +77,11 @@ export const useSettingsStore = defineStore('settings', () => {
             exists: false,
             fileSize: '-',
             lastUpdate: null
+        },
+        kuaishou: {
+            exists: false,
+            fileSize: '-',
+            lastUpdate: null
         }
     });
 
@@ -364,6 +369,14 @@ export const useSettingsStore = defineStore('settings', () => {
                     autoUpdateInterval: data.xiaohongshu.interval_minutes || 10
                 });
             }
+
+            if (data.kuaishou) {
+                Object.assign(cookieStatus.kuaishou, {
+                    exists: data.kuaishou.exists,
+                    fileSize: formatSize(data.kuaishou.size),
+                    lastUpdate: data.kuaishou.last_modified
+                });
+            }
         } catch (err) {
             console.error('Failed to load cookie status:', err);
         }
@@ -467,6 +480,20 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
+    // 保存快手 Cookie
+    async function saveKuaishouCookie(content) {
+        saving.value = true;
+        try {
+            await cookieApi.saveKuaishouCookie(content);
+            await loadCookieStatus();
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
+        } finally {
+            saving.value = false;
+        }
+    }
+
     // 清除 Cookie
     async function clearCookie(platform) {
         try {
@@ -477,6 +504,7 @@ export const useSettingsStore = defineStore('settings', () => {
             if (platform === 'x') await cookieApi.clearXCookie();
             if (platform === 'netease') await cookieApi.clearNeteaseCookie();
             if (platform === 'xiaohongshu') await cookieApi.clearXiaohongshuCookie();
+            if (platform === 'kuaishou') await cookieApi.clearKuaishouCookie();
             await loadCookieStatus();
             return { success: true };
         } catch (err) {
@@ -1246,6 +1274,7 @@ export const useSettingsStore = defineStore('settings', () => {
         saveXCookie,
         saveNeteaseCookie,
         saveXiaohongshuCookie,
+        saveKuaishouCookie,
         clearCookie,
         updateCookieNow,
         setAutoUpdate

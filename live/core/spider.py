@@ -348,7 +348,8 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
         return result
 
     anchor_name = play_list['author'].get('name', '')
-    result.update({"anchor_name": anchor_name})
+    avatar_url = play_list['author'].get('avatar', '')
+    result.update({"anchor_name": anchor_name, "avatar_url": avatar_url})
 
     if play_list['liveStream'].get("playUrls"):
         if 'h264' in play_list['liveStream']['playUrls']:
