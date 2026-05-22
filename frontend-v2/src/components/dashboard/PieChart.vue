@@ -6,7 +6,7 @@
         <linearGradient
           v-for="grad in gradients"
           :key="grad.id"
-          :id="`grad-${grad.id}`"
+          :id="`${uid}-grad-${grad.id}`"
           x1="0%"
           y1="0%"
           x2="100%"
@@ -36,9 +36,9 @@
         cy="50"
         r="40"
         fill="none"
-        :stroke="`url(#grad-${segment.colorId})`"
+        :stroke="`url(#${uid}-grad-${segment.colorId})`"
         stroke-width="20"
-        :stroke-dasharray="`${segment.dashArray} ${circumference - segment.dashArray}`"
+        :stroke-dasharray="getSegmentDash(segment)"
         :stroke-dashoffset="segment.dashOffset"
         :class="['pie-segment', `pie-segment-${segment.platform}`]"
         :style="{ '--segment-delay': `${idx * 70}ms` }"
@@ -64,6 +64,9 @@
 
 <script setup>
 import { ref } from 'vue'
+
+// 每个 PieChart 实例生成唯一 ID，防止多个饼图的 SVG 渐变 id 冲突
+const uid = `pie-${Math.random().toString(36).slice(2, 8)}`
 
 const props = defineProps({
   segments: {
@@ -93,6 +96,22 @@ const props = defineProps({
 const emit = defineEmits(['segment-click'])
 
 const hoveredSegment = ref(null)
+
+// 段间间隙（SVG 坐标单位），防止相邻弧段因抗锯齿而色块串色
+const SEGMENT_GAP = 2
+
+/**
+ * 计算每段的 stroke-dasharray，在弧段末尾留出间隙
+ * 间隙使得后绘制的 circle 不会因抗锯齿覆盖到前一段的颜色
+ */
+function getSegmentDash(segment) {
+  if (props.segments.length <= 1) {
+    // 只有一段时不需要间隙
+    return `${segment.dashArray} ${props.circumference - segment.dashArray}`
+  }
+  const arc = Math.max(0.1, segment.dashArray - SEGMENT_GAP)
+  return `${arc} ${props.circumference - arc}`
+}
 
 function handleSegmentClick(segment) {
   emit('segment-click', segment)
