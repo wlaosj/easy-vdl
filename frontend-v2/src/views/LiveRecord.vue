@@ -483,7 +483,6 @@
             ⚠️ 小红书直播链接通常是临时链接，容易失效，暂不适合做长期自动监控。
           </div>
           <div class="form-hint" style="color:#dd6b20; margin-top: 4px;">
-            ⚠️ 快手平台必须在 <router-link to="/settings?tab=cookie&platform=kuaishou" style="color: var(--color-primary); text-decoration: underline;">系统设置 - Cookie管理</router-link> 中配置快手 Cookie，否则极易由于风控导致添加或录制失败。
           </div>
         </div>
 
@@ -518,7 +517,7 @@
             @blur="addIntervalTouched = true"
           />
           <p :class="addIntervalError && addIntervalTouched ? 'form-error' : 'form-hint'">
-            {{ !addForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (addIntervalError && addIntervalTouched ? addIntervalError : '最小 10 秒，建议 60 秒') }}
+            {{ !addForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (addIntervalError && addIntervalTouched ? addIntervalError : '最小 10 秒，建议 60 秒，过短的间隔可能触发平台风控限流') }}
           </p>
         </div>
 
@@ -594,7 +593,7 @@
             @blur="editIntervalTouched = true"
           />
           <p :class="editIntervalError && editIntervalTouched ? 'form-error' : 'form-hint'">
-            {{ !editForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (editIntervalError && editIntervalTouched ? editIntervalError : '最小 10 秒，建议 60 秒') }}
+            {{ !editForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (editIntervalError && editIntervalTouched ? editIntervalError : '最小 10 秒，建议 60 秒，过短的间隔可能触发平台风控限流') }}
           </p>
         </div>
 
@@ -1799,7 +1798,6 @@ function showFormatHelp() {
             <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">快手:</td>
             <td style="padding: 2px 0;">
               live.kuaishou.com/u/... 或 v.kuaishou.com/... (支持短链)<br/>
-              <span style="color: #dd6b20;">⚠️ 必须配置快手 Cookie 才能稳定检测与录制。<a href="/settings?tab=cookie&platform=kuaishou" style="color: var(--color-primary); text-decoration: underline;">去配置</a></span>
             </td>
           </tr>
         </table>

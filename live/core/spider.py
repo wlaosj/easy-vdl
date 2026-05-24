@@ -361,6 +361,9 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
     result.update({"anchor_name": anchor_name, "avatar_url": avatar_url})
 
     if play_list['liveStream'].get("playUrls"):
+        # 优先使用 isLiving 字段判断直播状态，避免 playUrls 残留导致误判
+        if not play_list.get('isLiving', False):
+            return result
         if 'h264' in play_list['liveStream']['playUrls']:
             if 'adaptationSet' not in play_list['liveStream']['playUrls']['h264']:
                 return result

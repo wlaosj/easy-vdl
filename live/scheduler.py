@@ -667,9 +667,10 @@ class LiveScheduler:
             except Exception as e:
                 logger.error(f"监控直播间出错: {subscription_id}, 错误: {e}")
             
-            # 等待下次检查
+            # 等待下次检查（±20% 随机抖动，避免固定间隔被识别为脚本）
             try:
-                await asyncio.sleep(check_interval)
+                jitter = check_interval * random.uniform(0.8, 1.2)
+                await asyncio.sleep(jitter)
             except asyncio.CancelledError:
                 break
         

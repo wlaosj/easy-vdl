@@ -53,10 +53,9 @@ class KuaishouAdapter(BaseAdapter):
         """获取直播间信息"""
         cookies = kwargs.get("cookies")
         resolved_url, room_id = await self._resolve_url_and_extract_room_id(url)
-        
-        try:
-            data = await spider.get_kuaishou_stream_data(resolved_url, cookies=cookies)
-            
+
+        async def _fetch(cookie_value) -> dict:
+            data = await spider.get_kuaishou_stream_data(resolved_url, cookies=cookie_value)
             return {
                 "anchor_name": data.get("anchor_name") or "",
                 "room_id": room_id,
@@ -64,8 +63,22 @@ class KuaishouAdapter(BaseAdapter):
                 "is_live": bool(data.get("is_live", False)),
                 "raw_data": data
             }
+
+        try:
+            result = await _fetch(cookies)
+            # Cookie 触发风控限流时，降级为无 Cookie 重试
+            if cookies and not result["is_live"] and not result.get("raw_data", {}).get("flv_url_list"):
+                logger.warning("[KuaishouAdapter] Cookie 请求被限流，尝试无 Cookie 降级")
+                result = await _fetch(None)
+            return result
         except Exception as e:
             logger.error(f"[KuaishouAdapter] 获取直播间信息失败: {e}")
+            if cookies:
+                try:
+                    logger.warning("[KuaishouAdapter] Cookie 请求异常，尝试无 Cookie 降级")
+                    return await _fetch(None)
+                except:
+                    pass
             return {
                 "anchor_name": "",
                 "room_id": room_id,
@@ -78,7 +91,7 @@ class KuaishouAdapter(BaseAdapter):
         """获取真实录制流地址"""
         cookies = kwargs.get("cookies")
         resolved_url, room_id = await self._resolve_url_and_extract_room_id(url)
-        
+
         # 映射画质名称到快手定义的画质代码 (OD: 原画, BD: 蓝光, UHD: 超清, HD: 高清, SD: 标清)
         quality_map = {
             "原画": "OD",
@@ -88,28 +101,44 @@ class KuaishouAdapter(BaseAdapter):
             "标清": "SD"
         }
         k_quality = quality_map.get(quality, "OD")
-        
-        try:
-            data = await spider.get_kuaishou_stream_data(resolved_url, cookies=cookies)
+
+        async def _fetch(cookie_value) -> dict:
+            data = await spider.get_kuaishou_stream_data(resolved_url, cookies=cookie_value)
             if not data or not data.get("is_live"):
-                return {"is_live": False, "url": None}
-                
+                return {"is_live": False, "url": None, "raw_data": data}
+
             stream_data = await stream.get_kuaishou_stream_url(data, k_quality)
             if not stream_data or not stream_data.get("is_live"):
-                return {"is_live": False, "url": None}
-                
+                return {"is_live": False, "url": None, "raw_data": data}
+
             stream_url = stream_data.get("flv_url") or stream_data.get("m3u8_url") or stream_data.get("record_url")
             if not stream_url:
-                return {"is_live": False, "url": None}
-                
+                return {"is_live": False, "url": None, "raw_data": data}
+
             is_flv = ".flv" in str(stream_url)
-            
+
             return {
                 "url": stream_url,
                 "format": "flv" if is_flv else "m3u8",
                 "is_live": True,
                 "anchor_name": stream_data.get("anchor_name", "")
             }
+
+        try:
+            result = await _fetch(cookies)
+            # Cookie 触发风控限流时，降级为无 Cookie 重试
+            if cookies and not result.get("is_live") and not result.get("raw_data", {}).get("flv_url_list"):
+                logger.warning("[KuaishouAdapter] Cookie 限流，get_stream_url 降级无 Cookie 重试")
+                result = await _fetch(None)
+            return result
         except Exception as e:
             logger.error(f"[KuaishouAdapter] 获取流地址失败: {e}")
+            if cookies:
+                try:
+                    logger.warning("[KuaishouAdapter] get_stream_url 异常，降级无 Cookie 重试")
+                    result = await _fetch(None)
+                    if result.get("is_live"):
+                        return result
+                except:
+                    pass
             raise
