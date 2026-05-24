@@ -121,6 +121,8 @@ build_and_push_dockerhub.sh
 .claude/**
 .cursor
 .cursorignore
+.deepseek/
+.deepseek/**
 .history
 
 # 不参与镜像构建的辅助项目目录（如本地 skill、自动化脚本等）
