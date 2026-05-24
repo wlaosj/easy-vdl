@@ -11,6 +11,7 @@ Function: Get live stream data.
 
 import hashlib
 import random
+import secrets
 import subprocess
 import time
 import uuid
@@ -316,14 +317,35 @@ async def get_tiktok_stream_data(url: str, proxy_addr: OptionalStr = None, cooki
 
 @trace_error_decorator
 async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, cookies: OptionalStr = None) -> dict:
+    # 随机 Chrome UA，模拟无痕模式下的全新设备指纹
+    KUAISHOU_UAS = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    ]
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
         'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
     }
-    if cookies:
+    # 生成随机设备 ID 模拟无痕模式，避免被设备指纹追踪
+    did_value = f"web_{secrets.token_hex(16)}"
+    didv_value = str(int(time.time() * 1000))
+    if not cookies:
+        headers['Cookie'] = f"did={did_value}; didv={didv_value}"
+        headers['User-Agent'] = random.choice(KUAISHOU_UAS)
+    else:
         headers['Cookie'] = cookies
+    headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+    headers['Accept-Encoding'] = 'gzip, deflate, br'
+    headers['Cache-Control'] = 'no-cache'
+    headers['Pragma'] = 'no-cache'
+    headers['Sec-Fetch-Dest'] = 'document'
+    headers['Sec-Fetch-Mode'] = 'navigate'
+    headers['Sec-Fetch-Site'] = 'none'
+    headers['Sec-Fetch-User'] = '?1'
+    headers['Upgrade-Insecure-Requests'] = '1'
     try:
-        html_str = await async_req(url=url, proxy_addr=proxy_addr, headers=headers)
+        html_str = await async_req(url=url, proxy_addr=proxy_addr, headers=headers, http2=random.choice([True, False]))
     except Exception as e:
         print(f"Failed to fetch data from {url}.{e}")
         return {"type": 1, "is_live": False}
@@ -378,12 +400,18 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
 
 @trace_error_decorator
 async def get_kuaishou_stream_data2(url: str, proxy_addr: OptionalStr = None, cookies: OptionalStr = None) -> dict | None:
+    # 随机设备指纹，模拟全新移动端访问
+    _did = secrets.token_hex(16)
+    _didv = str(int(time.time() * 1000))
     headers = {
-        'User-Agent': 'ios/7.830 (ios 17.0; ; iPhone 15 (A2846/A3089/A3090/A3092))',
-        'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
-        'Referer': "https://www.kuaishou.com/short-video/3x224rwabjmuc9y?fid=1712760877&cc=share_copylink&followRefer=151&shareMethod=TOKEN&docId=9&kpn=KUAISHOU&subBiz=BROWSE_SLIDE_PHOTO&photoId=3x224rwabjmuc9y&shareId=17144298796566&shareToken=X-6FTMeYTsY97qYL&shareResourceType=PHOTO_OTHER&userId=3xtnuitaz2982eg&shareType=1&et=1_i/2000048330179867715_h3052&shareMode=APP&originShareId=17144298796566&appType=21&shareObjectId=5230086626478274600&shareUrlOpened=0&timestamp=1663833792288&utm_source=app_share&utm_medium=app_share&utm_campaign=app_share&location=app_share",
+        'User-Agent': random.choice([
+            'ios/7.830 (ios 17.0; ; iPhone 15 (A2846/A3089/A3090/A3092))',
+            'ios/7.840 (ios 17.1; ; iPhone 15 Pro (A2847/A3101/A3102/A3104))',
+            'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
+        ]),
+        'Accept-Language': 'zh-CN,zh;q=0.9',
         'content-type': 'application/json',
-        'Cookie': 'did=web_e988652e11b545469633396abe85a89f; didv=1796004001000',
+        'Cookie': f'did=web_{_did}; didv={_didv}',
     }
     if cookies:
         headers['Cookie'] = cookies
