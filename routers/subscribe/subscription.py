@@ -154,7 +154,7 @@ async def get_subscription_stats(db: Session = Depends(get_db)):
         auto_dl_filter = or_(Subscription.auto_download == True, Subscription.auto_download == 'true')
         active_filter = and_(
             Subscription.status == SubscriptionStatus.ACTIVE.value,
-            or_(Subscription.check_interval > 0, Subscription.update_interval > 0),
+            Subscription.update_interval > 0,
             auto_dl_filter,
         )
         combined = db.query(
