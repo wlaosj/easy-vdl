@@ -112,6 +112,7 @@ class LicenseManager:
         self.last_verify_time = 0              # 最后一次验证时间
         self.last_error = None                 # 最后一次错误信息
         self.remaining_days = 0                # 剩余天数
+        self.kicked_off = False                # 是否被挤下线状态锁（防踩踏）
         self._background_task = None           # 后台定期验证任务
         self.verify_url = os.getenv(
             "SNIFFER_VERIFY_URL",
@@ -144,6 +145,7 @@ class LicenseManager:
         # 强制刷新时，必须重置终态标记，否则 verify() 会直接拦截不发请求
         # 这允许被封禁/过期的客户端在管理员干预后（如解封）能自动恢复
         self.permanently_expired = False
+        self.kicked_off = False                # 清除被挤下线状态锁
         
         if self.status == LicenseStatus.VALID:
              self.status = LicenseStatus.INVALID
@@ -369,6 +371,12 @@ class LicenseManager:
         # 如果已被服务端确认过期，直接返回失败（终态，需重启服务）
         if self.permanently_expired:
             return False
+            
+        # 被挤下线锁：如果处于被挤下线状态，直接拦截自动验证的网络请求，防止踩踏套娃
+        if getattr(self, "kicked_off", False):
+            self.status = LicenseStatus.INVALID
+            self.last_error = "授权名额已满，您的设备已被新激活的容器挤下线"
+            return False
         
         now = time.time()
         # 确保每个进程都能读取到环境变量中的密钥（避免只在单例初始化的进程中加载）
@@ -424,8 +432,19 @@ class LicenseManager:
     def _log_gate_denied(self, feature: str, reason: str, require_lifetime: bool):
         """记录授权门禁拒绝原因，按 feature/reason 节流避免后台任务刷屏。"""
         now = time.time()
-        log_key = f"{feature}|{reason}|{require_lifetime}"
-        if now - self._gate_log_last_at.get(log_key, 0) < 60:
+        
+        # 优化：折叠高频多实例子任务的 UUID，在授权失效时避免刷爆日志（折叠为大类全局 10 分钟限流）
+        if "live.scheduler.monitor" in feature:
+            log_key = f"live.scheduler.monitor.all|{reason}|{require_lifetime}"
+            throttle_time = 600
+        elif "subscribe" in feature or "scheduler" in feature:
+            log_key = f"routers.subscribe.all|{reason}|{require_lifetime}"
+            throttle_time = 600
+        else:
+            log_key = f"{feature}|{reason}|{require_lifetime}"
+            throttle_time = 60
+            
+        if now - self._gate_log_last_at.get(log_key, 0) < throttle_time:
             return
         self._gate_log_last_at[log_key] = now
         logger.warning(
@@ -733,6 +752,7 @@ async def refresh_license(current_user: User = Depends(get_current_user)):
         license_manager.last_success_time = 0
         license_manager.last_verify_time = 0
         license_manager.permanently_expired = False
+        license_manager.kicked_off = False  # 手动刷新时重置被挤下线状态锁，允许发起网络验证请求
         success = await license_manager.verify()
         
         return {

@@ -236,8 +236,15 @@ async def _connect_to_community_sse():
     global _sse_connected
     
     sse_url = f"{SHEQU_PUBLIC_BASE}/public/announcements/stream"
+    reconnect_delay = 5  # 初始重连间隔(秒)，指数退避上限60秒
     
     while True:
+        # 被挤下线状态：暂停SSE重连，避免重新注册会话触发二次抢占循环
+        # 仅当用户手动"刷新授权"重置 kicked_off 后才恢复连接
+        if getattr(license_manager, "kicked_off", False):
+            await asyncio.sleep(10)
+            continue
+        
         try:
             # 避免在日志中暴露远端地址
             logger.debug("尝试连接社区服务器SSE")
@@ -273,10 +280,11 @@ async def _connect_to_community_sse():
             except Exception:
                 pass
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(connect=30.0, read=35.0, write=30.0, pool=30.0)) as client:
                 async with client.stream("GET", sse_url, headers=headers) as response:
                     if response.status_code == 200:
                         _sse_connected = True
+                        reconnect_delay = 5  # 连接成功，重置退避间隔
                         logger.info("社区公告SSE连接成功")
                         # 首次SSE连接成功后，再做一次离线补偿检查，确保离线期间发布的公告被识别
                         try:
@@ -364,10 +372,20 @@ async def _connect_to_community_sse():
                                         reason = data.get("reason", "服务端要求同步状态")
                                         logger.info(f"SSE收到刷新指令: {reason}")
                                         
-                                        # 立即清除缓存并触发验证
-                                        # 验证结果会更新 license_manager.status
+                                        # 立即清除缓存
                                         license_manager.clear_cache()
-                                        await license_manager.verify()
+                                        
+                                        # 如果是名额已满被挤下线，标记 kicked_off 以拦截自动重新验证网络请求，防止多实例套娃抢占
+                                        if "名额已满" in reason or "挤下线" in reason:
+                                            license_manager.kicked_off = True
+                                            logger.warning("由于授权槽位已满被挤下线，已置为无效授权，且不再发起自动重新验证抢占。")
+                                            # 主动断开当前长连接，让其重新心跳握手，重新在服务端登记在线状态
+                                            _sse_connected = False
+                                            break
+                                        else:
+                                            # 正常刷新，触发验证
+                                            # 验证结果会更新 license_manager.status
+                                            await license_manager.verify()
                                         
                                         # 可选：如果验证失败（被封禁），可以广播消息给前端
                                         if license_manager.status != "valid":
@@ -383,13 +401,17 @@ async def _connect_to_community_sse():
                     else:
                         logger.warning(f"SSE连接失败: HTTP {response.status_code}")
                         
+        except httpx.ReadTimeout:
+            logger.warning("SSE读超时(35s无数据)，判定为半开连接，主动断开重连")
+            _sse_connected = False
         except Exception as e:
             logger.error("SSE连接异常")
             _sse_connected = False
         
-        # 连接断开，等待重连
-        logger.info("SSE连接断开，5秒后重连...")
-        await asyncio.sleep(5)
+        # 连接断开，指数退避重连
+        logger.info(f"SSE连接断开，{reconnect_delay}秒后重连...")
+        await asyncio.sleep(reconnect_delay)
+        reconnect_delay = min(reconnect_delay * 2, 60)  # 5→10→20→40→60→60...
 
 async def start_sse_connection():
     """启动SSE连接任务"""
