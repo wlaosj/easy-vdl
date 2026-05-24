@@ -151,7 +151,7 @@ async def get_subscription_stats(db: Session = Depends(get_db)):
             by_status[row.status] = by_status.get(row.status, 0) + c
 
         # 2) 自动下载 + 活跃订阅 (1 条组合查询)
-        auto_dl_filter = or_(Subscription.auto_download == True, Subscription.auto_download == 'true')
+        auto_dl_filter = Subscription.auto_download == 'true'
         active_filter = and_(
             Subscription.status == SubscriptionStatus.ACTIVE.value,
             Subscription.update_interval > 0,
