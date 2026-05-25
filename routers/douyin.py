@@ -1234,11 +1234,13 @@ class DouyinAPI:
                     }
                 }
                 
-                // 提取抖音号
+                // 提取抖音号（只保留纯数字部分，过滤掉后面的年龄/地区等冗余文本）
                 const paragraphs = document.querySelectorAll('p');
                 for (const p of paragraphs) {
                     if (p.textContent.includes('抖音号：')) {
-                        result.douyin_id = p.textContent.replace('抖音号：', '').trim();
+                        const idText = p.textContent.replace('抖音号：', '').trim();
+                        const idMatch = idText.match(/^(\d+)/);
+                        result.douyin_id = idMatch ? idMatch[1] : idText;
                         break;
                     }
                 }
@@ -1288,13 +1290,14 @@ class DouyinAPI:
             logger.info(f"成功从DOM提取用户信息: {user_data.get('nickname')}")
             
             # 返回标准格式的用户信息
+            # 对数值字段加合理性上限：防止 DOM 解析误匹配到用户 ID 等超大数字导致 DB INTEGER 溢出
             return {
                 "user_id": user_data.get("douyin_id", ""),
                 "nickname": user_data.get("nickname", ""),
-                "follower_count": user_data.get("follower_count", 0),
-                "following_count": user_data.get("following_count", 0),
-                "video_count": user_data.get("video_count", 0),
-                "like_count": user_data.get("like_count", 0),
+                "follower_count": min(user_data.get("follower_count", 0) or 0, 100_000_000),
+                "following_count": min(user_data.get("following_count", 0) or 0, 1_000_000),
+                "video_count": min(user_data.get("video_count", 0) or 0, 1_000_000),
+                "like_count": min(user_data.get("like_count", 0) or 0, 10_000_000_000),
                 "signature": user_data.get("signature", ""),
                 "avatar_url": user_data.get("avatar_url", "")
             }
