@@ -527,7 +527,6 @@ class LiveScheduler:
                                 cookies = await youtube_api.export_cookies_netscape(force_refresh=True)
                                 if cookies and "SAPISID" in cookies:
                                     cookie_path = "/app/database/cookie/youtube_cookie.txt"
-                                    import os
                                     os.makedirs(os.path.dirname(cookie_path), exist_ok=True)
                                     with open(cookie_path, 'w') as f:
                                         f.write(cookies)
