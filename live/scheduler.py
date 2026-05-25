@@ -482,7 +482,7 @@ class LiveScheduler:
                         # 录制中跳过 API 轮询降低风控，由文件增长检测判断下播
                         if live_recorder.is_recording(subscription_id):
                             room_info = {"is_live": True, "probe_success": True, "anchor_name": "", "room_id": ""}
-                            logger.debug(f"[{platform}] 录制中，跳过API探测: {subscription_id}")
+                            logger.info(f"[{platform}] 录制中，跳过API探测: {subscription_id}")
                         else:
                             # 获取直播间信息
                             room_info = await adapter.get_room_info(room_url, cookies=cookies)
@@ -652,7 +652,7 @@ class LiveScheduler:
                     # API 说下播，由文件增长检测决定是否真断
                     if first_offline_time is None:
                         first_offline_time = datetime.now()
-                    logger.debug(f"API检测到下播，等待文件增长检测确认: {subscription_id}")
+                    logger.info(f"API检测到下播，等待文件增长检测确认: {subscription_id}")
 
                 # ── 文件增长检测：录制中判断流是否真正结束 ──
                 if is_recording:
