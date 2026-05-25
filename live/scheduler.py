@@ -479,8 +479,13 @@ class LiveScheduler:
                         except Exception as cookie_err:
                             logger.warning(f"读取/解析 {platform} Cookie失败: {cookie_err}")
 
-                        # 获取直播间信息
-                        room_info = await adapter.get_room_info(room_url, cookies=cookies)
+                        # 录制中跳过 API 轮询降低风控，由文件增长检测判断下播
+                        if live_recorder.is_recording(subscription_id):
+                            room_info = {"is_live": True, "probe_success": True, "anchor_name": "", "room_id": ""}
+                            logger.debug(f"[{platform}] 录制中，跳过API探测: {subscription_id}")
+                        else:
+                            # 获取直播间信息
+                            room_info = await adapter.get_room_info(room_url, cookies=cookies)
                         probe_success = bool(room_info.get("probe_success", True))
                         
                         is_live = room_info.get('is_live', False)
