@@ -157,7 +157,11 @@
             <button class="btn btn-primary" @click="showAddModal = true">添加<span class="mobile-hide">直播间</span></button>
             <button class="btn btn-outline" @click="refreshAll">刷新<span class="mobile-hide">状态</span></button>
             <button class="btn btn-outline" @click="openGlobalHistory">录制历史</button>
-            
+            <button class="btn btn-outline" @click="$router.push('/settings?tab=cookie')">
+              <Icon name="settings" :size="14" style="vertical-align: middle; margin-right: 2px;" />
+              Cookie
+            </button>
+
             <!-- 直播订阅备份：导出 / 导入 -->
             <div class="live-backup-actions mobile-hide">
               <button class="btn btn-outline btn-sm" @click="exportLiveConfig" :disabled="subscriptions.length === 0">
