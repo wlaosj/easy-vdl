@@ -386,11 +386,14 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
         # 优先使用 isLiving 字段判断直播状态，避免 playUrls 残留导致误判
         if not play_list.get('isLiving', False):
             return result
-        if 'h264' in play_list['liveStream']['playUrls']:
-            if 'adaptationSet' not in play_list['liveStream']['playUrls']['h264']:
-                return result
-            play_url_list = play_list['liveStream']['playUrls']['h264']['adaptationSet']['representation']
-        else:
+        play_url_list = []
+        # 合并 h264 和 hevc 两种编码的分辨率列表，确保画质选择能选到 HEVC 的高码率流
+        for codec in ('h264', 'hevc'):
+            if codec in play_list['liveStream']['playUrls']:
+                if 'adaptationSet' in play_list['liveStream']['playUrls'][codec]:
+                    reps = play_list['liveStream']['playUrls'][codec]['adaptationSet']['representation']
+                    play_url_list.extend(reps)
+        if not play_url_list:
             # TODO: Old version which not working at 20241128, could be removed if not working confirmed
             play_url_list = play_list['liveStream']['playUrls'][0]['adaptationSet']['representation']
         result.update({"flv_url_list": play_url_list, "is_live": True})
