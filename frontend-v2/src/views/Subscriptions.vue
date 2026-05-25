@@ -5942,33 +5942,38 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
 @media (max-width: 768px) {
   .subscriptions-page {
       padding: 0;
+      max-width: 100%;
+      box-sizing: border-box;
   }
 
   .action-panel-container {
-      display: block; /* 恢复块级，去除 flex */
+      display: block;
       background: transparent;
       border: none;
       padding: 0;
+      max-width: 100%;
       overflow: visible;
+      box-sizing: border-box;
   }
-  
+
   /* 恢复 panel 的实体容器属性 */
-  .action-panel-container .primary-panel, .action-panel-container .secondary-panel {
-      display: flex;
-      flex-direction: column;
+  .action-panel-container olumn;
       width: 100%;
-      gap: 6px; /* 减小组件间距 */
+      max-width: 100%;
+      gap: 6px;
+      box-sizing: border-box;
   }
   
   .action-panel-container .primary-panel {
       background: #fff;
-      padding: 10px 8px; /* 进一步减小内边距 */
+      padding: 10px 8px;
       border-radius: 8px;
-      margin-bottom: 8px; /* 减小下方间距 */
-      /* 确保下拉框不被遮挡 */
+      margin-bottom: 8px;
+      max-width: 100%;
       position: relative;
       z-index: 101;
       overflow: visible !important;
+      box-sizing: border-box;
   }
 
   [data-theme="dark"] .action-panel-container .primary-panel {
@@ -5978,16 +5983,17 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
 
   .action-panel-container .secondary-panel {
       background: var(--color-bg-tertiary);
-      padding: 4px 8px; /* 进一步减小内外边距 */
+      padding: 4px 8px;
       border-radius: 0 0 12px 12px;
-      margin-top: -8px; /* 与切换按钮无缝衔接 */
+      margin-top: -8px;
       border: 1px solid var(--color-border);
       border-top: none;
-      /* 折叠动画 */
+      max-width: 100%;
       overflow: hidden;
       transition: max-height 0.3s ease, opacity 0.3s ease;
       max-height: 1000px;
       opacity: 1;
+      box-sizing: border-box;
   }
 
   .action-panel-container .secondary-panel.mobile-collapsed {
@@ -6001,9 +6007,11 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   
   .action-group {
       width: 100%;
+      max-width: 100%;
       min-width: 0;
-      padding: 4px 0; /* 从 12px 压缩到 4px */
+      padding: 4px 0;
       position: relative;
+      box-sizing: border-box;
   }
 
   .action-group-title {
@@ -6067,13 +6075,12 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
     border: 1px solid var(--color-border);
   }
 
-  /* 筛选器: 强制一行显示 (需放在 general group-items 之后以防覆盖) */
+  /* 筛选器: 两行，筛选器占满一行，搜索框换行 */
   .filter-horizontal {
     display: grid !important;
-    grid-template-columns: 1fr 1fr 1.2fr !important; /* 调整比例让搜索框稍微宽一点，或者根据需要调整 */
-    gap: 4px !important; /* 减小间距 */
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px !important;
     width: 100% !important;
-    align-items: center !important;
   }
 
   .compact-select, .custom-multiselect {
@@ -6085,7 +6092,7 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
       width: 100% !important;
       min-width: 0 !important;
       margin: 0 !important;
-      grid-column: span 1; /* 明确占一列 */
+      grid-column: 1 / -1 !important;
   }
 
   .search-input {
@@ -6100,6 +6107,8 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   .subscriptions-grid {
     grid-template-columns: 1fr;
     gap: var(--spacing-sm);
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   /* 卡片:紧凑布局 */
@@ -6107,7 +6116,9 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
     padding: 10px;
     gap: 10px;
     min-height: 80px;
-    align-items: center; /* 垂直居中头像和内容 */
+    align-items: center;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   /* 头像保持较大尺寸并对齐电脑端比例 */
@@ -6225,7 +6236,9 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
     transform: translateY(20px);
   }
 
-  .drawer-slide-leave-to {
+  .drawer-slide-leave-t.primary-panel, .action-panel-container .secondary-panel {
+      display: flex;
+      flex-direction: co {
     opacity: 0;
     transform: translateY(10px);
   }
