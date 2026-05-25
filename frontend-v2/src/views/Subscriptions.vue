@@ -3615,11 +3615,11 @@ async function handleClearInstagramRisk(sub) {
   try {
     sub._clearingRisk = true
     await cookieApi.clearInstagramRisk()
-    toast.success('风控状态已清除，正在重新检测...')
-    // 触发重新检测
-    await checkUpdate(sub)
+    sub.status = 'active'
+    sub.error_message = ''
+    toast.success('风控状态已清除，点击检测更新或等待自动检测')
   } catch (error) {
-    toast.error('解除风控失败: ' + (error.message || '未知错误'))
+    toast.error('清除失败: ' + (error.message || '未知错误'))
   } finally {
     sub._clearingRisk = false
   }
