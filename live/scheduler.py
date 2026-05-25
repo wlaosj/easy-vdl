@@ -47,6 +47,8 @@ class LiveScheduler:
         self._sub_config_cache: Dict[str, dict] = {}  # [优化] 订阅配置内存缓存，减少每轮监控的 DB 查询
         self._offline_streaks: Dict[str, int] = {}  # 连续离线次数（用于抖动过滤）
         self._last_live_status: Dict[str, bool] = {}  # 订阅最近一次稳定状态缓存
+        self._recording_file_sizes: Dict[str, int] = {}  # 订阅ID -> 录制文件上次大小
+        self._recording_file_stale_start: Dict[str, float] = {}  # 订阅ID -> 文件停止增长起始时间
     
     def set_db_session_factory(self, factory):
         """设置数据库会话工厂"""
@@ -642,25 +644,34 @@ class LiveScheduler:
                             )
                 
                 elif not is_live and is_recording:
-                    # 下播且正在录制
+                    # API 说下播，由文件增长检测决定是否真断
                     if first_offline_time is None:
                         first_offline_time = datetime.now()
-                    
-                    offline_duration = (datetime.now() - first_offline_time).total_seconds()
-                    
-                    if offline_duration > 300: # 5分钟僵死超时
-                         logger.warning(f"检测到API状态为下播已超过5分钟，强制停止录制: {subscription_id}")
-                         await self._stop_auto_recording(subscription_id, convert_to_mp4=True)
-                         first_offline_time = None
-                    else:
-                         # 仅打印日志，不执行 stop
-                         logger.debug(f"检测到API状态为下播，但录制仍在进行 (信任FFmpeg进程): {subscription_id}, 已持续: {int(offline_duration)}s")
-                    
-                    # 原有逻辑已注释：
-                    # logger.info(f"检测到下播,停止录制: {subscription_id}")
-                    # ...
-                    # await self._stop_auto_recording(...)
-                
+                    logger.debug(f"API检测到下播，等待文件增长检测确认: {subscription_id}")
+
+                # ── 文件增长检测：录制中判断流是否真正结束 ──
+                if is_recording:
+                    try:
+                        task = live_recorder.recording_tasks.get(subscription_id, {})
+                        record_path = task.get('output_path', '')
+                        if record_path and os.path.exists(record_path):
+                            import time as _time
+                            current_size = os.path.getsize(record_path)
+                            last_size = self._recording_file_sizes.get(subscription_id)
+                            self._recording_file_sizes[subscription_id] = current_size
+
+                            if last_size is not None and current_size == last_size:
+                                if subscription_id not in self._recording_file_stale_start:
+                                    self._recording_file_stale_start[subscription_id] = _time.time()
+                                stale_seconds = _time.time() - self._recording_file_stale_start[subscription_id]
+                                if stale_seconds >= 30:
+                                    logger.warning(f"录制文件 {stale_seconds:.0f}s 无增长，停止录制: {subscription_id}")
+                                    await self._stop_auto_recording(subscription_id, convert_to_mp4=True)
+                            else:
+                                self._recording_file_stale_start.pop(subscription_id, None)
+                    except Exception:
+                        pass
+
             except asyncio.CancelledError:
                 logger.info(f"监控任务被取消: {subscription_id}")
                 break
