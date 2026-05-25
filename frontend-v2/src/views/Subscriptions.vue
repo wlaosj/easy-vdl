@@ -415,8 +415,8 @@
             <span class="marquee-wrap"><span class="marquee-text">{{ getSubscriptionErrorSummary(sub) }}</span></span>
             <button
               v-if="sub.platform === 'instagram'"
-              class="btn btn-xs btn-outline-light"
-              style="margin-left:6px; flex-shrink:0; height:20px; line-height:18px; padding:0 6px;"
+              class="btn btn-xs btn-outline"
+              style="margin-left:6px; flex-shrink:0; height:20px; line-height:18px; padding:0 6px; color:var(--color-error); border-color:var(--color-error);"
               :disabled="sub._clearingRisk"
               @click.stop="handleClearInstagramRisk(sub)"
             >{{ sub._clearingRisk ? '解除中...' : '解除' }}</button>
