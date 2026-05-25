@@ -1284,7 +1284,22 @@ async def check_subscription_update(
             )
             
             latest_videos = latest_videos_result.get("videos", []) if latest_videos_result else []
-            
+
+            # 检测B站API是否返回错误（如登录失效、风控拦截）
+            adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+            if adapter_error:
+                logger.error(f"B站检测失败: {adapter_error}")
+                _mark_subscription_check_failure(subscription, f"B站检测失败: {adapter_error}")
+                db.commit()
+                return {
+                    "message": f"B站检测失败: {adapter_error}",
+                    "has_update": False,
+                    "new_videos_count": 0,
+                    "requires_sync": False,
+                    "status": subscription.status,
+                    "error_message": subscription.error_message
+                }
+
             # 获取最新视频信息（用于后续更新基准时间）
             current_latest_video = None
             current_latest_publish_time = None
