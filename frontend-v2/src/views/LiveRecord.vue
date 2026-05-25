@@ -517,7 +517,7 @@
             @blur="addIntervalTouched = true"
           />
           <p :class="addIntervalError && addIntervalTouched ? 'form-error' : 'form-hint'">
-            {{ !addForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (addIntervalError && addIntervalTouched ? addIntervalError : '最小 10 秒，建议 60 秒，过短的间隔可能触发平台风控限流') }}
+            {{ !addForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (addIntervalError && addIntervalTouched ? addIntervalError : getCheckIntervalHint('')) }}
           </p>
         </div>
 
@@ -593,7 +593,7 @@
             @blur="editIntervalTouched = true"
           />
           <p :class="editIntervalError && editIntervalTouched ? 'form-error' : 'form-hint'">
-            {{ !editForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (editIntervalError && editIntervalTouched ? editIntervalError : '最小 10 秒，建议 60 秒，过短的间隔可能触发平台风控限流') }}
+            {{ !editForm.monitor_enabled ? '开启周期检测后可设置检测间隔' : (editIntervalError && editIntervalTouched ? editIntervalError : getCheckIntervalHint(editingSubscription?.platform)) }}
           </p>
         </div>
 
@@ -1709,6 +1709,16 @@ function getCheckIntervalError(value) {
     return `检测间隔不能大于 ${MAX_CHECK_INTERVAL_SECONDS} 秒`
   }
   return ''
+}
+
+function getCheckIntervalHint(platform) {
+  if (platform === 'kuaishou') {
+    return '最小 10 秒。快手对检测频率较敏感，建议 300~600 秒'
+  }
+  if (platform === 'youtube') {
+    return '最小 10 秒。建议 120 秒以上，过短的间隔可能触发人机验证'
+  }
+  return '最小 10 秒，建议 60 秒，过短的间隔可能触发平台风控限流'
 }
 
 const addIntervalError = computed(() => addForm.value.monitor_enabled ? getCheckIntervalError(addForm.value.check_interval) : '')
