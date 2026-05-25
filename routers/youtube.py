@@ -1243,10 +1243,13 @@ class YouTubeAPI:
                                                 for item in grid_items:
                                                     if "richItemRenderer" in item:
                                                         video_content = item["richItemRenderer"].get("content", {})
-                                                        # 检查是否有videoRenderer（普通视频）或shortsLockupViewModel（Shorts）
+                                                        # 检查是否有videoRenderer（普通视频）或lockupViewModel（新版结构）或shortsLockupViewModel（Shorts）
                                                         if "videoRenderer" in video_content:
                                                             items.append(item)
                                                             logger.debug(f"找到视频: {video_content['videoRenderer'].get('videoId')}")
+                                                        elif "lockupViewModel" in video_content:
+                                                            items.append(item)
+                                                            logger.debug(f"找到视频(新版结构): {video_content['lockupViewModel'].get('contentId')}")
                                                         elif "shortsLockupViewModel" in video_content and tab_type == "shorts":
                                                             # Shorts使用shortsLockupViewModel结构
                                                             items.append(item)
@@ -1288,6 +1291,9 @@ class YouTubeAPI:
                                             if "videoRenderer" in video_content:
                                                 items.append(item)
                                                 logger.debug(f"续页找到视频: {video_content['videoRenderer'].get('videoId')}")
+                                            elif "lockupViewModel" in video_content:
+                                                items.append(item)
+                                                logger.debug(f"续页找到视频(新版结构): {video_content['lockupViewModel'].get('contentId')}")
                                         elif "continuationItemRenderer" in item:
                                             next_page_token = item["continuationItemRenderer"].get("continuationEndpoint", {}).get("continuationCommand", {}).get("token")
                                             if next_page_token:
@@ -1362,8 +1368,44 @@ class YouTubeAPI:
                                         "publishedTimeText": None,  # Shorts通常没有发布时间信息
                                         "descriptionSnippet": None
                                     }
+                                elif "lockupViewModel" in content:
+                                    # 新版YouTube页面结构（lockupViewModel替代videoRenderer）
+                                    lockup = content["lockupViewModel"]
+                                    lvm = lockup.get("metadata", {}).get("lockupMetadataViewModel", {})
+                                    cm = lvm.get("metadata", {}).get("contentMetadataViewModel", {})
+                                    rows = cm.get("metadataRows", [])
+
+                                    # 提取时长
+                                    duration = ""
+                                    overlays = lockup.get("contentImage", {}).get("thumbnailViewModel", {}).get("overlays", [])
+                                    if overlays:
+                                        badges = overlays[0].get("thumbnailBottomOverlayViewModel", {}).get("badges", [])
+                                        if badges:
+                                            duration = badges[0].get("thumbnailBadgeViewModel", {}).get("text", "")
+
+                                    # 提取观看数和发布时间
+                                    view_count = ""
+                                    published_time = ""
+                                    if rows:
+                                        parts = rows[0].get("metadataParts", [])
+                                        if len(parts) > 0:
+                                            view_count = parts[0].get("text", {}).get("content", "")
+                                        if len(parts) > 1:
+                                            published_time = parts[1].get("text", {}).get("content", "")
+
+                                    # 提取缩略图
+                                    image = lockup.get("contentImage", {}).get("thumbnailViewModel", {}).get("image", {})
+                                    thumbnails = image.get("sources", [])
+
+                                    video_data = {
+                                        "videoId": lockup.get("contentId", ""),
+                                        "title": {"runs": [{"text": lvm.get("title", {}).get("content", "")}]},
+                                        "lengthText": {"simpleText": duration},
+                                        "viewCountText": {"simpleText": view_count},
+                                        "publishedTimeText": {"simpleText": published_time},
+                                        "thumbnail": {"thumbnails": thumbnails}
+                                    }
                                 elif "videoRenderer" in content:
-                                    # 普通视频
                                     video_data = content["videoRenderer"]
                             elif "gridVideoRenderer" in item:
                                 # Shorts可能使用gridVideoRenderer
