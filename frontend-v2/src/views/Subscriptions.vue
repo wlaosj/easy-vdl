@@ -5957,7 +5957,9 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   }
 
   /* 恢复 panel 的实体容器属性 */
-  .action-panel-container olumn;
+  .action-panel-container .primary-panel, .action-panel-container .secondary-panel {
+      display: flex;
+      flex-direction: column;
       width: 100%;
       max-width: 100%;
       gap: 6px;
@@ -6236,9 +6238,7 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
     transform: translateY(20px);
   }
 
-  .drawer-slide-leave-t.primary-panel, .action-panel-container .secondary-panel {
-      display: flex;
-      flex-direction: co {
+  .drawer-slide-leave-to {
     opacity: 0;
     transform: translateY(10px);
   }
