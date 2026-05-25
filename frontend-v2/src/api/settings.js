@@ -162,6 +162,10 @@ export const cookieApi = {
         return client.delete('/cookie/clear/instagram');
     },
 
+    clearInstagramRisk() {
+        return client.post('/cookie/clear-risk/instagram');
+    },
+
     // X Cookie
     saveXCookie(cookieContent) {
         return client.post('/cookie/save/x', { cookie_content: cookieContent });

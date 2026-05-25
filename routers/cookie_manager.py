@@ -1547,6 +1547,18 @@ def clear_instagram_cookie(current_user: User = Depends(get_current_user), db: S
         logger.error(f"清除Instagram cookie失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"清除cookie失败: {str(e)}")
 
+@router.post("/clear-risk/instagram")
+def clear_instagram_risk(current_user: User = Depends(get_current_user)):
+    """清除Instagram风控冷却状态（用户在APP完成验证后调用，无需重新保存账号）"""
+    try:
+        _clear_risk_failure()
+        _clear_instagram_session_cache()
+        logger.info("Instagram 风控冷却状态已清除")
+        return {"message": "Instagram 风控冷却状态已清除"}
+    except Exception as e:
+        logger.error(f"清除Instagram风控状态失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"清除风控状态失败: {str(e)}")
+
 @router.delete("/clear/netease")
 def clear_netease_cookie(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """清除网易云音乐 cookie"""

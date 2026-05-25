@@ -413,8 +413,15 @@
           >
             <Icon name="alert-triangle" :size="12" class="error-hint-icon" />
             <span class="marquee-wrap"><span class="marquee-text">{{ getSubscriptionErrorSummary(sub) }}</span></span>
+            <button
+              v-if="sub.platform === 'instagram'"
+              class="btn btn-xs btn-outline-light"
+              style="margin-left:6px; flex-shrink:0; height:20px; line-height:18px; padding:0 6px;"
+              :disabled="sub._clearingRisk"
+              @click.stop="handleClearInstagramRisk(sub)"
+            >{{ sub._clearingRisk ? '解除中...' : '解除' }}</button>
           </div>
-          
+
           <!-- 快捷操作栏 (现在是第二行) -->
           <div class="quick-actions-toolbar">
             <button 
@@ -1609,14 +1616,16 @@ import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import VideoListModal from '@/components/business/VideoListModal.vue'
 import VncLoginModal from '@/components/business/VncLoginModal.vue'
 import { subscriptionsApi, resolveAvatarUrl, handleImageError as sharedHandleImageError } from '@/api/subscriptions'
-import { systemApi, licenseApi } from '@/api/index'
+import { systemApi, licenseApi, cookieApi } from '@/api/index'
 import { wsService } from '@/utils/websocket'
 import { buildAuthedWsUrl } from '@/utils/wsAuth'
 import { useBatchDownloadProgress } from '@/composables/useBatchDownloadProgress'
+import { useToast } from '@/composables/useToast'
 
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 // 授权状态 - 优先读取本地缓存，避免闪烁
 const cachedLicense = localStorage.getItem('license_status')
@@ -1714,22 +1723,22 @@ function getSubscriptionErrorSummary(sub) {
   if (!detail) return ''
   const text = detail.toLowerCase()
   if (text.includes('instagram 处于风控冷却期') || text.includes('风控冷却')) {
-    return 'Instagram 风控冷却中，更新 Cookie 可清除此状态'
+    return 'Instagram 风控冷却中，请在 APP 完成验证后点击解除'
   }
   if (text.includes('exceeded 30 redirects')) {
     return 'Instagram 登录态或访问环境异常'
   }
   if (text.includes('session 登录失败') || text.includes('login required') || text.includes('login_required')) {
-    return 'Instagram 登录态失效，请重新保存 Cookie'
+    return 'Instagram 登录态失效，请重新保存账号密码'
   }
   if (text.includes('challenge') || text.includes('checkpoint')) {
-    return 'Instagram 触发验证，请完成验证后更新 Cookie'
+    return 'Instagram 触发验证，请在 APP 完成验证后点击解除'
   }
   if (text.includes('429') || text.includes('too many')) {
-    return 'Instagram 请求过于频繁，更新 Cookie 可清除冷却状态'
+    return 'Instagram 请求过于频繁，稍后自动恢复或点击解除'
   }
   if (text.includes('403')) {
-    return 'Instagram 拒绝访问，更新 Cookie 或检查网络环境'
+    return 'Instagram 拒绝访问，检查网络环境或重新保存账号密码'
   }
   if (sub?.platform === 'instagram') {
     return `Instagram 检测失败：${detail.slice(0, 36)}`
@@ -3600,6 +3609,20 @@ function handleXCookieSettings() {
 
 function handleInsCookieSettings() {
   router.push({ path: '/settings', query: { tab: 'cookie', platform: 'instagram' } })
+}
+
+async function handleClearInstagramRisk(sub) {
+  try {
+    sub._clearingRisk = true
+    await cookieApi.clearInstagramRisk()
+    toast.success('风控状态已清除，正在重新检测...')
+    // 触发重新检测
+    await checkUpdate(sub)
+  } catch (error) {
+    toast.error('解除风控失败: ' + (error.message || '未知错误'))
+  } finally {
+    sub._clearingRisk = false
+  }
 }
 
 // 打开主页
