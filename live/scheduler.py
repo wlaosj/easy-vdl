@@ -49,6 +49,7 @@ class LiveScheduler:
         self._last_live_status: Dict[str, bool] = {}  # 订阅最近一次稳定状态缓存
         self._recording_file_sizes: Dict[str, int] = {}  # 订阅ID -> 录制文件上次大小
         self._recording_file_stale_start: Dict[str, float] = {}  # 订阅ID -> 文件停止增长起始时间
+        self._last_youtube_cookie_refresh: float = 0  # YouTube Cookie 上次自动刷新时间
     
     def set_db_session_factory(self, factory):
         """设置数据库会话工厂"""
@@ -514,13 +515,41 @@ class LiveScheduler:
                                 )
                                 is_live = True
                 else:
-                    if subscription_id in self._last_live_status:
-                        is_live = self._last_live_status[subscription_id]
-                        logger.warning(
-                            f"[{platform}] 状态采集失败，沿用上次状态: {subscription_id}, is_live={is_live}"
-                        )
-                    else:
-                        is_live = False
+                    # YouTube 人机验证时自动刷新 Cookie 重试一次
+                    probe_error = (room_info or {}).get("raw_data", {}).get("probe_error_type", "")
+                    if platform_key == "youtube" and probe_error == "auth_required":
+                        import time as _time
+                        if _time.time() - self._last_youtube_cookie_refresh > 300:
+                            self._last_youtube_cookie_refresh = _time.time()
+                            logger.info(f"YouTube 触发人机验证，自动刷新 Cookie...")
+                            try:
+                                from routers.youtube import youtube_api
+                                cookies = await youtube_api.export_cookies_netscape(force_refresh=True)
+                                if cookies and "SAPISID" in cookies:
+                                    cookie_path = "/app/database/cookie/youtube_cookie.txt"
+                                    import os
+                                    os.makedirs(os.path.dirname(cookie_path), exist_ok=True)
+                                    with open(cookie_path, 'w') as f:
+                                        f.write(cookies)
+                                    logger.info("YouTube Cookie 已自动刷新，重试探测...")
+                                    retry = await adapter.get_room_info(room_url, cookies=cookies)
+                                    if retry.get("probe_success", False):
+                                        probe_success = True
+                                        is_live = bool(retry.get("is_live", False))
+                                        anchor_name = retry.get("anchor_name", "")
+                                        room_id = retry.get("room_id", "")
+                                        logger.info(f"YouTube Cookie 刷新后探测成功: is_live={is_live}")
+                            except Exception as refresh_err:
+                                logger.warning(f"YouTube Cookie 自动刷新失败: {refresh_err}")
+
+                    if not probe_success:
+                        if subscription_id in self._last_live_status:
+                            is_live = self._last_live_status[subscription_id]
+                            logger.warning(
+                                f"[{platform}] 状态采集失败，沿用上次状态: {subscription_id}, is_live={is_live}"
+                            )
+                        else:
+                            is_live = False
 
                 if is_live:
                     first_offline_time = None # 重置下播计时
