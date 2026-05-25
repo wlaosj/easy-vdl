@@ -110,7 +110,12 @@ class NetEaseAdapter(PlatformAdapter):
         latest_video_id: Optional[str] = None,
         **kwargs
     ) -> Dict[str, Any]:
-        all_videos = await self.get_all_videos(user_id, subscription_type)
+        try:
+            all_videos = await self.get_all_videos(user_id, subscription_type)
+        except Exception as e:
+            from ..common import logger
+            logger.error(f"获取网易云最新歌曲失败: {str(e)}")
+            return {"videos": [], "has_more": False, "error": str(e)}
         if not all_videos:
             return {"videos": [], "has_more": False}
 
@@ -162,13 +167,9 @@ class NetEaseAdapter(PlatformAdapter):
 
         import asyncio
 
-        try:
-            loop = asyncio.get_event_loop()
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = await loop.run_in_executor(None, ydl.extract_info, playlist_url, False)
-        except Exception as e:
-            logger.error(f"解析网易云歌单失败: {str(e)}")
-            return []
+        loop = asyncio.get_event_loop()
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = await loop.run_in_executor(None, ydl.extract_info, playlist_url, False)
 
         # 歌单封面和标题（有些字段只在顶层 info 上；flat 模式下有时为空）
         playlist_thumbnail = info.get("thumbnail") or info.get("thumbnail_url") or ""

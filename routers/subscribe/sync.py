@@ -434,6 +434,19 @@ async def check_subscription_update(
             )
             
             if not latest_videos_result or not latest_videos_result.get("videos"):
+                adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+                if adapter_error:
+                    logger.error(f"抖音检测失败: {adapter_error}")
+                    _mark_subscription_check_failure(subscription, f"抖音检测失败: {adapter_error}")
+                    db.commit()
+                    return {
+                        "message": f"抖音检测失败: {adapter_error}",
+                        "has_update": False,
+                        "new_videos_count": 0,
+                        "requires_sync": False,
+                        "status": subscription.status,
+                        "error_message": subscription.error_message
+                    }
                 logger.info("没有发现新视频")
                 _mark_subscription_check_success(subscription)
                 db.commit()
@@ -605,6 +618,19 @@ async def check_subscription_update(
             )
             
             if not latest_videos_result or not latest_videos_result.get("videos"):
+                adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+                if adapter_error:
+                    logger.error(f"YouTube检测失败: {adapter_error}")
+                    _mark_subscription_check_failure(subscription, f"YouTube检测失败: {adapter_error}")
+                    db.commit()
+                    return {
+                        "message": f"YouTube检测失败: {adapter_error}",
+                        "has_update": False,
+                        "new_videos_count": 0,
+                        "requires_sync": False,
+                        "status": subscription.status,
+                        "error_message": subscription.error_message
+                    }
                 tab_type_name = tab_type or "播放列表"
                 logger.info(f"无法获取YouTube{tab_type_name}列表")
                 return {
@@ -662,7 +688,21 @@ async def check_subscription_update(
                 )
                 
                 videos_list = latest_videos_result.get("videos", []) if latest_videos_result else []
-                
+
+                adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+                if adapter_error:
+                    logger.error(f"TikTok检测失败: {adapter_error}")
+                    _mark_subscription_check_failure(subscription, f"TikTok检测失败: {adapter_error}")
+                    db.commit()
+                    return {
+                        "message": f"TikTok检测失败: {adapter_error}",
+                        "has_update": False,
+                        "new_videos_count": 0,
+                        "requires_sync": False,
+                        "status": subscription.status,
+                        "error_message": subscription.error_message
+                    }
+
                 if not videos_list:
                     logger.info("无法获取TikTok视频列表或列表为空")
                     # 无更新
@@ -811,6 +851,20 @@ async def check_subscription_update(
                 )
                 videos_list = latest_videos_result.get("videos", []) if latest_videos_result else []
 
+                adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+                if adapter_error:
+                    logger.error(f"X检测失败: {adapter_error}")
+                    _mark_subscription_check_failure(subscription, f"X检测失败: {adapter_error}")
+                    db.commit()
+                    return {
+                        "message": f"X检测失败: {adapter_error}",
+                        "has_update": False,
+                        "new_videos_count": 0,
+                        "requires_sync": False,
+                        "status": subscription.status,
+                        "error_message": subscription.error_message
+                    }
+
                 if not videos_list:
                     # stop_at_id 命中时可能返回空列表，这种情况应视为“无新增”，而不是失败
                     if subscription.latest_video_id:
@@ -907,6 +961,20 @@ async def check_subscription_update(
                 )
                 videos_list = latest_videos_result.get("videos", []) if latest_videos_result else []
 
+                adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+                if adapter_error:
+                    logger.error(f"网易云检测失败: {adapter_error}")
+                    _mark_subscription_check_failure(subscription, f"网易云检测失败: {adapter_error}")
+                    db.commit()
+                    return {
+                        "message": f"网易云检测失败: {adapter_error}",
+                        "has_update": False,
+                        "new_videos_count": 0,
+                        "requires_sync": False,
+                        "status": subscription.status,
+                        "error_message": subscription.error_message
+                    }
+
                 if not videos_list:
                     logger.info("无法获取网易云歌单歌曲列表或列表为空")
                     _mark_subscription_check_success(subscription)
@@ -994,6 +1062,21 @@ async def check_subscription_update(
                     )
 
                 notes = latest_videos_result.get("videos", []) if latest_videos_result else []
+
+                adapter_error = latest_videos_result.get("error", "") if latest_videos_result else ""
+                if adapter_error:
+                    logger.error(f"小红书检测失败: {adapter_error}")
+                    _mark_subscription_check_failure(subscription, f"小红书检测失败: {adapter_error}")
+                    db.commit()
+                    return {
+                        "message": f"小红书检测失败: {adapter_error}",
+                        "has_update": False,
+                        "new_videos_count": 0,
+                        "requires_sync": False,
+                        "status": subscription.status,
+                        "error_message": subscription.error_message
+                    }
+
                 logger.info(
                     "[XhsAntiRisk] 小红书检测拉取完成: notes=%d max_count=%d",
                     len(notes),

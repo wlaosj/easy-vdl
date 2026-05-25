@@ -62,7 +62,7 @@ class XiaohongshuAdapter(PlatformAdapter):
             return {"videos": notes[:max_count], "has_more": has_more, "max_cursor": cursor}
         except Exception as e:
             logger.error(f"获取小红书最新笔记失败: {str(e)}")
-            return {"videos": [], "has_more": False}
+            return {"videos": [], "has_more": False, "error": str(e)}
             
     async def get_all_videos(
         self,

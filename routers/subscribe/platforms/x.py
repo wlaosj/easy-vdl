@@ -72,7 +72,7 @@ class XAdapter(PlatformAdapter):
         except Exception as e:
             from ..common import logger
             logger.error(f"获取X点赞列表失败: {str(e)}")
-            return {"videos": [], "has_more": False}
+            return {"videos": [], "has_more": False, "error": str(e)}
 
     async def get_all_videos(
         self,
