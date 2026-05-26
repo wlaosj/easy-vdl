@@ -12,7 +12,17 @@
       "Bash(python3 -c ' *)",
       "Bash(curl -sL \"https://github.com/BtbN/FFmpeg-Builds/releases/latest\")",
       "WebFetch(domain:github.com)",
-      "Bash(awk '/activeTab.*manual.*manual-slice-container/{found=1} found && /^      <\\\\/div>$/{print NR\": \"$0; exit}' /mnt/boot/appdata/xing/easy-vdl/frontend-v2/src/views/LiveHighlights.vue)"
+      "Bash(awk '/activeTab.*manual.*manual-slice-container/{found=1} found && /^      <\\\\/div>$/{print NR\": \"$0; exit}' /mnt/boot/appdata/xing/easy-vdl/frontend-v2/src/views/LiveHighlights.vue)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl log --oneline -20)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl log --all --oneline)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl shortlog -sn --all)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl branch -a)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl status)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl diff --stat)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl diff --cached --stat)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl diff .claude/settings.json)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl add .claude/settings.json)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl commit -m ' *)"
     ],
     "additionalDirectories": [
       "/tmp"
