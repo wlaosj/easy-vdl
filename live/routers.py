@@ -950,6 +950,18 @@ async def bulk_update_subscription_config(
         async def _safe_pause_monitor(sub_id: str) -> bool:
             try:
                 await live_scheduler.remove_monitor(sub_id, stop_recording=False)
+                # 未录制时关闭检测，同步清空开播状态，避免界面卡在"直播中"
+                if not live_recorder.is_recording(sub_id):
+                    from sql.models import LiveSubscription
+                    sess = get_session()
+                    try:
+                        sub = sess.query(LiveSubscription).filter(LiveSubscription.id == sub_id).first()
+                        if sub:
+                            sub.is_live = "false"
+                            sub.updated_at = datetime.now()
+                            sess.commit()
+                    finally:
+                        sess.close()
                 return True
             except Exception as e:
                 logger.error(f"批量更新后暂停周期检测失败: {sub_id}, {e}")
@@ -2627,6 +2639,9 @@ async def update_subscription_config(
         else:
             if (getattr(sub, "monitor_enabled", "true") or "true").lower() == "false":
                 await live_scheduler.remove_monitor(sub_id, stop_recording=False)
+                # 未录制时关闭检测，同步清空开播状态，避免界面卡在"直播中"
+                sub.is_live = "false"
+                db.commit()
                 logger.info(f"已暂停周期检测: {sub.anchor_name}")
             else:
                 await live_scheduler.remove_monitor(sub_id, stop_recording=False)
