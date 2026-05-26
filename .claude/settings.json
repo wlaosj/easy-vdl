@@ -22,7 +22,17 @@
       "Bash(git -C /Volumes/sn570/xing/easy-vdl diff --cached --stat)",
       "Bash(git -C /Volumes/sn570/xing/easy-vdl diff .claude/settings.json)",
       "Bash(git -C /Volumes/sn570/xing/easy-vdl add .claude/settings.json)",
-      "Bash(git -C /Volumes/sn570/xing/easy-vdl commit -m ' *)"
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl commit -m ' *)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl status --ignored --short)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files --others --exclude-standard)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files --cached --ignored --exclude-standard)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files '*.env' '*.local' 'credentials*' 'secret*' 'config*.json' '*.conf')",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files --others --exclude-standard -o)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files 'build-version.env' 'routers/easy-vdl.code-workspace' --error-unmatch)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files 'data/')",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files --others --exclude-standard --ignored)",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files 'database/')",
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl rm routers/easy-vdl.code-workspace)"
     ],
     "additionalDirectories": [
       "/tmp"
