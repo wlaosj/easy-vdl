@@ -12,11 +12,12 @@
   <ReadMe/>
   <Overview>Easy-VDL 是一款集视频订阅、直播监控、自动录制、AI智能高光剪辑与媒体服务器联动的全能型可视化下载平台。支持抖音、B站、YouTube等平台自动检测更新下载，并与 Emby/Jellyfin 完美联动。</Overview>
   <Category>Downloaders: Status:Beta</Category>
+  <Beta>true</Beta>
   <WebUI>http://[IP]:[PORT:80]</WebUI>
-  <TemplateURL/>
-  <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/main/frontend-v2/public/favicon.ico</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/wlaosj/easy-vdl/main/easy-vdl.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/refs/heads/main/favicon.png</Icon>
   <Banner/>
-  <ExtraParams/>
+  <ExtraParams>--cap-add PERFMON --security-opt seccomp=unconfined --memory=4g --memory-swap=4g</ExtraParams>
   <PostArgs/>
   <CPUset/>
   <Date>2026-05-27</Date>
@@ -32,14 +33,15 @@
 
   <!-- 挂载目录 -->
   <Config Name="视频与媒体下载路径" Target="/app/downloads" Default="" Mode="rw" Description="视频下载保存路径，建议映射到 NAS 的共享存储目录（如 /mnt/user/downloads/）。" Type="Path" Display="always" Required="true" Mask="false"/>
-  <Config Name="数据库与配置路径" Target="/app/database" Default="" Mode="rw" Description="数据库与全局配置路径，由于数据库读写较频繁，为了更好的性能，强烈建议映射到 SSD 缓存池（如 /mnt/user/appdata/easy-vdl/database）。" Type="Path" Display="always" Required="true" Mask="false"/>
-  <Config Name="程序运行日志路径" Target="/app/logs" Default="" Mode="rw" Description="程序运行日志保存路径（如 /mnt/user/appdata/easy-vdl/logs）。" Type="Path" Display="always" Required="false" Mask="false"/>
+  <Config Name="数据库与配置路径" Target="/app/database" Default="/mnt/user/appdata/easy-vdl/database" Mode="rw" Description="数据库与全局配置路径，由于数据库读写较频繁，为了更好的性能，强烈建议映射到 SSD 缓存池（如 /mnt/user/appdata/easy-vdl/database）。" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/easy-vdl/database</Config>
+  <Config Name="程序运行日志路径" Target="/app/logs" Default="/mnt/user/appdata/easy-vdl/logs" Mode="rw" Description="程序运行日志保存路径（如 /mnt/user/appdata/easy-vdl/logs）。" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/easy-vdl/logs</Config>
 
   <!-- 环境变量 -->
-  <Config Name="PUID" Target="PUID" Default="99" Description="宿主机用户的 UID，在 Unraid 中默认通常为 99 (nobody)。" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PUID" Target="PUID" Default="1000" Description="宿主机用户的 UID，默认通常为 1000 (或 Unraid 环境下推荐为 99 nobody)。" Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
   <Config Name="PGID" Target="PGID" Default="100" Description="宿主机用户的 GID，在 Unraid 中默认通常为 100 (users)。" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
   <Config Name="初始管理员账号" Target="EASY_VDL_ADMIN_USERNAME" Default="admin" Description="预设的管理员登录用户名。" Type="Variable" Display="always" Required="true" Mask="false">admin</Config>
   <Config Name="初始管理员密码" Target="EASY_VDL_ADMIN_PASSWORD" Default="admin123456" Description="预设的管理员登录密码，强烈建议在部署时进行修改。" Type="Variable" Display="always" Required="true" Mask="false">admin123456</Config>
+  <Config Name="内部容器端口" Target="EASY_VDL_PORT" Default="80" Description="内部容器 of Nginx 服务端口（默认 80），通常在 Bridge 模式下无需修改，Host 或 Macvlan 模式下如需自定义容器端口可在此调整。" Type="Variable" Display="advanced" Required="false" Mask="false">80</Config>
   <Config Name="系统时区" Target="TZ" Default="Asia/Shanghai" Description="系统运行的时区设置。" Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Shanghai</Config>
 
   <!-- 硬件加速设备映射 -->
