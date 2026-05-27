@@ -811,6 +811,17 @@ onBeforeUnmount(() => {
   .license-settings {
     display: block;
   }
+  
+  .input-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .save-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* 图形化授权配置区域 */
