@@ -125,6 +125,15 @@
               <Icon :name="savingKey ? 'loader' : 'save'" :size="16" :class="{ 'loading-spinner': savingKey }" />
               {{ savingKey ? '保存并校验中...' : '保存并验证' }}
             </button>
+            <button
+              v-if="!isEnvLocked && envKey"
+              @click="clearLicenseKey"
+              :disabled="savingKey || clearingKey"
+              class="btn btn-secondary clear-btn"
+            >
+              <Icon :name="clearingKey ? 'loader' : 'trash'" :size="16" :class="{ 'loading-spinner': clearingKey }" />
+              {{ clearingKey ? '正在清除...' : '清除密钥' }}
+            </button>
           </div>
           
           <div class="config-tip" :class="{ 'env-locked': isEnvLocked }">
@@ -194,6 +203,7 @@ const isEnvLocked = ref(true)
 const inputKey = ref('')
 const showRawKey = ref(false)
 const savingKey = ref(false)
+const clearingKey = ref(false)
 let containerTimeOffsetMs = 0
 let timeTickTimer = null
 let timeSyncTimer = null
@@ -336,6 +346,40 @@ async function saveLicenseKey() {
     console.error('Failed to save license key:', err)
     toast.error(err.response?.data?.detail || '保存密钥失败')
     savingKey.value = false
+  }
+}
+
+async function clearLicenseKey() {
+  if (isEnvLocked.value) {
+    toast.error('环境变量已锁定授权配置，无法清除')
+    return
+  }
+
+  const confirmClear = window.confirm('确定要清除当前的授权密钥吗？清除后您将退回普通版，高级功能将无法使用。')
+  if (!confirmClear) {
+    return
+  }
+
+  clearingKey.value = true
+  try {
+    const res = await licenseApi.clearKey()
+    if (res.success) {
+      toast.success('授权密钥已清除，系统已恢复为未授权状态')
+      
+      // 清空本地输入及状态
+      inputKey.value = ''
+      envKey.value = ''
+      
+      // 重新拉取授权状态
+      await systemStore.fetchLicenseStatus()
+    } else {
+      toast.error(res.message || '清除失败')
+    }
+  } catch (err) {
+    console.error('Failed to clear license key:', err)
+    toast.error(err.response?.data?.detail || '清除密钥失败')
+  } finally {
+    clearingKey.value = false
   }
 }
 
@@ -818,7 +862,8 @@ onBeforeUnmount(() => {
     gap: 12px;
   }
   
-  .save-btn {
+  .save-btn,
+  .clear-btn {
     width: 100%;
     justify-content: center;
   }
@@ -907,7 +952,8 @@ onBeforeUnmount(() => {
   background: var(--color-bg-tertiary);
 }
 
-.save-btn {
+.save-btn,
+.clear-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -917,6 +963,19 @@ onBeforeUnmount(() => {
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.clear-btn {
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+}
+
+.clear-btn:hover:not(:disabled) {
+  background: rgba(231, 76, 60, 0.08);
+  border-color: rgba(231, 76, 60, 0.6);
+  color: var(--color-error);
 }
 
 .config-tip {

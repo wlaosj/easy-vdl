@@ -19,5 +19,9 @@ export const licenseApi = {
 
     saveKey(licenseKey) {
         return client.post('/license/save-key', { license_key: licenseKey });
+    },
+
+    clearKey() {
+        return client.post('/license/clear-key');
     }
 };

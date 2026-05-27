@@ -794,6 +794,52 @@ async def save_license_key(request: SaveKeyRequest, current_user: User = Depends
         "message": "密钥已成功保存并开始重新验证，请刷新状态查看"
     }
 
+@router.post("/clear-key")
+async def clear_license_key(current_user: User = Depends(get_current_user)):
+    """清除图形化授权密钥（仅在未由环境变量锁定时允许，仅管理员可用）"""
+    is_admin = str(getattr(current_user, "is_admin", "")).lower() == "true"
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="仅管理员可清除授权密钥")
+
+    # 检查是否已被环境变量锁定
+    _, is_env_locked = license_manager._get_active_license_key()
+    if is_env_locked:
+        raise HTTPException(status_code=400, detail="环境变量已锁定授权配置，UI 无法清除")
+
+    # 从数据库中删除
+    try:
+        from sql.database_postgresql import get_session
+        from sql.models import SystemConfig
+        
+        db = get_session()
+        try:
+            config_item = db.query(SystemConfig).filter(SystemConfig.key == "license_key").first()
+            if config_item:
+                db.delete(config_item)
+                db.commit()
+        except Exception as db_err:
+            db.rollback()
+            logger.error(f"从数据库清除密钥失败: {db_err}")
+            raise HTTPException(status_code=500, detail=f"数据库清除失败: {str(db_err)}")
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # 清除成功后重置状态
+    license_manager.clear_cache()
+    license_manager.license_key = None
+    license_manager.status = LicenseStatus.INVALID
+    license_manager.remaining_days = 0
+
+    return {
+        "success": True,
+        "message": "授权密钥已成功清除，系统已恢复为未激活状态"
+    }
+
 def _mask_license_key(key: Optional[str]) -> Optional[str]:
     """统一授权密钥脱敏规则：前6后4。"""
     if not key:
