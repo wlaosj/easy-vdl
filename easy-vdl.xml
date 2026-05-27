@@ -9,11 +9,16 @@
   <Privileged>false</Privileged>
   <Support>https://t.me/+7jcTMePlNVwwZjg1</Support>
   <Project>https://github.com/wlaosj/easy-vdl</Project>
+  <ReadMe/>
   <Overview>Easy-VDL 是一款集视频订阅、直播监控、自动录制、AI智能高光剪辑与媒体服务器联动的全能型可视化下载平台。支持抖音、B站、YouTube等平台自动检测更新下载，并与 Emby/Jellyfin 完美联动。</Overview>
   <Category>Downloaders: Status:Beta</Category>
-  <Publish>true</Publish>
+  <WebUI>http://[IP]:[PORT:80]</WebUI>
+  <TemplateURL/>
   <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/main/frontend-v2/public/favicon.ico</Icon>
   <Banner/>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
   <Date>2026-05-27</Date>
   <Changes>
 ### 🚀 Easy-VDL 现已登录 Unraid CA 商店！
