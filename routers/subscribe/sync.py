@@ -19,6 +19,7 @@ from routers.douyin import douyin_api, get_collection_videos
 from routers.youtube import youtube_api
 from routers.bilibili import bilibili_api, get_bilibili_favorite_info, get_bilibili_favorite_videos
 from routers.tiktok import tiktok_api
+from routers import instagram as instagram_api
 from routers.unified_browser_manager import unified_browser
 from routers.websocket import send_progress_update
 from .common import logger, PLATFORM_CONCURRENT_LIMITS
@@ -439,6 +440,14 @@ async def check_subscription_update(
                     logger.error(f"抖音检测失败: {adapter_error}")
                     _mark_subscription_check_failure(subscription, f"抖音检测失败: {adapter_error}")
                     db.commit()
+                    asyncio.create_task(send_subscription_check_notification(
+                        subscription_id=subscription_id,
+                        user_id=subscription.user_id,
+                        nickname=subscription.nickname,
+                        platform=subscription.platform,
+                        success=False,
+                        error_message=f"抖音检测失败: {adapter_error}"
+                    ))
                     return {
                         "message": f"抖音检测失败: {adapter_error}",
                         "has_update": False,
@@ -623,6 +632,14 @@ async def check_subscription_update(
                     logger.error(f"YouTube检测失败: {adapter_error}")
                     _mark_subscription_check_failure(subscription, f"YouTube检测失败: {adapter_error}")
                     db.commit()
+                    asyncio.create_task(send_subscription_check_notification(
+                        subscription_id=subscription_id,
+                        user_id=subscription.user_id,
+                        nickname=subscription.nickname,
+                        platform=subscription.platform,
+                        success=False,
+                        error_message=f"YouTube检测失败: {adapter_error}"
+                    ))
                     return {
                         "message": f"YouTube检测失败: {adapter_error}",
                         "has_update": False,
@@ -694,6 +711,14 @@ async def check_subscription_update(
                     logger.error(f"TikTok检测失败: {adapter_error}")
                     _mark_subscription_check_failure(subscription, f"TikTok检测失败: {adapter_error}")
                     db.commit()
+                    asyncio.create_task(send_subscription_check_notification(
+                        subscription_id=subscription_id,
+                        user_id=subscription.user_id,
+                        nickname=subscription.nickname,
+                        platform=subscription.platform,
+                        success=False,
+                        error_message=f"TikTok检测失败: {adapter_error}"
+                    ))
                     return {
                         "message": f"TikTok检测失败: {adapter_error}",
                         "has_update": False,
@@ -743,6 +768,14 @@ async def check_subscription_update(
                 logger.error(f"获取TikTok视频失败: {str(e)}")
                 _mark_subscription_check_failure(subscription, str(e))
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=str(e)
+                ))
                 return {
                     "message": f"获取TikTok视频失败: {str(e)}",
                     "has_update": False,
@@ -762,27 +795,58 @@ async def check_subscription_update(
                 }
 
             try:
-                latest_videos_result = await instagram_adapter.get_latest_videos(
-                    subscription.user_id,
-                    subscription_type="user",
-                    max_count=30
-                )
-                videos_list = latest_videos_result.get("videos", []) if latest_videos_result else []
-                adapter_error = (latest_videos_result or {}).get("error") if isinstance(latest_videos_result, dict) else None
+                # 获取已存在的视频ID集合，用于分页检测的停止条件
+                existing_videos = db.query(SubscriptionVideo).filter(
+                    SubscriptionVideo.subscription_id == subscription_id
+                ).all()
+                existing_video_ids = {v.video_id for v in existing_videos}
+                logger.info(f"Instagram检测更新：数据库中已存在 {len(existing_video_ids)} 个媒体")
 
-                if not videos_list:
-                    if adapter_error:
-                        logger.warning(f"Instagram检测失败，适配器返回错误: {adapter_error}")
-                        _mark_subscription_check_failure(subscription, f"Instagram检测失败: {adapter_error}")
-                        db.commit()
-                        return {
-                            "message": f"获取Instagram媒体失败: {adapter_error}",
-                            "has_update": False,
-                            "new_videos_count": 0,
-                            "requires_sync": False,
-                            "status": subscription.status,
-                            "error_message": subscription.error_message
-                        }
+                # 分页拉取博主媒体，每页逐条比对，遇到已存在的 video_id 就停止
+                resolved_user_id = await instagram_api.get_user_id(subscription.user_id)
+                end_cursor = ""
+                all_videos = []
+                first_item = None
+                page_count = 0
+
+                while True:
+                    page_count += 1
+                    page = await instagram_api.get_user_medias_page(
+                        resolved_user_id, count=50, end_cursor=end_cursor
+                    )
+                    items = page.get("items", []) or []
+                    end_cursor = page.get("next_cursor") or ""
+
+                    if not items:
+                        break
+
+                    found_existing = False
+                    for item in items:
+                        normalized = instagram_adapter.normalize_video_data(item, "user")
+                        media_id = str(normalized.get("video_id") or "")
+
+                        if first_item is None:
+                            first_item = item
+
+                        # 碰到已入库的 ID，说明已经追上新帖边界，停止翻页
+                        if media_id and media_id in existing_video_ids:
+                            found_existing = True
+                            break
+
+                        if media_id and media_id not in existing_video_ids:
+                            all_videos.append(item)
+
+                    if found_existing:
+                        logger.info(f"Instagram分页检测: 第{page_count}页遇到已存在的视频，停止翻页")
+                        break
+                    if not end_cursor:
+                        logger.info(f"Instagram分页检测: 第{page_count}页已翻完所有帖子")
+                        break
+
+                    await asyncio.sleep(1)
+
+                if not first_item:
+                    # 博主没有任何帖子
                     logger.info("Instagram媒体列表为空")
                     _mark_subscription_check_success(subscription)
                     db.commit()
@@ -795,29 +859,25 @@ async def check_subscription_update(
                         "error_message": subscription.error_message
                     }
 
-                existing_videos = db.query(SubscriptionVideo).filter(
-                    SubscriptionVideo.subscription_id == subscription_id
-                ).all()
-                existing_video_ids = {v.video_id for v in existing_videos}
-                logger.info(f"Instagram检测更新：数据库中已存在 {len(existing_video_ids)} 个媒体")
-
-                all_videos = []
-                for item in videos_list:
-                    normalized_item = instagram_adapter.normalize_video_data(item, "user")
-                    media_id = str(normalized_item.get("video_id") or "")
-                    if media_id and media_id not in existing_video_ids:
-                        all_videos.append(item)
-
                 has_update = len(all_videos) > 0
-                latest_video = videos_list[0]
+                latest_video = first_item
+                videos_list = [first_item]
 
                 if has_update:
-                    logger.info(f"Instagram检测到更新: 发现 {len(all_videos)} 个新媒体")
+                    logger.info(f"Instagram检测到更新: 共翻{page_count}页, 发现 {len(all_videos)} 个新媒体")
 
             except Exception as e:
                 logger.error(f"获取Instagram媒体失败: {str(e)}")
                 _mark_subscription_check_failure(subscription, str(e))
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=str(e)
+                ))
                 return {
                     "message": f"获取Instagram媒体失败: {str(e)}",
                     "has_update": False,
@@ -856,6 +916,14 @@ async def check_subscription_update(
                     logger.error(f"X检测失败: {adapter_error}")
                     _mark_subscription_check_failure(subscription, f"X检测失败: {adapter_error}")
                     db.commit()
+                    asyncio.create_task(send_subscription_check_notification(
+                        subscription_id=subscription_id,
+                        user_id=subscription.user_id,
+                        nickname=subscription.nickname,
+                        platform=subscription.platform,
+                        success=False,
+                        error_message=f"X检测失败: {adapter_error}"
+                    ))
                     return {
                         "message": f"X检测失败: {adapter_error}",
                         "has_update": False,
@@ -933,6 +1001,14 @@ async def check_subscription_update(
                 logger.error(f"获取X点赞失败: {str(e)}")
                 _mark_subscription_check_failure(subscription, str(e))
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=str(e)
+                ))
                 return {
                     "message": f"获取X点赞失败: {str(e)}",
                     "has_update": False,
@@ -966,6 +1042,14 @@ async def check_subscription_update(
                     logger.error(f"网易云检测失败: {adapter_error}")
                     _mark_subscription_check_failure(subscription, f"网易云检测失败: {adapter_error}")
                     db.commit()
+                    asyncio.create_task(send_subscription_check_notification(
+                        subscription_id=subscription_id,
+                        user_id=subscription.user_id,
+                        nickname=subscription.nickname,
+                        platform=subscription.platform,
+                        success=False,
+                        error_message=f"网易云检测失败: {adapter_error}"
+                    ))
                     return {
                         "message": f"网易云检测失败: {adapter_error}",
                         "has_update": False,
@@ -1018,6 +1102,14 @@ async def check_subscription_update(
                 logger.error(f"获取网易云歌单歌曲失败: {str(e)}")
                 _mark_subscription_check_failure(subscription, str(e))
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=str(e)
+                ))
                 return {
                     "message": f"获取网易云歌单歌曲失败: {str(e)}",
                     "has_update": False,
@@ -1045,6 +1137,14 @@ async def check_subscription_update(
                 _mark_subscription_check_failure(subscription, error_msg)
                 subscription.last_check = now
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=error_msg
+                ))
                 return {
                     "message": error_msg,
                     "has_update": False,
@@ -1068,6 +1168,14 @@ async def check_subscription_update(
                     logger.error(f"小红书检测失败: {adapter_error}")
                     _mark_subscription_check_failure(subscription, f"小红书检测失败: {adapter_error}")
                     db.commit()
+                    asyncio.create_task(send_subscription_check_notification(
+                        subscription_id=subscription_id,
+                        user_id=subscription.user_id,
+                        nickname=subscription.nickname,
+                        platform=subscription.platform,
+                        success=False,
+                        error_message=f"小红书检测失败: {adapter_error}"
+                    ))
                     return {
                         "message": f"小红书检测失败: {adapter_error}",
                         "has_update": False,
@@ -1156,6 +1264,14 @@ async def check_subscription_update(
                 _mark_subscription_check_failure(subscription, str(e))
                 subscription.last_check = now
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=str(e)
+                ))
                 return {
                     "message": f"获取小红书笔记失败: {str(e)}",
                     "has_update": False,
@@ -1374,6 +1490,14 @@ async def check_subscription_update(
                 logger.error(f"B站检测失败: {adapter_error}")
                 _mark_subscription_check_failure(subscription, f"B站检测失败: {adapter_error}")
                 db.commit()
+                asyncio.create_task(send_subscription_check_notification(
+                    subscription_id=subscription_id,
+                    user_id=subscription.user_id,
+                    nickname=subscription.nickname,
+                    platform=subscription.platform,
+                    success=False,
+                    error_message=f"B站检测失败: {adapter_error}"
+                ))
                 return {
                     "message": f"B站检测失败: {adapter_error}",
                     "has_update": False,
