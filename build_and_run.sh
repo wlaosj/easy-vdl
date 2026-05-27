@@ -22,7 +22,7 @@ FRONTEND_PORT=5858
 # 是否启用 /dev/dri 核显映射（true/false）。用于测试可临时关闭。
 ENABLE_DRI_MAPPING="${ENABLE_DRI_MAPPING:-true}"
 # 安全配置 - 直接在脚本中设置API密钥
-SNIFFER_LICENSE_KEY="ETJWYP3DCMGYVD9DV1V0RRENI0LKBHM2"    # 内测功能授权密钥
+# SNIFFER_LICENSE_KEY="ETJWYP3DCMGYVD9DV1V0RRENI0LKBHM2"    # 内测功能授权密钥
 
 # 管理员账号配置 - 支持环境变量覆盖
 ADMIN_USERNAME="${EASY_VDL_ADMIN_USERNAME:-bigv}"          # 管理员用户名，默认 admin
@@ -170,7 +170,6 @@ docker run -d \
     $DRI_OPTS \
     $DRI_GROUPS \
     $GPU_PERF_OPTS \
-    -e SNIFFER_LICENSE_KEY="$SNIFFER_LICENSE_KEY" \
     -e EASY_VDL_PORT="$FRONTEND_PORT" \
     -e PUID="$PUID" \
     -e PGID="$PGID" \

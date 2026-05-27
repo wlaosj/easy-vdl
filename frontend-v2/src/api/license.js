@@ -15,5 +15,9 @@ export const licenseApi = {
 
     getCommunityKey() {
         return client.get('/system/community-key');
+    },
+
+    saveKey(licenseKey) {
+        return client.post('/license/save-key', { license_key: licenseKey });
     }
 };

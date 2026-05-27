@@ -286,11 +286,50 @@ class LicenseManager:
         self._cached_ip, self._cached_ip_at = ip, now
         return ip
 
+    def _get_active_license_key(self) -> tuple[Optional[str], bool]:
+        """获取当前生效的授权密钥，并判定是否由环境变量锁定。
+        返回：(key_value, is_env_locked)
+        """
+        # 1. 优先读取环境变量
+        try:
+            env_key = os.getenv("SNIFFER_LICENSE_KEY")
+        except Exception:
+            env_key = None
+            
+        if env_key and isinstance(env_key, str) and env_key.strip():
+            # 过滤掉示例/占位密钥
+            invalid_patterns = ["高级功能", "可选", "your_key", "example", "密钥"]
+            key_lower = env_key.strip().lower()
+            if not any(pattern.lower() in key_lower for pattern in invalid_patterns):
+                return env_key.strip(), True
+        
+        # 2. 环境变量为空或占位符时，从数据库中读取
+        try:
+            from sql.database_postgresql import get_session
+            from sql.models import SystemConfig
+            
+            db = get_session()
+            try:
+                config_item = db.query(SystemConfig).filter(SystemConfig.key == "license_key").first()
+                if config_item and config_item.value and config_item.value.strip():
+                    return config_item.value.strip(), False
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"从数据库获取授权密钥失败: {e}")
+            
+        # 3. 兜底再次检查环境变量（如果真的是占位符但需要显示）
+        if env_key and isinstance(env_key, str) and env_key.strip():
+            return env_key.strip(), True
+            
+        return None, False
+
     async def initialize(self) -> bool:
         """初始化授权管理器"""
         try:
-            # 从环境变量获取密钥
-            self.license_key = os.getenv("SNIFFER_LICENSE_KEY")
+            # 从环境变量或数据库获取生效的密钥
+            key, is_env_locked = self._get_active_license_key()
+            self.license_key = key
             if not self.license_key:
                 self._log_missing_key_once()
                 # 缺少密钥时不再触发远端验证，直接标记无效并设置下一次验证时间，避免频繁打点
@@ -379,12 +418,9 @@ class LicenseManager:
             return False
         
         now = time.time()
-        # 确保每个进程都能读取到环境变量中的密钥（避免只在单例初始化的进程中加载）
-        if not self.license_key:
-            try:
-                self.license_key = os.getenv("SNIFFER_LICENSE_KEY")
-            except Exception:
-                self.license_key = None
+        # 动态获取当前生效的密钥，确保支持热更新及多工作进程同步
+        key, is_env_locked = self._get_active_license_key()
+        self.license_key = key
         # 本地前置校验：无密钥直接判定无效，且避免频繁重试
         if not self.license_key or not isinstance(self.license_key, str) or not self.license_key.strip():
             self.status = LicenseStatus.INVALID
@@ -498,6 +534,10 @@ class LicenseManager:
         """执行验证请求"""
         self.last_verify_time = time.time()
         timeout = aiohttp.ClientTimeout(total=self.request_timeout)
+        
+        # 动态加载最新生效的密钥
+        key, is_env_locked = self._get_active_license_key()
+        self.license_key = key
         
         # 前置校验：密钥为空时直接返回，避免发送无效请求导致 422 错误
         if not self.license_key or not isinstance(self.license_key, str) or not self.license_key.strip():
@@ -676,26 +716,82 @@ def require_license(func):
         return await func(*args, **kwargs)
     return wrapper
 
+class SaveKeyRequest(BaseModel):
+    license_key: str
+
 @router.get("/env-key")
 async def get_env_key(current_user: User = Depends(get_current_user)):
-    """获取环境变量中的密钥（仅返回脱敏值）"""
+    """获取生效的密钥配置（仅返回脱敏值及锁定状态）"""
     is_admin = str(getattr(current_user, "is_admin", "")).lower() == "true"
     if not is_admin:
         raise HTTPException(status_code=403, detail="仅管理员可查看授权密钥信息")
 
-    key = os.getenv("SNIFFER_LICENSE_KEY")
-    if not key:
-        raise HTTPException(status_code=404, detail="环境变量中未找到密钥")
-
-    key = str(key)
-    if len(key) <= 10:
-        masked = f"{key[:2]}****" if len(key) > 2 else "****"
-    else:
-        masked = f"{key[:6]}****{key[-4:]}"
+    key, is_env_locked = license_manager._get_active_license_key()
+    
+    masked = None
+    if key:
+        masked = _mask_license_key(key)
 
     return {
         "key_code": masked,
         "masked": True,
+        "is_env_locked": is_env_locked
+    }
+
+@router.post("/save-key")
+async def save_license_key(request: SaveKeyRequest, current_user: User = Depends(get_current_user)):
+    """图形化保存授权密钥（仅在未由环境变量锁定时允许，仅管理员可用）"""
+    is_admin = str(getattr(current_user, "is_admin", "")).lower() == "true"
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="仅管理员可修改授权密钥信息")
+
+    # 检查是否已被环境变量锁定
+    _, is_env_locked = license_manager._get_active_license_key()
+    if is_env_locked:
+        raise HTTPException(status_code=400, detail="环境变量已锁定授权配置，UI 无法修改")
+
+    new_key = request.license_key.strip()
+    if not new_key:
+        raise HTTPException(status_code=400, detail="密钥不能为空")
+
+    # 保存到数据库
+    try:
+        from sql.database_postgresql import get_session
+        from sql.models import SystemConfig
+        from sqlalchemy.sql import func
+        
+        db = get_session()
+        try:
+            config_item = db.query(SystemConfig).filter(SystemConfig.key == "license_key").first()
+            if config_item:
+                config_item.value = new_key
+                config_item.updated_at = func.now()
+            else:
+                config_item = SystemConfig(key="license_key", value=new_key, updated_at=func.now())
+                db.add(config_item)
+            db.commit()
+        except Exception as db_err:
+            db.rollback()
+            logger.error(f"保存密钥到数据库失败: {db_err}")
+            raise HTTPException(status_code=500, detail=f"数据库保存失败: {str(db_err)}")
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # 保存成功后清除缓存，重置状态
+    license_manager.clear_cache()
+    license_manager.license_key = new_key
+    
+    # 异步触发一次远端重验
+    asyncio.create_task(license_manager.verify())
+
+    return {
+        "success": True,
+        "message": "密钥已成功保存并开始重新验证，请刷新状态查看"
     }
 
 def _mask_license_key(key: Optional[str]) -> Optional[str]:

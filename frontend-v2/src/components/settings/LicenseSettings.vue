@@ -91,6 +91,50 @@
         </div>
       </LicenseCardShell>
 
+      <!-- 密钥图形化配置区域 -->
+      <div class="license-key-config-section card">
+        <div class="config-title">
+          <Icon name="key" :size="18" />
+          <span>图形化授权配置</span>
+        </div>
+        <div class="config-body">
+          <div class="input-row">
+            <div class="input-wrapper">
+              <input
+                :type="showRawKey ? 'text' : 'password'"
+                v-model="inputKey"
+                :placeholder="isEnvLocked ? (envKey ? '密钥已由环境变量配置且锁定' : '缺少密钥') : '请输入您的授权密钥'"
+                :disabled="isEnvLocked || savingKey"
+                class="form-control key-input"
+              />
+              <button
+                type="button"
+                class="eye-btn"
+                @click="showRawKey = !showRawKey"
+                v-if="!isEnvLocked && inputKey"
+                :title="showRawKey ? '隐藏密钥' : '显示明文'"
+              >
+                <Icon :name="showRawKey ? 'eye-off' : 'eye'" :size="16" />
+              </button>
+            </div>
+            <button
+              @click="saveLicenseKey"
+              :disabled="isEnvLocked || savingKey || !inputKey.trim()"
+              class="btn btn-primary save-btn"
+            >
+              <Icon :name="savingKey ? 'loader' : 'save'" :size="16" :class="{ 'loading-spinner': savingKey }" />
+              {{ savingKey ? '保存并校验中...' : '保存并验证' }}
+            </button>
+          </div>
+          
+          <div class="config-tip" :class="{ 'env-locked': isEnvLocked }">
+            <Icon :name="isEnvLocked ? 'lock' : 'info'" :size="14" />
+            <span v-if="isEnvLocked">当前密钥已由容器环境变量 <code>SNIFFER_LICENSE_KEY</code> 锁定保护，如需更换请修改环境变量并重启容器。</span>
+            <span v-else>可以直接在此输入或粘贴您的授权密钥，保存后系统将即时热重载并向授权服务器发起验证。</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 帮助指引 -->
       <div class="help-section">
         <div class="help-title">
@@ -98,12 +142,32 @@
           如何配置授权密钥？
         </div>
         <div class="help-content">
-          <p>购买授权后你将收到一串密钥，通过环境变量注入容器即可激活。</p>
-          <p><strong>docker-compose 部署</strong>，在配置文件中添加：</p>
-          <pre class="code-block">environment:
+          <p>购买授权后您将获得一串激活密钥，系统支持以下两种便捷的配置激活方式：</p>
+          
+          <div class="help-method">
+            <div class="method-header">
+              <span class="badge badge-success">方式一（推荐，小白友好）</span>
+              <strong>图形化热更新激活</strong>
+            </div>
+            <div class="method-body">
+              <p>直接在上方“<strong>图形化授权配置</strong>”输入框中粘贴您的密钥，点击“<strong>保存并验证</strong>”即可即时激活，<strong>无需重启任何容器/服务</strong>，方便快捷。</p>
+            </div>
+          </div>
+          
+          <div class="help-method">
+            <div class="method-header">
+              <span class="badge badge-info">方式二（高安全，运维推荐）</span>
+              <strong>容器环境变量注入</strong>
+            </div>
+            <div class="method-body">
+              <p>适合使用 Docker-Compose、Kubernetes 等声明式部署的高级用户。通过环境变量 <code>SNIFFER_LICENSE_KEY</code> 注入，该配置会强制锁定 UI 更改，安全级别极高。</p>
+              <p><strong>1) docker-compose 部署</strong>，在配置文件中添加：</p>
+              <pre class="code-block">environment:
   - SNIFFER_LICENSE_KEY=你的授权密钥</pre>
-          <p><strong>docker run 部署</strong>，添加 <code>-e SNIFFER_LICENSE_KEY=你的授权密钥</code> 参数。</p>
-          <p class="help-note">添加后需重启容器生效：<code>docker-compose up -d</code> 或 <code>docker restart &lt;容器名&gt;</code></p>
+              <p><strong>2) docker run 部署</strong>，在启动命令中添加 <code>-e SNIFFER_LICENSE_KEY=你的授权密钥</code> 参数。</p>
+              <p class="help-note">提示：通过环境变量配置或变更密钥后，需重启容器生效。</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -126,6 +190,10 @@ const toast = useToast()
 const refreshing = ref(false)
 const envKey = ref('')
 const containerTimeText = ref('')
+const isEnvLocked = ref(true)
+const inputKey = ref('')
+const showRawKey = ref(false)
+const savingKey = ref(false)
 let containerTimeOffsetMs = 0
 let timeTickTimer = null
 let timeSyncTimer = null
@@ -234,14 +302,55 @@ async function syncContainerTime() {
   }
 }
 
+async function saveLicenseKey() {
+  if (!inputKey.value || !inputKey.value.trim()) {
+    toast.error('请输入有效的授权密钥')
+    return
+  }
+  
+  // 如果是掩码（前6后4且带****），且用户没有修改过，我们不需要保存
+  if (inputKey.value === envKey.value && inputKey.value.includes('****')) {
+    toast.info('密钥未发生变更')
+    return
+  }
+  
+  savingKey.value = true
+  try {
+    const res = await licenseApi.saveKey(inputKey.value.trim())
+    if (res.success) {
+      toast.success('密钥保存成功，正在重新校验激活状态...')
+      // 等待 1.5 秒让后端重验完成，然后刷新授权状态
+      setTimeout(async () => {
+        await systemStore.fetchLicenseStatus()
+        // 刷新获取到的新脱敏密钥
+        const data = await licenseApi.getEnvKey()
+        envKey.value = data.key_code || ''
+        inputKey.value = envKey.value
+        savingKey.value = false
+      }, 1500)
+    } else {
+      toast.error(res.message || '保存失败')
+      savingKey.value = false
+    }
+  } catch (err) {
+    console.error('Failed to save license key:', err)
+    toast.error(err.response?.data?.detail || '保存密钥失败')
+    savingKey.value = false
+  }
+}
+
 onMounted(async () => {
   await systemStore.fetchLicenseStatus()
   
-  // 获取高级功能密钥
+  // 获取高级功能密钥及状态
   try {
     const data = await licenseApi.getEnvKey()
-    // 后端已返回脱敏值，前端直接展示
     envKey.value = data.key_code || ''
+    isEnvLocked.value = data.is_env_locked !== false
+    // 如果没有被环境变量锁定且有数据库密钥，回显掩码密钥以便用户感知已配置过
+    if (!isEnvLocked.value && envKey.value) {
+      inputKey.value = envKey.value
+    }
   } catch (err) {
     console.error('Failed to fetch env key:', err)
   }
@@ -702,5 +811,182 @@ onBeforeUnmount(() => {
   .license-settings {
     display: block;
   }
+}
+
+/* 图形化授权配置区域 */
+.license-key-config-section {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.config-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 18px;
+}
+
+.config-title svg {
+  color: var(--color-primary);
+}
+
+.input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.key-input {
+  width: 100%;
+  padding: 10px 16px;
+  padding-right: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.key-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.15);
+  outline: none;
+}
+
+.key-input:disabled {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  border-color: var(--color-border);
+}
+
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.eye-btn:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
+}
+
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  height: 40px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.config-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+}
+
+.config-tip.env-locked {
+  color: var(--color-warning);
+}
+
+.config-tip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.config-tip code {
+  font-family: monospace;
+  background: var(--color-bg-tertiary);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* 帮助指引优化样式 */
+.help-method {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+
+.method-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-success {
+  background: rgba(46, 204, 113, 0.12);
+  color: #27ae60;
+  border: 1px solid rgba(46, 204, 113, 0.24);
+}
+
+.badge-info {
+  background: rgba(52, 152, 219, 0.12);
+  color: #2980b9;
+  border: 1px solid rgba(52, 152, 219, 0.24);
+}
+
+.method-body p {
+  margin: 0 0 8px 0 !important;
+  font-size: 13px !important;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+.method-body p:last-child {
+  margin-bottom: 0 !important;
 }
 </style>
