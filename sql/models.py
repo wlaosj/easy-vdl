@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, DateTime, Enum as SQLAlchemyEnum, Integer, CheckConstraint, Text
+from sqlalchemy import Column, String, Float, DateTime, Enum as SQLAlchemyEnum, Integer, CheckConstraint, Text, BigInteger
 from sqlalchemy.sql import func
 import enum
 from .database_postgresql import Base
@@ -81,10 +81,10 @@ class Subscription(Base):
     avatar_url = Column(Text, nullable=True)  # 头像
     profile_url = Column(String(500), nullable=True)  # 创作者主页链接（小红书等需带 xsec_token）
     signature = Column(String, nullable=True)   # 签名/简介
-    follower_count = Column(Integer, nullable=True)  # 粉丝数
+    follower_count = Column(BigInteger, nullable=True)  # 粉丝数
     following_count = Column(Integer, nullable=True)  # 关注数
     video_count = Column(Integer, nullable=True)     # 视频总数
-    like_count = Column(Integer, nullable=True)      # 获赞总数
+    like_count = Column(BigInteger, nullable=True)      # 获赞总数
     last_sync_info = Column(DateTime(timezone=True), nullable=True)  # 最后同步信息时间
     # 最新视频信息
     latest_video_time = Column(DateTime(timezone=True), nullable=True, index=True)  # 最新视频发布时间
@@ -925,7 +925,7 @@ class LiveSubscription(Base):
     # 统计信息
     total_record_count = Column(Integer, default=0)  # 累计录制次数
     total_record_duration = Column(Integer, default=0)  # 累计录制时长(秒)
-    total_record_size = Column(Integer, default=0)  # 累计录制大小(字节)
+    total_record_size = Column(BigInteger, default=0)  # 累计录制大小(字节)
     
     # 备注
     remark = Column(Text, nullable=True)  # 用户备注
@@ -963,7 +963,7 @@ class LiveRecord(Base):
     # 文件信息
     file_path = Column(String, nullable=True)  # 文件路径
     file_name = Column(String, nullable=True)  # 文件名
-    file_size = Column(Integer, nullable=True)  # 文件大小(字节)
+    file_size = Column(BigInteger, nullable=True)  # 文件大小(字节)
     format = Column(String, default="ts")  # 文件格式: ts/mp4/flv
     
     # 分段信息

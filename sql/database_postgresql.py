@@ -58,8 +58,8 @@ class DatabaseSchemaManager:
                     'duration': {'type': 'INTEGER', 'primary_key': False, 'nullable': True},
                     'thumbnail_url': {'type': 'VARCHAR(500)', 'primary_key': False, 'nullable': True},
                     'description': {'type': 'TEXT', 'primary_key': False, 'nullable': True},
-                    'view_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
-                    'like_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
+                    'view_count': {'type': 'BIGINT', 'primary_key': False, 'nullable': True, 'default': '0'},
+                    'like_count': {'type': 'BIGINT', 'primary_key': False, 'nullable': True, 'default': '0'},
                     'comment_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
                     'share_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
                     'tags': {'type': 'TEXT[]', 'primary_key': False, 'nullable': True},
@@ -95,10 +95,10 @@ class DatabaseSchemaManager:
                     'author_name': {'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': True},
                     'avatar_url': {'type': 'TEXT', 'primary_key': False, 'nullable': True},
                     'signature': {'type': 'TEXT', 'primary_key': False, 'nullable': True},
-                    'follower_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
+                    'follower_count': {'type': 'BIGINT', 'primary_key': False, 'nullable': True, 'default': '0'},
                     'following_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
                     'video_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
-                    'like_count': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '0'},
+                    'like_count': {'type': 'BIGINT', 'primary_key': False, 'nullable': True, 'default': '0'},
                     'last_sync_info': {'type': 'TIMESTAMP', 'primary_key': False, 'nullable': True},
                     'latest_video_time': {'type': 'TIMESTAMP', 'primary_key': False, 'nullable': True},
                     'latest_video_id': {'type': 'VARCHAR(100)', 'primary_key': False, 'nullable': True},
@@ -446,6 +446,9 @@ class DatabaseSchemaManager:
             # 迁移字段类型到 TEXT（支持长文本）
             await self._migrate_column_to_text(engine)
             
+            # 迁移部分整型字段到 BIGINT（防止溢出，如获赞数和粉丝数）
+            await self._migrate_columns_to_bigint(engine)
+            
             # 执行画质格式迁移
             await self._migrate_quality_formats(engine)
             
@@ -748,6 +751,42 @@ class DatabaseSchemaManager:
         except Exception as e:
             logger.error(f"字段类型迁移失败: {e}")
             # 不抛出异常，避免阻止系统启动
+            
+    async def _migrate_columns_to_bigint(self, engine):
+        """迁移部分整型字段到 BIGINT（防止溢出，如获赞数和粉丝数）"""
+        try:
+            logger.debug("🔧 开始检查整型字段是否需要升级为 BIGINT...")
+            
+            # 定义需要升级为 BIGINT 的表和字段
+            bigint_columns = {
+                'subscriptions': ['like_count', 'follower_count'],
+                'tasks': ['like_count', 'view_count'],
+                'live_subscriptions': ['total_record_size'],
+                'live_records': ['file_size']
+            }
+            
+            inspector = inspect(engine)
+            for table_name, columns in bigint_columns.items():
+                if not inspector.has_table(table_name):
+                    continue
+                
+                existing_columns = {col['name']: col for col in inspector.get_columns(table_name)}
+                for column_name in columns:
+                    if column_name not in existing_columns:
+                        continue
+                    
+                    current_type = str(existing_columns[column_name]['type']).lower()
+                    
+                    # 如果不是 bigint，说明需要迁移
+                    if 'integer' in current_type and 'bigint' not in current_type:
+                        logger.info(f"🔧 迁移字段类型: {table_name}.{column_name} (INTEGER -> BIGINT)")
+                        with engine.connect() as conn:
+                            alter_sql = f"ALTER TABLE {table_name} ALTER COLUMN {column_name} TYPE BIGINT"
+                            conn.execute(text(alter_sql))
+                            conn.commit()
+                        logger.info(f"✅ 字段 {table_name}.{column_name} 已成功升级为 BIGINT 类型")
+        except Exception as e:
+            logger.error(f"字段 BIGINT 类型迁移失败: {e}")
     
     async def _migrate_quality_formats(self, engine):
         """智能迁移画质格式到兼容格式"""
