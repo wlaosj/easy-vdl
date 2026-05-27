@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<CommunityApplications>
-  <Profile>
-    Easy-VDL 官方 Unraid 模版仓库。本仓库提供 Easy-VDL 综合直播监控、自动录制与多平台视频订阅下载服务的官方 Docker 模板。深度集成 Unraid GPU 负载监控能力与核显硬件加速转码，并支持完美联动 Emby/Jellyfin 媒体服务器。
-  </Profile>
-  <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/refs/heads/main/favicon.png</Icon>
-  <WebPage>https://github.com/wlaosj/easy-vdl</WebPage>
-</CommunityApplications>
