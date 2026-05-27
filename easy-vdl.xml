@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Easy-VDL</Name>
+  <Repository>qq918652593/easy-vdl:latest</Repository>
+  <Registry>https://hub.docker.com/r/qq918652593/easy-vdl</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://t.me/+7jcTMePlNVwwZjg1</Support>
+  <Project>https://github.com/wlaosj/easy-vdl</Project>
+  <Overview>Easy-VDL 是一款集视频订阅、直播监控、自动录制、AI智能高光剪辑与媒体服务器联动的全能型可视化下载平台。支持抖音、B站、YouTube等平台自动检测更新下载，并与 Emby/Jellyfin 完美联动。</Overview>
+  <Category>Downloaders: Status:Beta</Category>
+  <Publish>true</Publish>
+  <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/main/frontend-v2/public/favicon.ico</Icon>
+  <Banner/>
+  <Date>2026-05-27</Date>
+  <Changes>
+### 🚀 Easy-VDL 现已登录 Unraid CA 商店！
+- 完美支持 x86_64 和 ARM64 架构设备。
+- 支持 Intel/AMD 核显（/dev/dri）硬件加速转码。
+- 内置 Telegram 突破 20MB 下载限制的特权传输。
+  </Changes>
+
+  <!-- 端口配置 -->
+  <Config Name="WebUI 端口" Target="80" Default="888" Mode="tcp" Description="容器内部服务端口为 80，请在此修改 Unraid 宿主机的外部访问端口。" Type="Port" Display="always" Required="true" Mask="false">888</Config>
+
+  <!-- 挂载目录 -->
+  <Config Name="视频与媒体下载路径" Target="/app/downloads" Default="" Mode="rw" Description="视频下载保存路径，建议映射到 NAS 的共享存储目录（如 /mnt/user/downloads/）。" Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="数据库与配置路径" Target="/app/database" Default="" Mode="rw" Description="数据库与全局配置路径，由于数据库读写较频繁，为了更好的性能，强烈建议映射到 SSD 缓存池（如 /mnt/user/appdata/easy-vdl/database）。" Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="程序运行日志路径" Target="/app/logs" Default="" Mode="rw" Description="程序运行日志保存路径（如 /mnt/user/appdata/easy-vdl/logs）。" Type="Path" Display="always" Required="false" Mask="false"/>
+
+  <!-- 环境变量 -->
+  <Config Name="PUID" Target="PUID" Default="99" Description="宿主机用户的 UID，在 Unraid 中默认通常为 99 (nobody)。" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Description="宿主机用户的 GID，在 Unraid 中默认通常为 100 (users)。" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="初始管理员账号" Target="EASY_VDL_ADMIN_USERNAME" Default="admin" Description="预设的管理员登录用户名。" Type="Variable" Display="always" Required="true" Mask="false">admin</Config>
+  <Config Name="初始管理员密码" Target="EASY_VDL_ADMIN_PASSWORD" Default="admin123456" Description="预设的管理员登录密码，强烈建议在部署时进行修改。" Type="Variable" Display="always" Required="true" Mask="false">admin123456</Config>
+  <Config Name="系统时区" Target="TZ" Default="Asia/Shanghai" Description="系统运行的时区设置。" Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Shanghai</Config>
+
+  <!-- 硬件加速设备映射 -->
+  <Config Name="Intel/AMD 核显加速设备" Target="/dev/dri" Default="/dev/dri" Description="Intel/AMD 核显硬件加速映射通道（仅限 x86 且拥有核显的机器）。" Type="Device" Display="advanced" Required="false" Mask="false">/dev/dri</Config>
+</Container>
