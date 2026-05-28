@@ -767,6 +767,9 @@ class TelegramBotService:
                 'youtube.com/live/',
                 'miguvideo.com',
                 'live.kuaishou.com',
+                'douyu.com',
+                'cc.163.com',
+                'twitch.tv',
             ]):
                 category = 'live'
                 
@@ -1398,7 +1401,19 @@ class TelegramBotService:
                         status_icon = "📡" # 监控中
                         
                     # 平台名称
-                    platform_map = {"douyin": "抖音", "bilibili": "B站", "youtube": "油管", "migu": "咪咕", "tiktok": "TK", "kuaishou": "快手"}
+                    platform_map = {
+                        "douyin": "抖音",
+                        "bilibili": "B站",
+                        "huya": "虎牙",
+                        "xhs": "小红书",
+                        "youtube": "油管",
+                        "migu": "咪咕",
+                        "tiktok": "TK",
+                        "kuaishou": "快手",
+                        "douyu": "斗鱼",
+                        "cc": "网易CC",
+                        "twitch": "Twitch"
+                    }
                     p_name = platform_map.get(sub.platform, sub.platform)
                     
                     # 避免 Markdown 报错
@@ -4234,9 +4249,15 @@ class TelegramBotService:
                     adapter = adapters.get_adapter_by_platform('huya')
                 elif any(domain in url for domain in ['kuaishou.com', 'gifshow.com', 'chenzhongtech.com']):
                     adapter = adapters.get_adapter_by_platform('kuaishou')
+                elif 'douyu.com' in url:
+                    adapter = adapters.get_adapter_by_platform('douyu')
+                elif 'cc.163.com' in url:
+                    adapter = adapters.get_adapter_by_platform('cc')
+                elif 'twitch.tv' in url:
+                    adapter = adapters.get_adapter_by_platform('twitch')
             
             if not adapter:
-                await self.send_message(chat_id, "❌ 无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕")
+                await self.send_message(chat_id, "❌ 无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕、斗鱼、网易CC、Twitch")
                 return
 
             platform_name = adapter.platform_name
@@ -4310,7 +4331,7 @@ class TelegramBotService:
                     logger.warning(f"触发监控失败（系统将在重启后自动接管）: {scheduler_err}")
                 
                 # 5. 反馈成功
-                platform_cn = {"douyin": "抖音", "bilibili": "B站", "huya": "虎牙", "xhs": "小红书", "youtube": "油管", "migu": "咪咕"}.get(platform_name, platform_name)
+                platform_cn = {"douyin": "抖音", "bilibili": "B站", "huya": "虎牙", "xhs": "小红书", "youtube": "油管", "migu": "咪咕", "douyu": "斗鱼", "cc": "网易CC", "twitch": "Twitch"}.get(platform_name, platform_name)
                 
                 # 净化主播名，防止Markdown解析错误
                 safe_anchor_name = self.escape_markdown(anchor_name)
@@ -4340,7 +4361,7 @@ class TelegramBotService:
                     return
 
                 # 构建详情消息
-                platform_cn = {"douyin": "抖音", "bilibili": "B站", "youtube": "油管", "migu": "咪咕"}.get(sub.platform, sub.platform)
+                platform_cn = {"douyin": "抖音", "bilibili": "B站", "huya": "虎牙", "xhs": "小红书", "youtube": "油管", "migu": "咪咕", "douyu": "斗鱼", "cc": "网易CC", "twitch": "Twitch"}.get(sub.platform, sub.platform)
                 safe_name = self.escape_markdown(sub.anchor_name or "未知")
                 
                 status_text = "💤 未开播"
