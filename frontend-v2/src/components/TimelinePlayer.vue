@@ -21,7 +21,7 @@
           <span class="streamer-name">{{ subDisplayName || '无缝时间轴回放' }}</span>
         </div>
       </div>
-      <div class="player-content-layout" :class="{ 'triple-mode': tripleScreenMode > 0 }" :style="tripleLayoutStyle">
+      <div class="player-content-layout" :class="{ 'triple-mode': showTripleScreen }" :style="tripleLayoutStyle">
         <canvas v-if="showTripleScreen && tripleScreenMode === 4" ref="mirrorCanvasFarLeft" class="triple-mirror"></canvas>
         <canvas v-if="showTripleScreen" ref="mirrorCanvasLeft" class="triple-mirror"></canvas>
         <div class="video-stack">
