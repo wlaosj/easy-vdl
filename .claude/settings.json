@@ -38,7 +38,9 @@
       "Bash(git -C /mnt/boot/appdata/xing/easy-vdl diff .claude/settings.json)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(ls -la /Volumes/sn570/xing/github-unraid-easy-vdl/)",
+      "Read(//Volumes/sn570/xing/github-unraid-easy-vdl/**)"
     ],
     "additionalDirectories": [
       "/tmp",
