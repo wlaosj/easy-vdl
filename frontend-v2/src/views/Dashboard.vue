@@ -402,7 +402,7 @@ const livePieChartSegments = computed(() => {
     const dashArray = circumference * percent
     
     // 统一平台标识：将 xhs 统一映射为 redbook 以匹配颜色配置
-    const knownPlatforms = ['douyin', 'tiktok', 'youtube', 'bilibili', 'redbook', 'xhs', 'huya', 'douyu', 'migu', 'kuaishou', 'weibo', 'cc']
+    const knownPlatforms = ['douyin', 'tiktok', 'youtube', 'bilibili', 'redbook', 'xhs', 'huya', 'douyu', 'migu', 'kuaishou', 'weibo', 'cc', 'twitch']
     let colorId = knownPlatforms.includes(platform) ? platform : 'other'
     if (colorId === 'xhs') colorId = 'redbook' // 强制映射到红色系
 
@@ -458,7 +458,8 @@ async function fetchLivePlatformStats() {
       'xhs': '小红书',
       'kuaishou': '快手',
       'weibo': '微博',
-      'cc': '网易CC'
+      'cc': '网易CC',
+      'twitch': 'Twitch'
     }
 
     let enabledCount = 0

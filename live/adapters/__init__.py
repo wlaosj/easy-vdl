@@ -9,6 +9,7 @@ from .youtube import YoutubeAdapter
 from .migu import MiguAdapter
 from .kuaishou import KuaishouAdapter
 from .cc import CCAdapter
+from .twitch import TwitchAdapter
 
 
 # 注册所有适配器
@@ -22,6 +23,7 @@ _ADAPTERS = [
     MiguAdapter(),
     KuaishouAdapter(),
     CCAdapter(),
+    TwitchAdapter(),
 ]
 
 def get_adapter(url: str) -> Optional[BaseAdapter]:

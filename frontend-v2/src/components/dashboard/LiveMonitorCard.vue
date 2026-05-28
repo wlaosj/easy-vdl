@@ -127,6 +127,7 @@ const liveGradients = [
   { id: 'xhs', startColor: '#FF2442', endColor: '#FF2442' },
   { id: 'huya', startColor: '#FFAA00', endColor: '#FF8800' },
   { id: 'cc', startColor: '#0D91E9', endColor: '#00B0FF' },
+  { id: 'twitch', startColor: '#9146FF', endColor: '#6441A5' },
   { id: 'douyu', startColor: '#FF5500', endColor: '#FF4400' },
   { id: 'migu', startColor: '#1d8ef7', endColor: '#4aa7ff' },
   { id: 'kuaishou', startColor: '#FF5000', endColor: '#FF5000' },

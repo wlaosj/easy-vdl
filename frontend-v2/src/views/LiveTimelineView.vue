@@ -290,7 +290,8 @@ const platforms = [
   { key: 'youtube', name: 'YouTube' },
   { key: 'migu', name: '咪咕' },
   { key: 'kuaishou', name: '快手' },
-  { key: 'cc', name: '网易CC' }
+  { key: 'cc', name: '网易CC' },
+  { key: 'twitch', name: 'Twitch' }
 ]
 
 // 授权状态 - 优先读取本地缓存，避免闪烁

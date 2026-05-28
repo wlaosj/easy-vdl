@@ -10,7 +10,7 @@
       <div class="license-features" v-if="!checkingLicense">
         <div class="feature-item">
           <Icon name="check" :size="16" />
-          <span>支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手</span>
+          <span>支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 / 网易CC / Twitch</span>
         </div>
         <div class="feature-item">
           <Icon name="check" :size="16" />
@@ -111,6 +111,7 @@
               <option value="migu">咪咕平台</option>
               <option value="kuaishou">快手平台</option>
               <option value="cc">网易CC平台</option>
+              <option value="twitch">Twitch平台</option>
             </select>
             <select v-model="filterStatus" class="form-select filter-select">
               <option value="all">所有状态筛选</option>
@@ -146,6 +147,7 @@
               <option value="migu">咪咕</option>
               <option value="kuaishou">快手</option>
               <option value="cc">网易CC</option>
+              <option value="twitch">Twitch</option>
             </select>
             <select v-model="filterStatus" class="form-select filter-select">
               <option value="all">所有状态</option>
@@ -476,7 +478,7 @@
             placeholder="每行一个直播间链接"
           ></textarea>
           <div class="form-hint">
-            目前支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 / 网易CC 直播
+            目前支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 / 网易CC / Twitch 直播
             <a href="javascript:;" @click="showFormatHelp" style="margin-left:8px; color: var(--color-primary); text-decoration: none;">
               查看支持的链接格式
             </a>
@@ -1820,6 +1822,12 @@ function showFormatHelp() {
             <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">网易CC:</td>
             <td style="padding: 2px 0;">
               cc.163.com/123456
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">Twitch:</td>
+            <td style="padding: 2px 0;">
+              twitch.tv/username 或 m.twitch.tv/username
             </td>
           </tr>
         </table>
@@ -4620,7 +4628,8 @@ function getPlatformName(platform) {
     'youtube': 'YouTube直播',
     'migu': '咪咕直播',
     'kuaishou': '快手直播',
-    'cc': '网易CC直播'
+    'cc': '网易CC直播',
+    'twitch': 'Twitch直播'
   }
   return names[platform] || platform
 }

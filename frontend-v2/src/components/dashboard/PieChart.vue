@@ -165,6 +165,7 @@ function handleSegmentClick(segment) {
 .pie-segment-douyu,
 .pie-segment-migu,
 .pie-segment-cc,
+.pie-segment-twitch,
 .pie-segment-other {
   cursor: pointer;
   transition: filter 0.22s ease;
@@ -186,6 +187,7 @@ function handleSegmentClick(segment) {
 .pie-segment-douyu:hover,
 .pie-segment-migu:hover,
 .pie-segment-cc:hover,
+.pie-segment-twitch:hover,
 .pie-segment-other:hover {
   filter: brightness(1.08);
 }

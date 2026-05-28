@@ -83,8 +83,8 @@ class LiveRecorder:
         
         # 构建录制命令 (参数顺序很重要!)
         normalized_platform = (platform or "").lower()
-        is_youtube = normalized_platform == "youtube"
-        process_name = "YT-DLP" if is_youtube else "FFmpeg"
+        is_ytdlp_engine = normalized_platform in ["youtube", "twitch"]
+        process_name = "YT-DLP" if is_ytdlp_engine else "FFmpeg"
         reconnect_delay_max = "10"
         rw_timeout = "10000000"
         if normalized_platform == "douyin":
@@ -107,11 +107,11 @@ class LiveRecorder:
             )
             input_headers_opts = ["-headers", bilibili_headers]
         
-        if is_youtube:
+        if is_ytdlp_engine:
             source = source_url or room_url or stream_url
             if not source:
-                raise ValueError("YouTube 录制缺少可用 source_url")
-            youtube_cookie_file = "/app/database/cookie/youtube_cookie.txt"
+                raise ValueError(f"{platform} 录制缺少可用 source_url")
+            cookie_file = f"/app/database/cookie/{normalized_platform}_cookie.txt"
             command = [
                 'yt-dlp',
                 '--no-warnings',
@@ -122,8 +122,8 @@ class LiveRecorder:
                 'ejs:github',
                 '-o', output_path,
             ]
-            if os.path.exists(youtube_cookie_file) and os.path.getsize(youtube_cookie_file) > 0:
-                command.extend(['--cookies', youtube_cookie_file])
+            if os.path.exists(cookie_file) and os.path.getsize(cookie_file) > 0:
+                command.extend(['--cookies', cookie_file])
             command.append(source)
         else:
             # [优化] HLS(m3u8)流的 -reconnect 参数无效，仅对 HTTP 直连流(FLV等)启用
@@ -195,7 +195,7 @@ class LiveRecorder:
                     output_path
                 ]
 
-        input_url_for_log = (source_url or room_url or stream_url) if is_youtube else stream_url
+        input_url_for_log = (source_url or room_url or stream_url) if is_ytdlp_engine else stream_url
         input_url_path = str(input_url_for_log or "").split("?", 1)[0]
         lower_input_url_path = input_url_path.lower()
         if ".m3u8" in lower_input_url_path:
@@ -373,7 +373,7 @@ class LiveRecorder:
             'stream_url': stream_url,
             'status': 'recording',
             'segment_time': segment_time,
-            'engine': 'yt-dlp' if is_youtube else 'ffmpeg'
+            'engine': 'yt-dlp' if is_ytdlp_engine else 'ffmpeg'
         }
         self._status_size_cache.pop(subscription_id, None)
         self.exit_contexts.setdefault(subscription_id, {
