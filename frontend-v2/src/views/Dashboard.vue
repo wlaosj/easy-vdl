@@ -402,7 +402,7 @@ const livePieChartSegments = computed(() => {
     const dashArray = circumference * percent
     
     // 统一平台标识：将 xhs 统一映射为 redbook 以匹配颜色配置
-    const knownPlatforms = ['douyin', 'tiktok', 'youtube', 'bilibili', 'redbook', 'xhs', 'huya', 'douyu', 'migu', 'kuaishou', 'weibo']
+    const knownPlatforms = ['douyin', 'tiktok', 'youtube', 'bilibili', 'redbook', 'xhs', 'huya', 'douyu', 'migu', 'kuaishou', 'weibo', 'cc']
     let colorId = knownPlatforms.includes(platform) ? platform : 'other'
     if (colorId === 'xhs') colorId = 'redbook' // 强制映射到红色系
 
@@ -457,7 +457,8 @@ async function fetchLivePlatformStats() {
       'redbook': '小红书',
       'xhs': '小红书',
       'kuaishou': '快手',
-      'weibo': '微博'
+      'weibo': '微博',
+      'cc': '网易CC'
     }
 
     let enabledCount = 0
@@ -2763,6 +2764,7 @@ watch(storageUnitMode, (mode) => {
 .legend-color.color-douyin { background: linear-gradient(135deg, #FF8FA3, #FF9FB5); }
 .legend-color.color-tiktok { background: linear-gradient(135deg, #25F4EE, #FE2C55); }
 .legend-color.color-huya { background: linear-gradient(135deg, #FFAA00, #FF8800); }
+.legend-color.color-cc { background: linear-gradient(135deg, #0D91E9, #00B0FF); }
 .legend-color.color-douyu { background: linear-gradient(135deg, #FF5500, #FF4400); }
 .legend-color.color-migu { background: linear-gradient(135deg, #1d8ef7, #4aa7ff); }
 .legend-color.color-redbook { background: linear-gradient(135deg, #ff2442, #ff2442); }

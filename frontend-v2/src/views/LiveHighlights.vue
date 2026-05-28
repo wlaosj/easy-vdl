@@ -90,6 +90,7 @@
           <button class="filter-tag" :class="{ active: selectedPlatform === 'bilibili' }" @click="selectedPlatform = 'bilibili'">B站</button>
           <button class="filter-tag" :class="{ active: selectedPlatform === 'douyu' }" @click="selectedPlatform = 'douyu'">斗鱼</button>
           <button class="filter-tag" :class="{ active: selectedPlatform === 'huya' }" @click="selectedPlatform = 'huya'">虎牙</button>
+          <button class="filter-tag" :class="{ active: selectedPlatform === 'cc' }" @click="selectedPlatform = 'cc'">网易CC</button>
         </div>
 
         <SkeletonLoader 
@@ -661,6 +662,7 @@
                 <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'bilibili' }" @click="manualStreamerPlatform = 'bilibili'">B站</button>
                 <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'douyu' }" @click="manualStreamerPlatform = 'douyu'">斗鱼</button>
                 <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'huya' }" @click="manualStreamerPlatform = 'huya'">虎牙</button>
+                <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'cc' }" @click="manualStreamerPlatform = 'cc'">网易CC</button>
               </div>
               <SkeletonLoader 
                 v-if="manualStreamersLoading"
@@ -1240,6 +1242,7 @@ function platformTagText(platform) {
   if (key === 'douyin') return '抖音'
   if (key === 'douyu') return '斗鱼'
   if (key === 'huya') return '虎牙'
+  if (key === 'cc') return '网易CC'
   return key || '未知'
 }
 
@@ -1258,6 +1261,7 @@ function platformTagClass(platform) {
   if (key === 'douyin') return 'tag-douyin'
   if (key === 'douyu') return 'tag-douyu'
   if (key === 'huya') return 'tag-huya'
+  if (key === 'cc') return 'tag-cc'
   return 'tag-unknown'
 }
 
@@ -3964,6 +3968,10 @@ h2 {
 
 .tag-huya {
   background: linear-gradient(135deg, #ff8c00 0%, #ffb347 100%);
+}
+
+.tag-cc {
+  background: linear-gradient(135deg, #0d91e9 0%, #00b0ff 100%);
 }
 
 .tag-unknown {

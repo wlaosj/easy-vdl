@@ -110,6 +110,7 @@
               <option value="youtube">YouTube平台</option>
               <option value="migu">咪咕平台</option>
               <option value="kuaishou">快手平台</option>
+              <option value="cc">网易CC平台</option>
             </select>
             <select v-model="filterStatus" class="form-select filter-select">
               <option value="all">所有状态筛选</option>
@@ -144,6 +145,7 @@
               <option value="youtube">YouTube</option>
               <option value="migu">咪咕</option>
               <option value="kuaishou">快手</option>
+              <option value="cc">网易CC</option>
             </select>
             <select v-model="filterStatus" class="form-select filter-select">
               <option value="all">所有状态</option>
@@ -474,7 +476,7 @@
             placeholder="每行一个直播间链接"
           ></textarea>
           <div class="form-hint">
-            目前支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 直播
+            目前支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 / 网易CC 直播
             <a href="javascript:;" @click="showFormatHelp" style="margin-left:8px; color: var(--color-primary); text-decoration: none;">
               查看支持的链接格式
             </a>
@@ -1812,6 +1814,12 @@ function showFormatHelp() {
             <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">快手:</td>
             <td style="padding: 2px 0;">
               live.kuaishou.com/u/... 或 v.kuaishou.com/... (支持短链)<br/>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">网易CC:</td>
+            <td style="padding: 2px 0;">
+              cc.163.com/123456
             </td>
           </tr>
         </table>
@@ -4611,7 +4619,8 @@ function getPlatformName(platform) {
     'xhs': '小红书直播',
     'youtube': 'YouTube直播',
     'migu': '咪咕直播',
-    'kuaishou': '快手直播'
+    'kuaishou': '快手直播',
+    'cc': '网易CC直播'
   }
   return names[platform] || platform
 }
@@ -4984,6 +4993,7 @@ function getStatusText(status) {
 .tag-youtube { color: #ff0000; background: rgba(255, 0, 0, 0.1); }
 .tag-migu { color: #1d8ef7; background: rgba(29, 142, 247, 0.12); }
 .tag-kuaishou { color: #ff6600; background: rgba(255, 102, 0, 0.12); }
+.tag-cc { color: #0d91e9; background: rgba(13, 145, 233, 0.1); }
 
 .q-tag {
   font-size: 10px;
