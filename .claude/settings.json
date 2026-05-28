@@ -32,10 +32,17 @@
       "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files 'data/')",
       "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files --others --exclude-standard --ignored)",
       "Bash(git -C /Volumes/sn570/xing/easy-vdl ls-files 'database/')",
-      "Bash(git -C /Volumes/sn570/xing/easy-vdl rm routers/easy-vdl.code-workspace)"
+      "Bash(git -C /Volumes/sn570/xing/easy-vdl rm routers/easy-vdl.code-workspace)",
+      "Read(//mnt/boot/appdata/xing/github-unraid-easy-vdl/**)",
+      "Bash(git -C /mnt/boot/appdata/xing/easy-vdl status)",
+      "Bash(git -C /mnt/boot/appdata/xing/easy-vdl diff .claude/settings.json)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
-      "/tmp"
+      "/tmp",
+      "/mnt/boot/appdata/xing/github-unraid-easy-vdl"
     ]
   }
 }
