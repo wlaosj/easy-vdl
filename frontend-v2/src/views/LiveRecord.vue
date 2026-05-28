@@ -544,12 +544,12 @@
           <p class="form-hint">需在系统设置中配置通知渠道 (微信/Telegram等)</p>
         </div>
 
-        <div class="form-group" v-if="(addMode === 'batch') || addForm.room_url.includes('douyin.com') || addForm.room_url.includes('bilibili.com') || addForm.room_url.includes('b23.tv') || addForm.room_url.includes('douyu.com') || addForm.room_url.includes('huya.com')">
+        <div class="form-group" v-if="(addMode === 'batch') || addForm.room_url.includes('douyin.com') || addForm.room_url.includes('bilibili.com') || addForm.room_url.includes('b23.tv') || addForm.room_url.includes('douyu.com') || addForm.room_url.includes('huya.com') || addForm.room_url.includes('twitch.tv')">
           <label class="checkbox-label">
             <input type="checkbox" v-model="addForm.danmu_enabled" />
-            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙）</span>
+            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch）</span>
           </label>
-          <p class="form-hint">默认关闭。当前支持抖音/B站/斗鱼/虎牙，开启后会额外写入 .danmu.jsonl 文件</p>
+          <p class="form-hint">默认关闭。当前支持抖音/B站/斗鱼/虎牙/Twitch，开启后会额外写入 .danmu.jsonl 文件</p>
         </div>
       </div>
 
@@ -653,10 +653,10 @@
           <p class="form-hint">录制时自动生成SRT字幕文件,记录实时时间</p>
         </div>
 
-        <div class="form-group" v-if="editingSubscription?.platform === 'douyin' || editingSubscription?.platform === 'bilibili' || editingSubscription?.platform === 'douyu' || editingSubscription?.platform === 'huya'">
+        <div class="form-group" v-if="editingSubscription?.platform === 'douyin' || editingSubscription?.platform === 'bilibili' || editingSubscription?.platform === 'douyu' || editingSubscription?.platform === 'huya' || editingSubscription?.platform === 'twitch'">
           <label class="checkbox-label">
             <input type="checkbox" v-model="editForm.danmu_enabled" />
-            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙）</span>
+            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch）</span>
           </label>
           <p class="form-hint">开启后会额外写入 .danmu.jsonl 文件</p>
         </div>
@@ -2312,7 +2312,7 @@ let liveDanmuReconnectAttempt = 0
 const LIVE_DANMU_RECONNECT_BASE_MS = 1500
 const LIVE_DANMU_RECONNECT_MAX_MS = 30000
 const LIVE_DANMU_RECONNECT_JITTER = 0.2
-const LIVE_DANMU_SUPPORTED_PLATFORMS = new Set(['douyin', 'bilibili', 'douyu', 'huya'])
+const LIVE_DANMU_SUPPORTED_PLATFORMS = new Set(['douyin', 'bilibili', 'douyu', 'huya', 'twitch'])
 
 const liveDanmuVisible = computed(() => liveDanmuMode.value !== 'off')
 const liveDanmuUnsupported = computed(() => {

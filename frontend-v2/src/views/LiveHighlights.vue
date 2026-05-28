@@ -122,7 +122,7 @@
         </div>
         <div v-else class="empty-state">
           <h3>{{ searchQuery ? '未搜索到相关博主' : '暂无可分析记录' }}</h3>
-          <p>仅展示“抖音/B站 + 存在弹幕文件(.danmu.jsonl)”的录制记录。</p>
+          <p>仅展示“抖音/B站/斗鱼/虎牙/Twitch + 存在弹幕文件(.danmu.jsonl)”的录制记录。</p>
         </div>
       </div>
 
@@ -1162,7 +1162,7 @@ const streamTypePresets = [
   '体育赛事',
   '棋牌'
 ]
-const HIGHLIGHTS_SUPPORTED_PLATFORMS = new Set(['douyin', 'bilibili', 'douyu', 'huya'])
+const HIGHLIGHTS_SUPPORTED_PLATFORMS = new Set(['douyin', 'bilibili', 'douyu', 'huya', 'twitch'])
 const asrModelOptions = [
   { value: 'tiny', label: '快速 tiny' },
   { value: 'base', label: '基础 base' },
