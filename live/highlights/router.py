@@ -1954,7 +1954,7 @@ async def get_eligible_streamers(
                 continue
 
     # 3. 按博主聚合
-    eligible_platforms = {'douyin', 'bilibili', 'douyu', 'huya'}
+    eligible_platforms = {'douyin', 'bilibili', 'douyu', 'huya', 'twitch'}
     streamer_map = {}
     for r in results:
         sid = str(r.subscription_id)
