@@ -4373,10 +4373,10 @@ async function batchConvertHistory() {
 
 // 播放直播流
 async function playStream(sub) {
-  if (String(sub?.platform || '').toLowerCase() === 'youtube') {
+  if (['youtube', 'twitch'].includes(String(sub?.platform || '').toLowerCase())) {
     const targetUrl = sub?.room_url || ''
     if (!targetUrl) {
-      toast.error('未找到 YouTube 直播间地址')
+      toast.error(`未找到 ${sub.platform === 'youtube' ? 'YouTube' : 'Twitch'} 直播间地址`)
       return
     }
     window.open(targetUrl, '_blank', 'noopener,noreferrer')
