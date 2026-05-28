@@ -120,6 +120,12 @@
               <option value="paused">已暂停检测</option>
               <option value="offline">离线状态</option>
             </select>
+            <select v-model="sortBy" class="form-select filter-select" @change="saveSortPreference">
+              <option value="status">默认 (状态优先)</option>
+              <option value="newest">最新添加</option>
+              <option value="oldest">最早添加</option>
+              <option value="name">主播姓名 (A-Z)</option>
+            </select>
           </div>
           <div class="search-container">
             <div class="search-input-wrapper">
@@ -155,6 +161,12 @@
               <option value="recording">录制中</option>
               <option value="paused">已暂停检测</option>
               <option value="offline">离线</option>
+            </select>
+            <select v-model="sortBy" class="form-select filter-select" style="margin-left: 8px;" @change="saveSortPreference">
+              <option value="status">默认 (状态优先)</option>
+              <option value="newest">最新添加</option>
+              <option value="oldest">最早添加</option>
+              <option value="name">主播姓名 (A-Z)</option>
             </select>
           </div>
           <div class="action-left">
@@ -1606,6 +1618,7 @@ let tipResolve = null
 // 筛选状态 (从本地存储恢复或默认 'all')
 const filterPlatform = ref(localStorage.getItem('live_record_filter_platform') || 'all')
 const filterStatus = ref(localStorage.getItem('live_record_filter_status') || 'all')
+const sortBy = ref(localStorage.getItem('live_record_sort_by') || 'status')
 
 // 监听筛选状态变化并保存
 watch(filterPlatform, (val) => {
@@ -1614,6 +1627,13 @@ watch(filterPlatform, (val) => {
 watch(filterStatus, (val) => {
   localStorage.setItem('live_record_filter_status', val)
 })
+watch(sortBy, (val) => {
+  localStorage.setItem('live_record_sort_by', val)
+})
+
+function saveSortPreference() {
+  localStorage.setItem('live_record_sort_by', sortBy.value)
+}
 watch(searchKeyword, (val) => {
   if (searchDebounceTimer) {
     clearTimeout(searchDebounceTimer)
@@ -1659,13 +1679,26 @@ const filteredSubscriptions = computed(() => {
     return Number.isFinite(ts) ? ts : 0
   }
 
-  // 排序：录制中优先 > 直播中 > 其他；同组内按添加时间（created_at）倒序
+  // 排序：根据用户选择的策略进行多维度排序，并使用 ID 进行最终稳定性兜底
   return filtered.sort((a, b) => {
-    const priorityDiff = getPriority(b) - getPriority(a)
-    if (priorityDiff !== 0) return priorityDiff
+    if (sortBy.value === 'status') {
+      const priorityDiff = getPriority(b) - getPriority(a)
+      if (priorityDiff !== 0) return priorityDiff
 
-    const createdAtDiff = getCreatedAtTs(b) - getCreatedAtTs(a)
-    if (createdAtDiff !== 0) return createdAtDiff
+      const createdAtDiff = getCreatedAtTs(b) - getCreatedAtTs(a)
+      if (createdAtDiff !== 0) return createdAtDiff
+    } else if (sortBy.value === 'newest') {
+      const createdAtDiff = getCreatedAtTs(b) - getCreatedAtTs(a)
+      if (createdAtDiff !== 0) return createdAtDiff
+    } else if (sortBy.value === 'oldest') {
+      const createdAtDiff = getCreatedAtTs(a) - getCreatedAtTs(b)
+      if (createdAtDiff !== 0) return createdAtDiff
+    } else if (sortBy.value === 'name') {
+      const nameA = String(a.anchor_name || '')
+      const nameB = String(b.anchor_name || '')
+      const nameDiff = nameA.localeCompare(nameB, 'zh-CN')
+      if (nameDiff !== 0) return nameDiff
+    }
 
     return String(a.id || '').localeCompare(String(b.id || ''))
   })
