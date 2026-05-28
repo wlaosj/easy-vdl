@@ -141,34 +141,6 @@
               </button>
             </div>
           </div>
-          <div class="filter-group top-inline-filters mobile-hide">
-            <select v-model="filterPlatform" class="form-select filter-select">
-              <option value="all">所有平台</option>
-              <option value="douyin">抖音</option>
-              <option value="douyu">斗鱼</option>
-              <option value="bilibili">Bilibili</option>
-              <option value="huya">虎牙</option>
-              <option value="xhs">小红书</option>
-              <option value="youtube">YouTube</option>
-              <option value="migu">咪咕</option>
-              <option value="kuaishou">快手</option>
-              <option value="cc">网易CC</option>
-              <option value="twitch">Twitch</option>
-            </select>
-            <select v-model="filterStatus" class="form-select filter-select">
-              <option value="all">所有状态</option>
-              <option value="live">直播中</option>
-              <option value="recording">录制中</option>
-              <option value="paused">已暂停检测</option>
-              <option value="offline">离线</option>
-            </select>
-            <select v-model="sortBy" class="form-select filter-select" style="margin-left: 8px;" @change="saveSortPreference">
-              <option value="status">默认 (状态优先)</option>
-              <option value="newest">最新添加</option>
-              <option value="oldest">最早添加</option>
-              <option value="name">主播姓名 (A-Z)</option>
-            </select>
-          </div>
           <div class="action-left">
             <button class="btn btn-primary" @click="showAddModal = true">添加<span class="mobile-hide">直播间</span></button>
             <button class="btn btn-outline" @click="refreshAll">刷新<span class="mobile-hide">状态</span></button>
@@ -209,6 +181,34 @@
           
           <div class="action-right">
             <!-- 备份按钮已移至上方主操作组 -->
+            <div class="filter-group top-inline-filters">
+              <select v-model="filterPlatform" class="form-select filter-select">
+                <option value="all">所有平台</option>
+                <option value="douyin">抖音</option>
+                <option value="douyu">斗鱼</option>
+                <option value="bilibili">Bilibili</option>
+                <option value="huya">虎牙</option>
+                <option value="xhs">小红书</option>
+                <option value="youtube">YouTube</option>
+                <option value="migu">咪咕</option>
+                <option value="kuaishou">快手</option>
+                <option value="cc">网易CC</option>
+                <option value="twitch">Twitch</option>
+              </select>
+              <select v-model="filterStatus" class="form-select filter-select">
+                <option value="all">所有状态</option>
+                <option value="live">直播中</option>
+                <option value="recording">录制中</option>
+                <option value="paused">已暂停检测</option>
+                <option value="offline">离线</option>
+              </select>
+              <select v-model="sortBy" class="form-select filter-select" style="margin-left: 8px;" @change="saveSortPreference">
+                <option value="status">默认 (状态优先)</option>
+                <option value="newest">最新添加</option>
+                <option value="oldest">最早添加</option>
+                <option value="name">主播姓名 (A-Z)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -7194,6 +7194,7 @@ function getStatusText(status) {
     flex: 1 1 180px;
     max-width: 240px;
     order: 2;
+    margin-left: auto; /* Pushes the search box to the right */
   }
 
   .search-input-wrapper {
@@ -7256,18 +7257,13 @@ function getStatusText(status) {
     order: 1;
   }
 
-  .top-inline-filters {
-    order: 3;
-    margin-left: auto;
-  }
-
   .live-backup-actions {
     display: flex;
     gap: 8px;
   }
 
   .action-row.bottom {
-    align-items: flex-start;
+    align-items: center;
     flex-wrap: wrap;
   }
 
