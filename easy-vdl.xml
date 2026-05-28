@@ -16,7 +16,7 @@
 1. 🎬 Multi-Platform Batch Download: Auto-detect and download from Douyin, Bilibili, YouTube, Xiaohongshu, TikTok, Instagram, X (Twitter), NetEase Cloud Music, and more.
 2. 🔴 Live Stream Auto-Recording: Real-time monitoring of Douyin, Douyu, Bilibili, Huya, Xiaohongshu, YouTube, Migu, Kuaishou, NetEase CC, Twitch — auto-record streams with danmaku (bullet chat) sync, auto-transcode when stream ends.
 3. 🤖 AI Highlight Clipping: After recording, automatically extract highlight clips based on danmaku activity and sentiment analysis, with LLM-generated (e.g. DeepSeek) titles and summaries.
-4. 📺 Built-in Player & Timeline Replay: In-browser video player with exclusive seamless timeline replay of recorded live streams with synced danmaku display.
+4. 📺 Built-in Player &amp; Timeline Replay: In-browser video player with exclusive seamless timeline replay of recorded live streams with synced danmaku display.
 5. ✈️ Telegram Integration: Receive commands via Telegram Bot, send media files up to 2GB directly to the bot for silent local storage.
 6. 🍿 Emby/Jellyfin Integration: Auto-generate standard NFO metadata and poster wall for a plug-and-play home theater experience.
 7. ⚡ High Performance: Built-in headless Chrome browser manager, automatic memory garbage collection, and Intel/AMD iGPU hardware-accelerated transcoding.
