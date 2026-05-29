@@ -278,6 +278,8 @@
                 'task-error': task.status === 'ERROR' 
             }"
             :data-task-id="task.id"
+            @mouseenter="handleMouseEnter(task)"
+            @mouseleave="handleMouseLeave"
           >
 
 
@@ -285,8 +287,6 @@
             <div 
               class="task-thumbnail"
               :class="{ 'clickable-thumbnail': task.status === 'COMPLETED' }"
-              @mouseenter="handleMouseEnter(task)"
-              @mouseleave="handleMouseLeave"
               @click="task.status === 'COMPLETED' && playTask(task)"
             >
               <img 
@@ -304,6 +304,8 @@
                 v-if="hoveredTaskId === task.id && isVideoTask(task) && getPlayableUrl(task)"
                 :src="getPlayableUrl(task)"
                 class="thumbnail-video-preview"
+                :class="{ 'is-playing': isPreviewPlaying }"
+                @playing="isPreviewPlaying = true"
                 autoplay
                 muted
                 loop
@@ -912,6 +914,7 @@ const thumbnailCache = ref({})
 
 // 悬停视频静音自动播放预览相关
 const hoveredTaskId = ref(null)
+const isPreviewPlaying = ref(false)
 let hoverTimeout = null
 
 function isVideoTask(task) {
@@ -973,12 +976,14 @@ function handleMouseEnter(task) {
     if (hoverTimeout) clearTimeout(hoverTimeout)
     hoverTimeout = setTimeout(() => {
         hoveredTaskId.value = task.id
+        isPreviewPlaying.value = false
     }, 200)
 }
 
 function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout)
     hoveredTaskId.value = null
+    isPreviewPlaying.value = false
 }
 
 // 处理路由参数
@@ -2888,8 +2893,23 @@ async function cleanupDownloadClips() {
   height: 100%; 
   object-fit: cover;
   display: block;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
-.thumbnail-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
+.task-card:hover .thumbnail-img {
+  transform: scale(1.06);
+}
+.thumbnail-placeholder { 
+  width: 100%; 
+  height: 100%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  color: var(--color-text-muted); 
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.task-card:hover .thumbnail-placeholder {
+  transform: scale(1.06);
+}
 .play-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; color: #fff; transition: opacity 0.2s; z-index: 3; }
 .task-thumbnail:hover .play-overlay { opacity: 1; }
 
@@ -2903,6 +2923,13 @@ async function cleanupDownloadClips() {
   z-index: 2;
   pointer-events: none;
   background: #000;
+  opacity: 0;
+  transform: scale(1);
+  transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.thumbnail-video-preview.is-playing {
+  opacity: 1;
+  transform: scale(1.06);
 }
 
 .task-content { 
