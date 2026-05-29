@@ -1786,15 +1786,15 @@ video.enhance-on {
 
 /* 移动端适配 - YouTube App风格 */
 @media (max-width: 768px) {
-  .pc-only {
+  .player-page .pc-only {
     display: none !important;
   }
 
-  .mobile-only {
+  .player-page .mobile-only {
     display: flex !important;
   }
 
-  .mobile-hidden {
+  .player-page .mobile-hidden {
     display: none !important;
   }
 
@@ -2623,11 +2623,11 @@ video.enhance-on {
 }
 
 @media (min-width: 769px) {
-  .pc-only {
+  .player-page .pc-only {
     display: flex;
   }
 
-  .mobile-only {
+  .player-page .mobile-only {
     display: none !important;
   }
 
