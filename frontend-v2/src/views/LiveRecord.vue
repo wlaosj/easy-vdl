@@ -7192,7 +7192,6 @@ function getStatusText(status) {
     width: auto;
     min-width: 0;
     flex: 1 1 180px;
-    max-width: 240px;
     order: 2;
     margin-left: auto; /* Pushes the search box to the right */
   }
