@@ -101,30 +101,30 @@
         <div class="action-row top">
           <div class="filter-group mobile-only mobile-primary-filters">
             <select v-model="filterPlatform" class="form-select filter-select">
-              <option value="all">所有平台筛选</option>
-              <option value="douyin">抖音平台</option>
-              <option value="douyu">斗鱼平台</option>
-              <option value="bilibili">Bilibili平台</option>
-              <option value="huya">虎牙平台</option>
-              <option value="xhs">小红书平台</option>
-              <option value="youtube">YouTube平台</option>
-              <option value="migu">咪咕平台</option>
-              <option value="kuaishou">快手平台</option>
-              <option value="cc">网易CC平台</option>
-              <option value="twitch">Twitch平台</option>
+              <option value="all">所有平台</option>
+              <option value="douyin">抖音</option>
+              <option value="douyu">斗鱼</option>
+              <option value="bilibili">Bilibili</option>
+              <option value="huya">虎牙</option>
+              <option value="xhs">小红书</option>
+              <option value="youtube">YouTube</option>
+              <option value="migu">咪咕</option>
+              <option value="kuaishou">快手</option>
+              <option value="cc">网易CC</option>
+              <option value="twitch">Twitch</option>
             </select>
             <select v-model="filterStatus" class="form-select filter-select">
-              <option value="all">所有状态筛选</option>
+              <option value="all">所有状态</option>
               <option value="live">直播中</option>
               <option value="recording">录制中</option>
-              <option value="paused">已暂停检测</option>
-              <option value="offline">离线状态</option>
+              <option value="paused">暂停检测</option>
+              <option value="offline">离线</option>
             </select>
             <select v-model="sortBy" class="form-select filter-select" @change="saveSortPreference">
-              <option value="status">默认 (状态优先)</option>
+              <option value="status">默认排序</option>
               <option value="newest">最新添加</option>
               <option value="oldest">最早添加</option>
-              <option value="name">主播姓名 (A-Z)</option>
+              <option value="name">主播名称</option>
             </select>
           </div>
           <div class="search-container">
@@ -199,14 +199,14 @@
                 <option value="all">所有状态</option>
                 <option value="live">直播中</option>
                 <option value="recording">录制中</option>
-                <option value="paused">已暂停检测</option>
+                <option value="paused">暂停检测</option>
                 <option value="offline">离线</option>
               </select>
               <select v-model="sortBy" class="form-select filter-select" style="margin-left: 8px;" @change="saveSortPreference">
-                <option value="status">默认 (状态优先)</option>
+                <option value="status">默认排序</option>
                 <option value="newest">最新添加</option>
                 <option value="oldest">最早添加</option>
-                <option value="name">主播姓名 (A-Z)</option>
+                <option value="name">主播名称</option>
               </select>
             </div>
           </div>
@@ -5367,7 +5367,7 @@ function getStatusText(status) {
   height: 36px;
   line-height: 36px;
   font-size: 13px;
-  min-width: 130px;
+  min-width: 110px;
   border-radius: var(--radius-md);
   border-color: var(--color-border);
   background-color: var(--color-bg-secondary);
@@ -7296,8 +7296,8 @@ function getStatusText(status) {
   }
 
   .form-select.filter-select {
-    min-width: 100px; /* 调小宽度 */
-    width: 110px;
+    min-width: 88px;
+    width: 95px;
   }
 
   .filter-divider {
