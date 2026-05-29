@@ -53,8 +53,16 @@
             </div>
           </div>
           <button 
+            v-if="['completed', 'partial_completed', 'error', 'cancelled'].includes(task.batch_download_status)"
+            class="btn btn-sm btn-outline btn-clear-task"
+            @click="removeTask(task.id)"
+          >
+            清除
+          </button>
+          <button 
+            v-else
             class="btn btn-sm btn-outline text-danger"
-            :disabled="task.batch_download_status === 'cancelling' || task.batch_download_status === 'completed' || task.batch_download_status === 'cancelled'"
+            :disabled="task.batch_download_status === 'cancelling'"
             @click="cancelTask(task)"
           >
             <span v-if="task.batch_download_status === 'cancelling'">取消中...</span>
@@ -120,6 +128,7 @@ const {
   progressStates,
   updateTrigger,
   getProgressState,
+  removeTask,
   restoreProgressStates,
   startWebSocketListener,
   startPolling,
@@ -248,7 +257,9 @@ function getStatusText(status) {
     'downloading': '下载中',
     'cancelling': '取消中',
     'completed': '已完成',
-    'cancelled': '已取消'
+    'cancelled': '已取消',
+    'partial_completed': '部分失败',
+    'error': '下载失败'
   }
   return map[status] || status || '未知'
 }
@@ -259,7 +270,9 @@ function getStatusClass(status) {
     'status-downloading': status === 'downloading',
     'status-cancelling': status === 'cancelling',
     'status-completed': status === 'completed',
-    'status-cancelled': status === 'cancelled'
+    'status-cancelled': status === 'cancelled',
+    'status-partial-completed': status === 'partial_completed',
+    'status-error': status === 'error'
   }
 }
 
@@ -268,6 +281,8 @@ function getProgressClass(status) {
   if (status === 'cancelling') return 'progress-cancelling'
   if (status === 'downloading') return 'progress-downloading'
   if (status === 'completed') return 'progress-completed'
+  if (status === 'partial_completed') return 'progress-partial-completed'
+  if (status === 'error') return 'progress-error'
   return 'progress-default'
 }
 
@@ -579,6 +594,16 @@ onUnmounted(() => {
   color: #9e9e9e;
 }
 
+.status-partial-completed {
+  background: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+}
+
+.status-error {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
 .progress-section {
   display: flex;
   flex-direction: column;
@@ -667,8 +692,29 @@ onUnmounted(() => {
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
 }
 
+.progress-partial-completed {
+  background: linear-gradient(90deg, #f39c12 0%, #f1c40f 100%);
+  box-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
+}
+
+.progress-error {
+  background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+}
+
 .progress-default {
   background: #9e9e9e;
+}
+
+.btn-clear-task {
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.btn-clear-task:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(230, 126, 34, 0.05);
 }
 
 .progress-info {

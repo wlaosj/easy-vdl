@@ -282,7 +282,13 @@
 
 
             <!-- 视频缩略图 (左侧) -->
-            <div class="task-thumbnail">
+            <div 
+              class="task-thumbnail"
+              :class="{ 'clickable-thumbnail': task.status === 'COMPLETED' }"
+              @mouseenter="handleMouseEnter(task)"
+              @mouseleave="handleMouseLeave"
+              @click="task.status === 'COMPLETED' && playTask(task)"
+            >
               <img 
                 :src="thumbnailCache[task.id] || PLACEHOLDER_IMAGE" 
                 class="thumbnail-img" 
@@ -293,9 +299,16 @@
               <div v-if="!thumbnailCache[task.id]" class="thumbnail-placeholder">
                 <Icon :name="getPlatformIcon(task.source)" :size="24" />
               </div>
-              <div class="play-overlay" v-if="task.status === 'COMPLETED'" @click="playTask(task)">
-                <Icon name="play" :size="20" />
-              </div>
+              <!-- 悬停视频静音自动播放预览 -->
+              <video
+                v-if="hoveredTaskId === task.id && isVideoTask(task) && getPlayableUrl(task)"
+                :src="getPlayableUrl(task)"
+                class="thumbnail-video-preview"
+                autoplay
+                muted
+                loop
+                playsinline
+              ></video>
             </div>
 
             <!-- 任务信息 (右侧) -->
@@ -330,7 +343,21 @@
                   {{ getTaskTypeText(task) }}
                 </span>
                 <span v-if="task.status === 'COMPLETED'" class="badge status-badge completed">已完成</span>
-                <span v-else-if="task.status === 'ERROR'" class="badge status-badge error">失败</span>
+                <template v-else-if="task.status === 'ERROR'">
+                  <span class="badge status-badge error">失败</span>
+                  <div 
+                    class="error-inline-scroller" 
+                    :title="task.error_message || '点击复制错误日志'"
+                    @click.stop="copyToClipboard(task.error_message || '未知错误')"
+                  >
+                    <div class="error-scroller-text">
+                      <span>⚠️ {{ task.error_message || '未知错误' }}</span>
+                      <span class="marquee-spacer" style="margin: 0 16px; opacity: 0.5;">|</span>
+                      <span>⚠️ {{ task.error_message || '未知错误' }}</span>
+                      <span class="marquee-spacer" style="margin: 0 16px; opacity: 0.5;">|</span>
+                    </div>
+                  </div>
+                </template>
               </div>
 
 
@@ -345,15 +372,9 @@
                 </div>
               </div>
 
-              <!-- 错误信息 -->
-              <div 
-                v-if="task.status === 'ERROR'" 
-                class="error-message" 
-                :title="task.error_message || '点击复制错误日志'"
-                @click.stop="copyToClipboard(task.error_message || '未知错误')"
-              >
-                  ⚠️ {{ task.error_message || '未知错误' }}
-              </div>
+
+
+
 
               <!-- 操作按钮 -->
               <div class="task-actions">
@@ -387,6 +408,19 @@
                       <button class="btn btn-success btn-sm" @click="retryTask(task.id)">重试</button>
                       <button class="btn btn-outline btn-sm text-danger" @click="deleteTask(task.id)">删除</button>
                     </template>
+                  </div>
+
+                  <!-- 新增：订阅任务失败时的操作按钮旁友好滚动提示 -->
+                  <div 
+                    v-if="task.status === 'ERROR' && task.author_info" 
+                    class="error-inline-tip"
+                  >
+                    <div class="error-inline-tip-text">
+                      <span>💡 提示：点击博主 <strong class="highlight-author" @click.stop="goToSubscriptionDetail(task.author_info.subscription_id)">【{{ task.author_info.nickname }}】</strong> 可批量重试</span>
+                      <span class="marquee-spacer" style="margin: 0 24px; opacity: 0.4;">✦</span>
+                      <span>💡 提示：点击博主 <strong class="highlight-author" @click.stop="goToSubscriptionDetail(task.author_info.subscription_id)">【{{ task.author_info.nickname }}】</strong> 可批量重试</span>
+                      <span class="marquee-spacer" style="margin: 0 24px; opacity: 0.4;">✦</span>
+                    </div>
                   </div>
                   
                   <!-- 时间 (下载中隐藏以节省高度) -->
@@ -876,6 +910,77 @@ const displayedPages = computed(() => {
 // 缩略图缓存
 const thumbnailCache = ref({})
 
+// 悬停视频静音自动播放预览相关
+const hoveredTaskId = ref(null)
+let hoverTimeout = null
+
+function isVideoTask(task) {
+    if (!task || task.status !== 'COMPLETED' || !task.filename) return false
+    
+    // 图集任务不是视频
+    const isGallery = task.task_type_display && task.task_type_display.includes('图集')
+    if (isGallery) return false
+    
+    // 音频文件后缀
+    const isAudioFile = /\.(mp3|flac|m4a|wav|aac|ogg|opus)$/i.test(task.filename)
+    if (isAudioFile) return false
+    
+    // 过滤出支持的视频后缀
+    const isVideoFile = /\.(mp4|mkv|webm|avi|mov|flv|wmv|ts)$/i.test(task.filename)
+    return isVideoFile
+}
+
+function getPlayableUrl(task) {
+    if (!task || !task.filename) return ''
+    
+    // 统一platform处理
+    let platform = (task.source || 'others').toLowerCase()
+    if (platform === 'unknown' || platform === 'others') {
+        platform = 'others'
+    }
+    
+    let filename = task.filename
+    let cleanFilename = filename
+    
+    if (filename.startsWith('subscriptions/')) {
+        cleanFilename = filename
+    } else {
+        if (filename.startsWith(platform + '/')) {
+            cleanFilename = filename.substring(platform.length + 1)
+        } else if (filename.includes('/')) {
+            const parts = filename.split('/')
+            if (parts[0] === platform) {
+                parts.shift()
+                cleanFilename = parts.join('/')
+            }
+        }
+    }
+    
+    const pathParts = cleanFilename.split('/').filter(part => part)
+    const encodedParts = pathParts.map(part => encodeURIComponent(part))
+    const encodedFilename = encodedParts.join('/')
+    
+    if (filename.startsWith('subscriptions/')) {
+        return `/downloads/${encodedFilename}`
+    } else {
+        return `/downloads/${platform}/${encodedFilename}`
+    }
+}
+
+function handleMouseEnter(task) {
+    if (task.status !== 'COMPLETED' || !isVideoTask(task)) return
+    
+    if (hoverTimeout) clearTimeout(hoverTimeout)
+    hoverTimeout = setTimeout(() => {
+        hoveredTaskId.value = task.id
+    }, 200)
+}
+
+function handleMouseLeave() {
+    if (hoverTimeout) clearTimeout(hoverTimeout)
+    hoveredTaskId.value = null
+}
+
 // 处理路由参数
 function handleRouteQuery() {
     const { status } = route.query
@@ -917,6 +1022,7 @@ const unregister = wsService.onMessage((id, data) => {
 onUnmounted(() => {
   if (unregister) unregister()
   wsService.close('downloads')
+  if (hoverTimeout) clearTimeout(hoverTimeout)
 })
 
 // 监听任务列表变化，更新缩略图
@@ -2774,6 +2880,9 @@ async function cleanupDownloadClips() {
   border-top-left-radius: 7px !important;
   border-bottom-left-radius: 7px !important;
 }
+.clickable-thumbnail {
+  cursor: pointer;
+}
 .thumbnail-img { 
   width: 100%; 
   height: 100%; 
@@ -2781,8 +2890,20 @@ async function cleanupDownloadClips() {
   display: block;
 }
 .thumbnail-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
-.play-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; color: #fff; transition: opacity 0.2s; }
+.play-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; color: #fff; transition: opacity 0.2s; z-index: 3; }
 .task-thumbnail:hover .play-overlay { opacity: 1; }
+
+.thumbnail-video-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+  pointer-events: none;
+  background: #000;
+}
 
 .task-content { 
   flex: 1; 
@@ -3095,6 +3216,41 @@ async function cleanupDownloadClips() {
   margin-top: 4px; 
 }
 
+.error-inline-scroller {
+  display: inline-block;
+  max-width: 250px;
+  overflow: hidden;
+  white-space: nowrap;
+  background: rgba(255, 77, 79, 0.06);
+  border: 1px solid rgba(255, 77, 79, 0.15);
+  color: #ff4d4f;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin-left: 8px;
+  cursor: pointer;
+  vertical-align: middle;
+  position: relative;
+  text-overflow: clip;
+}
+
+[data-theme="dark"] .error-inline-scroller {
+  background: rgba(255, 77, 79, 0.12);
+  border-color: rgba(255, 77, 79, 0.25);
+}
+
+.error-scroller-text {
+  display: inline-block;
+  white-space: nowrap;
+  animation: error-inline-ticker 12s linear infinite;
+}
+
+/* 仅在文字非常长需要展示时通过 hover 或是直接持续滚动显示出来 */
+@keyframes error-inline-ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
 .error-message {
   font-size: 12px;
   color: #ff4d4f;
@@ -3128,6 +3284,55 @@ async function cleanupDownloadClips() {
 
 [data-theme="dark"] .error-message:hover {
   background: rgba(255, 77, 79, 0.2);
+}
+
+.error-inline-tip {
+  flex: 1;
+  margin-left: 12px;
+  margin-right: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: rgba(230, 126, 34, 0.04);
+  border: 1px dashed rgba(230, 126, 34, 0.15);
+  padding: 3px 8px;
+  border-radius: 4px;
+  line-height: 1.4;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  text-overflow: clip;
+}
+
+[data-theme="dark"] .error-inline-tip {
+  background: rgba(230, 126, 34, 0.06);
+  border-color: rgba(230, 126, 34, 0.25);
+  color: #a0a0a0;
+}
+
+.error-inline-tip-text {
+  display: inline-block;
+  white-space: nowrap;
+  animation: error-inline-tip-ticker 15s linear infinite;
+}
+
+@keyframes error-inline-tip-ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.highlight-author {
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.highlight-author:hover {
+  color: #f39c12;
 }
 
 .status-text { font-size: 13px; font-weight: 600; }

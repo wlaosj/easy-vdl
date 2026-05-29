@@ -457,7 +457,7 @@
             <!-- 进度条通知栏 (常驻预留位置，空闲时显示下次更新时间) -->
             <div 
               class="progress-notification"
-              :class="{ 'show-cancel-btn': sub.progressState && sub.progressState.status === 'downloading' && sub.progressState.type === 'batch_download_progress' }"
+              :class="{ 'show-cancel-btn': sub.progressState && ['downloading', 'completed', 'partial_completed', 'error', 'cancelled'].includes(sub.progressState.status) && sub.progressState.type === 'batch_download_progress' }"
             >
               <!-- 任务进行中：显示进度条 -->
               <div class="progress-active-content" :class="{ 'visible': sub.progressState && sub.progressState.visible }">
@@ -508,6 +508,15 @@
                       :title="sub.progressState.status === 'cancelling' ? '正在取消...' : '取消下载'"
                     >
                       {{ sub.progressState.status === 'cancelling' ? '取消中' : '✕' }}
+                    </button>
+                    <!-- 手动关闭按钮：适用于完成或异常状态 -->
+                    <button 
+                      v-else-if="['completed', 'partial_completed', 'error', 'cancelled'].includes(sub.progressState.status) && sub.progressState.type === 'batch_download_progress'"
+                      class="cancel-download-btn-inline"
+                      @click.stop="removeTask(sub.id)"
+                      title="关闭"
+                    >
+                      ✕
                     </button>
                   </div>
                 </template>
@@ -1683,6 +1692,7 @@ const {
   updateTrigger,
   getProgressState,
   addTask,
+  removeTask,
   restoreProgressStates,
   startWebSocketListener,
   startPolling,

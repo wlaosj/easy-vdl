@@ -133,6 +133,17 @@ export function useBatchDownloadProgress() {
                     wsService.close(`subscribe_${subscriptionId}`)
                 }
             }, 3000)
+        } else if (data.status === 'partial_completed') {
+            state.message = '部分下载失败'
+            state.statusClass = 'bg-warning'
+            state.percent = 100
+            // 3秒后隐藏或移除
+            setTimeout(() => {
+                if (state.message === '部分下载失败') {
+                    progressStates.delete(subscriptionId)
+                    wsService.close(`subscribe_${subscriptionId}`)
+                }
+            }, 3000)
         } else if (data.status === 'cancelled') {
             state.message = `已取消 (完成: ${data.completed || 0}, 失败: ${data.failed || 0})`
             state.statusClass = 'text-warning'
@@ -152,7 +163,7 @@ export function useBatchDownloadProgress() {
                     progressStates.delete(subscriptionId)
                     wsService.close(`subscribe_${subscriptionId}`)
                 }
-            }, 5000)
+            }, 3000)
         }
     }
 

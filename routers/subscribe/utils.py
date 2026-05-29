@@ -1394,7 +1394,12 @@ async def process_download_queue(subscription_id: str, videos: List[Subscription
                 db.close()
         
         # 更新最终状态
-        final_status = "completed" if failed == 0 else "error"
+        if failed == 0:
+            final_status = "completed"
+        elif completed > 0:
+            final_status = "partial_completed"
+        else:
+            final_status = "error"
         with get_db_context() as db:
             try:
                 await update_batch_download_progress(
