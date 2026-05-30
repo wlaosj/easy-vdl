@@ -2,7 +2,6 @@
 
 ![Docker Pulls](https://img.shields.io/docker/pulls/qq918652593/easy-vdl?style=flat-square&color=orange)
 ![Platform Support](https://img.shields.io/badge/Platform-x86_64%20%7C%20ARM64-blue?style=flat-square)
-![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)
 [![Telegram Group](https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&style=flat-square)](https://t.me/+7jcTMePlNVwwZjg1)
 
 **一款集视频订阅、直播监控、自动录制、AI智能高光剪辑与媒体服务器联动的全能型可视化下载平台。**
