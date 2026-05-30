@@ -4,7 +4,7 @@
 ![Platform Support](https://img.shields.io/badge/Platform-x86_64%20%7C%20ARM64-blue?style=flat-square)
 [![Telegram Group](https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&style=flat-square)](https://t.me/+7jcTMePlNVwwZjg1)
 
-**一款集视频订阅、直播监控、自动录制、弹幕录制、AI智能高光剪辑与媒体服务器联动的全能型可视化下载平台。**
+**一款集视频订阅、直播监控、自动录制、弹幕录制、无缝时间轴播放、GPU硬件加速转码与AI智能高光剪辑及媒体服务器联动的全能型可视化下载平台。**
 
 [功能特点](#-功能特色) • [极速部署](#-极速部署) • [上手指南](#-三步上手指南) • [加入社区](#-加入社区)
 
