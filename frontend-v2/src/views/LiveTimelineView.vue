@@ -704,7 +704,8 @@ watch(subscriptions, () => {
   gap: 10px;
   color: var(--color-text-secondary);
   font-size: 15px;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .feature-item .icon {
