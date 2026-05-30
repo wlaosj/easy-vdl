@@ -20,6 +20,7 @@ from routers.youtube import youtube_api
 from routers.bilibili import bilibili_api, get_bilibili_favorite_info, get_bilibili_favorite_videos
 from routers.tiktok import tiktok_api
 from routers import instagram as instagram_api
+from routers.xhsapi import xhs_api
 from routers.unified_browser_manager import unified_browser
 from routers.websocket import send_progress_update
 from .common import logger, PLATFORM_CONCURRENT_LIMITS
@@ -1191,6 +1192,28 @@ async def check_subscription_update(
                     30,
                 )
                 if not notes:
+                    # 检查是否是登录失效
+                    login_error = xhs_api.last_user_info_error if hasattr(xhs_api, 'last_user_info_error') and xhs_api.last_user_info_error else ""
+                    if login_error:
+                        logger.warning(f"小红书订阅 {subscription.nickname} 登录状态异常: {login_error}")
+                        _mark_subscription_check_failure(subscription, f"小红书检测失败: {login_error}")
+                        db.commit()
+                        asyncio.create_task(send_subscription_check_notification(
+                            subscription_id=subscription_id,
+                            user_id=subscription.user_id,
+                            nickname=subscription.nickname,
+                            platform=subscription.platform,
+                            success=False,
+                            error_message=login_error
+                        ))
+                        return {
+                            "message": login_error,
+                            "has_update": False,
+                            "new_videos_count": 0,
+                            "requires_sync": False,
+                            "status": subscription.status,
+                            "error_message": subscription.error_message
+                        }
                     logger.info(f"小红书订阅 {subscription.nickname} 无法获取笔记列表或无新笔记")
                     latest_video = None
                     has_update = False

@@ -196,6 +196,8 @@ class XiaohongshuAPI:
                 resp = await client.get(full_url, headers=headers, cookies=cookies)
             if resp.status_code != 200:
                 logger.warning("Spider signer user_posted 返回 %s", resp.status_code)
+                if resp.status_code == 461:
+                    self._last_user_info_error = '小红书登录状态可能已失效，请先在"账号登录"中重新登录小红书后再试。'
                 return None
 
             data = resp.json()
