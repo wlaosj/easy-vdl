@@ -3337,6 +3337,9 @@ async function cleanupDownloadClips() {
   align-items: center;
   position: relative;
   text-overflow: clip;
+  height: 28px;           /* 高度与按钮保持一致 (28px) */
+  align-self: flex-start; /* 靠顶部对齐，从而与按钮群组顶部对齐 */
+  box-sizing: border-box; /* 保证 padding 不拉伸总高度 */
 }
 
 [data-theme="dark"] .error-inline-tip {
@@ -5009,6 +5012,12 @@ async function cleanupDownloadClips() {
     padding: 0 12px !important;
     flex: 0 1 auto !important; /* 强制不拉伸 */
     min-width: 50px !important;
+  }
+
+  .error-inline-tip {
+    height: 32px !important;   /* 移动端高度对齐按钮 (32px) */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
 
   .task-meta-inline {
