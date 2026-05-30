@@ -149,11 +149,9 @@ elif [ -d "/dev/dri" ]; then
     fi
 
     # GPU 实时监控权限（用于 intel_gpu_top 访问 PMU）
-    # 说明：
-    # - PERFMON: 允许 perf 采样（新内核）
-    # - seccomp=unconfined: 放行 perf_event_open（默认 seccomp 常会拦截）
-    GPU_PERF_OPTS="--cap-add PERFMON --security-opt seccomp=unconfined"
-    echo "   ✓ 已启用 GPU 监控权限: PERFMON + seccomp=unconfined"
+    # PERFMON: 允许 perf 采样（新内核），足够放行 perf_event_open
+    GPU_PERF_OPTS="--cap-add PERFMON"
+    echo "   ✓ 已启用 GPU 监控权限: PERFMON"
 else
     echo "   ⚠ 未检测到核显设备 (/dev/dri)，将使用 CPU 编码"
 fi
