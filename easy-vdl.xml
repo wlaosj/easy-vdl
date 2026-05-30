@@ -33,30 +33,6 @@ Easy-VDL is an all-in-one visual download platform integrating multi-platform vi
 5. ✈️ Telegram Integration: Receive commands via Telegram Bot, send media files up to 2GB directly to the bot for silent local storage.
 6. 🍿 Emby/Jellyfin Integration: Auto-generate standard NFO metadata and poster wall for a plug-and-play home theater experience.
 7. ⚡ High Performance: Built-in headless Chrome browser manager, automatic memory garbage collection, and Intel/AMD iGPU hardware-accelerated transcoding.
-
----
-
-[主要功能特色]
-1. 🎬 多平台订阅与批量下载：支持抖音、B站、YouTube、小红书、TikTok、Instagram、X(Twitter)、网易云音乐等平台自动检测更新下载。
-2. 🔴 直播自动监控录制：实时监控抖音、斗鱼、B站、虎牙、小红书、YouTube、咪咕、快手、网易CC、Twitch 直播间开播状态，自动静默录制直播流并支持弹幕同步录制归档，停播自动转码。
-3. 🤖 AI 智能高光切片：直播录制结束后，基于弹幕热度与情感分析自动截取高光片段，接入大语言模型（如 DeepSeek）生成高能标题与剧情摘要。
-4. 📺 内置播放与时间轴回放：支持网页端内置视频播放，独家支持已录制直播的无缝时间轴回放与弹幕同步显示。
-5. ✈️ 突破限制的 Telegram 集成：支持通过 TG Bot 接收指令，直接向 Bot 发送最大 2GB 媒体文件并静默转存至本地。
-6. 🍿 完美联动 Emby/Jellyfin：自动生成符合标准的 NFO 元数据与海报墙，实现开箱即用的家庭影院体验。
-7. ⚡ 强劲性能：内置 headless Chrome 统一浏览器管理器、自动内存垃圾回收机制，配合 Intel/AMD 核显硬件加速转码。
-
----
-
-Easy-VDL is an all-in-one visual download platform integrating multi-platform video subscriptions, unattended live stream recording, AI-powered highlight clipping, and media server integration.
-
-[Key Features]
-1. 🎬 Multi-Platform Batch Download: Auto-detect and download from Douyin, Bilibili, YouTube, Xiaohongshu, TikTok, Instagram, X (Twitter), NetEase Cloud Music, and more.
-2. 🔴 Live Stream Auto-Recording: Real-time monitoring of Douyin, Douyu, Bilibili, Huya, Xiaohongshu, YouTube, Migu, Kuaishou, NetEase CC, Twitch — auto-record streams with danmaku (bullet chat) sync, auto-transcode when stream ends.
-3. 🤖 AI Highlight Clipping: After recording, automatically extract highlight clips based on danmaku activity and sentiment analysis, with LLM-generated (e.g. DeepSeek) titles and summaries.
-4. 📺 Built-in Player & Timeline Replay: In-browser video player with exclusive seamless timeline replay of recorded live streams with synced danmaku display.
-5. ✈️ Telegram Integration: Receive commands via Telegram Bot, send media files up to 2GB directly to the bot for silent local storage.
-6. 🍿 Emby/Jellyfin Integration: Auto-generate standard NFO metadata and poster wall for a plug-and-play home theater experience.
-7. ⚡ High Performance: Built-in headless Chrome browser manager, automatic memory garbage collection, and Intel/AMD iGPU hardware-accelerated transcoding.
   </Overview>
   <Category>Downloaders: Status:Beta</Category>
   <Beta>true</Beta>
