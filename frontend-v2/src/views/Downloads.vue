@@ -380,36 +380,42 @@
 
               <!-- 操作按钮 -->
               <div class="task-actions">
-                  <div class="btns-group">
-                    <template v-if="['DOWNLOADING', 'PROCESSING', 'PENDING'].includes(task.status)">
-                      <button 
-                        class="btn btn-secondary btn-sm" 
-                        :class="{ 'btn-loading': cancelingTaskIds.has(task.id) }"
-                        :disabled="cancelingTaskIds.has(task.id)"
-                        @click="cancelTask(task.id)"
-                      >
-                        <span v-if="cancelingTaskIds.has(task.id)">取消中...</span>
-                        <span v-else>取消</span>
-                      </button>
-                    </template>
-                    <template v-else-if="task.status === 'COMPLETED'">
-                      <button 
-                        class="btn btn-outline btn-sm" 
-                        :class="{ 'btn-loading': downloadingGalleryId === task.id }"
-                        :disabled="downloadingGalleryId === task.id"
-                        @click="downloadFile(task)"
-                      >
-                        <span v-if="downloadingGalleryId === task.id">打包中...</span>
-                        <span v-else>下载</span>
-                      </button>
-                       <button class="btn btn-primary btn-sm" @click="playTask(task)">播放</button>
-                      <button v-if="task.filename" class="btn btn-outline btn-sm" @click="openSliceManager(task)">切片</button>
-                      <button class="btn btn-outline btn-sm text-danger" @click="deleteTask(task.id)">删除</button>
-                    </template>
-                    <template v-else>
-                      <button class="btn btn-success btn-sm" @click="retryTask(task.id)">重试</button>
-                      <button class="btn btn-outline btn-sm text-danger" @click="deleteTask(task.id)">删除</button>
-                    </template>
+                  <div class="btns-group-wrapper">
+                    <div class="btns-group">
+                      <template v-if="['DOWNLOADING', 'PROCESSING', 'PENDING'].includes(task.status)">
+                        <button 
+                          class="btn btn-secondary btn-sm" 
+                          :class="{ 'btn-loading': cancelingTaskIds.has(task.id) }"
+                          :disabled="cancelingTaskIds.has(task.id)"
+                          @click="cancelTask(task.id)"
+                        >
+                          <span v-if="cancelingTaskIds.has(task.id)">取消中...</span>
+                          <span v-else>取消</span>
+                        </button>
+                      </template>
+                      <template v-else-if="task.status === 'COMPLETED'">
+                        <button 
+                          class="btn btn-outline btn-sm" 
+                          :class="{ 'btn-loading': downloadingGalleryId === task.id }"
+                          :disabled="downloadingGalleryId === task.id"
+                          @click="downloadFile(task)"
+                        >
+                          <span v-if="downloadingGalleryId === task.id">打包中...</span>
+                          <span v-else>下载</span>
+                        </button>
+                         <button class="btn btn-primary btn-sm" @click="playTask(task)">播放</button>
+                        <button v-if="task.filename" class="btn btn-outline btn-sm" @click="openSliceManager(task)">切片</button>
+                        <button class="btn btn-outline btn-sm text-danger" @click="deleteTask(task.id)">删除</button>
+                      </template>
+                      <template v-else>
+                        <button class="btn btn-success btn-sm" @click="retryTask(task.id)">重试</button>
+                        <button class="btn btn-outline btn-sm text-danger" @click="deleteTask(task.id)">删除</button>
+                      </template>
+                    </div>
+                    <!-- 失败任务的时间组件，在重试/操作按钮下方显示 -->
+                    <div class="task-time-inline error-time" v-if="task.status === 'ERROR' && task.created_at">
+                      {{ formatDateTime(task.created_at) }}
+                    </div>
                   </div>
 
                   <!-- 新增：订阅任务失败时的操作按钮旁友好滚动提示 -->
@@ -425,8 +431,8 @@
                     </div>
                   </div>
                   
-                  <!-- 时间 (下载中隐藏以节省高度) -->
-                  <div class="task-time-inline" v-if="task.created_at && !['DOWNLOADING', 'PROCESSING', 'PENDING'].includes(task.status)">
+                  <!-- 时间 (下载中或失败任务隐藏以节省高度/避免重复) -->
+                  <div class="task-time-inline" v-if="task.created_at && !['DOWNLOADING', 'PROCESSING', 'PENDING', 'ERROR'].includes(task.status)">
                     {{ formatDateTime(task.created_at) }}
                   </div>
               </div>
@@ -3399,6 +3405,13 @@ async function cleanupDownloadClips() {
   z-index: 2;
 }
 
+.btns-group-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .btns-group {
   display: flex;
   gap: 6px;
@@ -3431,6 +3444,11 @@ async function cleanupDownloadClips() {
   flex-shrink: 0;
   text-align: right;
   margin-top: 4px;
+}
+
+.task-time-inline.error-time {
+  text-align: left;
+  margin-top: 2px;
 }
 
 .task-meta-inline {
