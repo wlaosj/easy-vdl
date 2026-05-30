@@ -3275,7 +3275,7 @@ async function cleanupDownloadClips() {
 .error-scroller-text {
   display: inline-block;
   white-space: nowrap;
-  animation: error-inline-ticker 12s linear infinite;
+  animation: error-inline-ticker 15s linear infinite; /* 统一滚动速度为 15s，视觉阅读更加平稳舒适 */
 }
 
 /* 仅在文字非常长需要展示时通过 hover 或是直接持续滚动显示出来 */
