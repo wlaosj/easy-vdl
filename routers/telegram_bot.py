@@ -1223,18 +1223,22 @@ class TelegramBotService:
                      title = task.get('title', '未知任务')
                      title = title.replace('*', '').replace('_', '').replace('`', '')
                      progress = task.get('progress', 0) or 0
-                     
+
                      # 进度条
                      task_bar_len = 10
                      task_filled = int(progress / 100 * task_bar_len)
                      task_bar = '█' * task_filled + '░' * (task_bar_len - task_filled)
-                     
+
                      msg += f"{i+1}. {title[:20]}...\n"
                      msg += f"   `[{task_bar}] {progress:.1f}%`\n"
             else:
                 msg += "💤 当前没有正在进行的下载任务"
-            
-            await self.send_message(chat_id, msg)
+
+            # 添加刷新按钮
+            inline_keyboard = [[
+                {"text": "🔄 刷新状态", "callback_data": "sr"}
+            ]]
+            await self.send_message(chat_id, msg, reply_markup={"inline_keyboard": inline_keyboard})
             
         except Exception as e:
             logger.error(f"获取状态失败: {e}")
@@ -1762,7 +1766,12 @@ class TelegramBotService:
                 except Exception as ex:
                     await self.send_message(chat_id, f"❌ 删除失败: {str(ex)}", parse_mode=None)
                 await self._handle_failed_tasks_command(chat_id, page=return_page, message_id=message_id)
-            
+
+            # 1.6 状态刷新: sr
+            elif data == 'sr':
+                await ack_once("🔄 正在刷新状态...")
+                await self._handle_status_command(chat_id)
+
             # 2.2 直播详情: li:id
             elif data.startswith('li:'):
                 await ack_once("🔧 正在打开直播详情")
