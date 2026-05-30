@@ -11,6 +11,7 @@ from sql.models import Subscription, SubscriptionVideo, Task, TaskStatus
 from routers.auth import require_license_api
 from routers.downloader import download_manager
 from .common import logger, cancelled_batch_downloads, get_platform_anti_crawl_config
+from .videos import _get_video_media_type
 from .models import RetryFailedDownloadsRequest, BatchDownloadRequest, VideoDownloadRequest
 from .utils import (
     process_download_queue,
@@ -409,6 +410,8 @@ async def batch_download(
             query = query.filter(SubscriptionVideo.publish_time >= cutoff_date)
 
         videos = query.all()
+        if request.media_type:
+            videos = [v for v in videos if _get_video_media_type(v) == request.media_type]
         if not videos:
             return {"message": "没有需要下载的视频", "count": 0}
 

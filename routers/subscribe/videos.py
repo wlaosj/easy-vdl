@@ -22,6 +22,34 @@ class NfoUpdateRequest(BaseModel):
     content: str
 
 
+def _get_video_media_type(video: SubscriptionVideo) -> str:
+    """判断订阅视频的媒体类型：video 或 image"""
+    if not video.extra_data:
+        # 抖音按 URL 路径判断
+        if video.url and '/note/' in video.url:
+            return "image"
+        return "video"
+    try:
+        extra = json.loads(video.extra_data) if isinstance(video.extra_data, str) else video.extra_data
+    except Exception:
+        if video.url and '/note/' in video.url:
+            return "image"
+        return "video"
+    # Instagram
+    media_type = extra.get("platform_media_type")
+    if media_type in ("image", "video"):
+        return media_type
+    # 小红书：type=normal 表示图集
+    if extra.get("type") == "normal":
+        return "image"
+    if extra.get("type") == "video":
+        return "video"
+    # 抖音 URL 路径判断
+    if video.url and '/note/' in video.url:
+        return "image"
+    return "video"
+
+
 def _build_local_thumbnail_url(task_filename: Optional[str]) -> Optional[str]:
     """从任务文件路径推断本地缩略图 URL。"""
     if not task_filename:
@@ -443,6 +471,9 @@ async def get_subscription_videos(
                     video.removed_from_source = extra.get('removed_from_source', False)
                 except Exception:
                     pass
+
+            # 标记媒体类型（video / image），用于前端过滤
+            video.media_type = _get_video_media_type(video)
 
         # 如果在状态判断过程中有清理操作，提交事务
         if status_updated:

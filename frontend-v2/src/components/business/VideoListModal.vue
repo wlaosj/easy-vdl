@@ -55,7 +55,20 @@
           <div v-if="!supportsDateBatchDownload" class="batch-mode-tip">
             {{ dateBatchDownloadTip }}
           </div>
-          
+
+          <!-- 媒体类型过滤（仅混合内容的平台显示） -->
+          <div class="media-type-filters" v-if="showVideoNoteBreakdown">
+            <button
+              v-for="opt in mediaTypeOptions"
+              :key="opt.value"
+              class="media-type-btn"
+              :class="{ active: batchMediaType === opt.value }"
+              @click="batchMediaType = opt.value"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+
           <div class="actions-row">
             <!-- 画质选择 (仅YouTube和B站) -->
             <div class="filter-group quality-group" v-if="isYouTube || isBilibili">
@@ -397,6 +410,13 @@ const batchCount = ref('10')
 const batchDays = ref('7')
 const concurrentLimit = ref('1')
 const selectedQuality = ref(props.currentQuality || 'bestvideo+bestaudio')
+const batchMediaType = ref('all')
+
+const mediaTypeOptions = computed(() => [
+  { value: 'all', label: '全部' },
+  { value: 'video', label: '仅视频' },
+  { value: 'image', label: isInstagram.value ? '仅图片' : '仅图集' },
+])
 
 // 平台判断
 const isYouTube = computed(() => 
@@ -1048,7 +1068,12 @@ async function startBatchDownload() {
       // 其他平台使用默认值
       params.quality = 'best'
     }
-    
+
+    // 媒体类型过滤（不传 = 全部下载）
+    if (batchMediaType.value !== 'all') {
+      params.media_type = batchMediaType.value
+    }
+
     await subscriptionsApi.batchDownload(props.subscriptionId, params)
     
     // 通知父组件批量下载已开始（立即显示进度）
@@ -1374,6 +1399,34 @@ watch(supportsDateBatchDownload, (supported) => {
 
 [data-theme="dark"] .batch-mode-tip {
   color: #fbbf24;
+}
+
+.media-type-filters {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.media-type-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.media-type-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.media-type-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
 }
 
 .actions-row {

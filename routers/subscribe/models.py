@@ -16,6 +16,7 @@ class BatchDownloadRequest(BaseModel):
     days: Optional[int] = None
     quality: str = "best"  # 默认最高画质（包括8K）
     batch_size: int = Field(default=1, ge=1, le=5, description="每批次同时处理的视频数量，1-5之间")
+    media_type: Optional[str] = Field(default=None, description="媒体类型过滤：video 仅视频，image 仅图片，不传则全部下载")
 
 class CheckUpdateResponse(BaseModel):
     """检查更新响应模型"""
