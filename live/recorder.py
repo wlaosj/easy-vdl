@@ -106,7 +106,18 @@ class LiveRecorder:
                 "Origin: https://live.bilibili.com\r\n"
             )
             input_headers_opts = ["-headers", bilibili_headers]
-        
+        elif normalized_platform == "huya":
+            # 虎牙FLV流CDN校验Origin头，缺失可能导致403
+            # 参考pure_live项目的 ffmpeg_header_factory.dart
+            huya_headers = "Origin: https://www.huya.com\r\n"
+            input_headers_opts = ["-headers", huya_headers]
+
+        # 平台自适应 User-Agent：虎牙用SDK标识模拟官方客户端，其他平台用标准Chrome
+        if normalized_platform == "huya":
+            user_agent = "HYSDK(Windows,30000002)_APP(pc_exe&7090000&official)_SDK(trans&2.35.0.5996)"
+        else:
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
         if is_ytdlp_engine:
             source = source_url or room_url or stream_url
             if not source:
@@ -135,6 +146,10 @@ class LiveRecorder:
                     '-reconnect_streamed', '1',
                     '-reconnect_delay_max', reconnect_delay_max,
                 ]
+                if normalized_platform == "huya":
+                    # 虎牙直播流偶发短暂断流，reconnect_at_eof 让ffmpeg在流结束时主动重连
+                    # 参考pure_live项目 ffmpeg_command_builder.dart
+                    reconnect_opts.extend(['-reconnect_at_eof', '1'])
             # 视频编码参数：兼容模式用实时重编码，否则直接复制流
             if compat_mode:
                 video_codec_opts = ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23']
@@ -152,7 +167,7 @@ class LiveRecorder:
                     # 输入选项 (reconnect 仅对非 HLS 流有效)
                     *reconnect_opts,
                     '-rw_timeout', rw_timeout,
-                    '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    '-user_agent', user_agent,
                     *input_headers_opts,
                     '-fflags', '+discardcorrupt',
                     # 输入文件
@@ -181,7 +196,7 @@ class LiveRecorder:
                     # 输入选项 (reconnect 仅对非 HLS 流有效)
                     *reconnect_opts,
                     '-rw_timeout', rw_timeout,  # 平台自适应IO超时（抖音更宽松）
-                    '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+                    '-user_agent', user_agent,
                     *input_headers_opts,
                     '-fflags', '+discardcorrupt',
                     # 输入文件
