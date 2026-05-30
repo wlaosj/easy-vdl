@@ -1,7 +1,5 @@
 # 🚀 Easy-VDL 综合直播视频订阅解析下载器
 
-<div align="center">
-
 ![Docker Pulls](https://img.shields.io/docker/pulls/qq918652593/easy-vdl?style=flat-square&color=orange)
 ![Platform Support](https://img.shields.io/badge/Platform-x86_64%20%7C%20ARM64-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-Proprietary-red?style=flat-square)
@@ -10,8 +8,6 @@
 **一款集视频订阅、直播监控、自动录制、AI智能高光剪辑与媒体服务器联动的全能型可视化下载平台。**
 
 [功能特点](#-功能特色) • [极速部署](#-极速部署) • [上手指南](#-三步上手指南) • [加入社区](#-加入社区)
-
-</div>
 
 ---
 
@@ -47,13 +43,11 @@ services:
       - "888:80"                      # 888 为外部访问端口，可按需修改
     mem_limit: 4g                     # 推荐 4G，小规模订阅可降为 2G
     mem_limit_swap: 4g
-    # 【x86硬件加速，ARM设备请删除 devices/cap_add/security_opt 块】
+    # 【x86硬件加速，ARM设备请删除 devices/cap_add 块】
     devices:
       - /dev/dri:/dev/dri             # Intel/AMD 核显硬件加速映射
     cap_add:
       - PERFMON                       # GPU 仪表盘监控负载支持
-    security_opt:
-      - seccomp:unconfined
     volumes:
       - ./downloads:/app/downloads    # 视频与媒体下载保存路径
       - ./logs:/app/logs              # 程序运行日志
@@ -68,15 +62,14 @@ services:
     restart: unless-stopped
 ```
 
-<details>
-<summary>💡 点击展开传统的 Docker Run 部署指令</summary>
+#### 💡 传统的 Docker Run 部署指令
 
 ```bash
 # x86_64（支持 Intel/AMD 硬件加速与 GPU 监控）
 docker run -d --name easy-vdl -p 888:80 \
   --memory=4g --memory-swap=4g \
   --device=/dev/dri:/dev/dri \
-  --cap-add PERFMON --security-opt seccomp=unconfined \
+  --cap-add PERFMON \
   -v $(pwd)/downloads:/app/downloads \
   -v $(pwd)/logs:/app/logs \
   -v $(pwd)/database:/app/database \
@@ -96,8 +89,6 @@ docker run -d --name easy-vdl -p 888:80 \
   --restart always \
   qq918652593/easy-vdl:arm64
 ```
-</details>
-
 ---
 
 ## ⚙️ 环境变量与挂载参数说明
@@ -150,6 +141,5 @@ docker run -d --name easy-vdl -p 888:80 \
 
 ---
 
-<div align="center">
-  <sub>软件作者：<b>bigv</b> | 用心服务，带给您极致而优雅的视频下载与流式录制体验</sub>
-</div>
+
+*软件作者：bigv | 用心服务，带给您极致而优雅的视频下载与流式录制体验*

@@ -10,7 +10,20 @@
   <Support>https://t.me/+7jcTMePlNVwwZjg1</Support>
   <Project>https://github.com/wlaosj/easy-vdl</Project>
   <ReadMe/>
-  <Overview>Easy-VDL is an all-in-one visual download platform integrating multi-platform video subscriptions, unattended live stream recording, AI-powered highlight clipping, and media server integration.
+  <Overview>Easy-VDL 是一款集多平台视频订阅、直播自动值守录制、AI 智能高光切片与媒体服务器联动的全能型可视化下载平台。
+
+[主要功能特色]
+1. 🎬 多平台订阅与批量下载：支持抖音、B站、YouTube、小红书、TikTok、Instagram、X(Twitter)、网易云音乐等平台自动检测更新下载。
+2. 🔴 直播自动监控录制：实时监控抖音、斗鱼、B站、虎牙、小红书、YouTube、咪咕、快手、网易CC、Twitch 直播间开播状态，自动静默录制直播流并支持弹幕同步录制归档，停播自动转码。
+3. 🤖 AI 智能高光切片：直播录制结束后，基于弹幕热度与情感分析自动截取高光片段，接入大语言模型（如 DeepSeek）生成高能标题与剧情摘要。
+4. 📺 内置播放与时间轴回放：支持网页端内置视频播放，独家支持已录制直播的无缝时间轴回放与弹幕同步显示。
+5. ✈️ 突破限制的 Telegram 集成：支持通过 TG Bot 接收指令，直接向 Bot 发送最大 2GB 媒体文件并静默转存至本地。
+6. 🍿 完美联动 Emby/Jellyfin：自动生成符合标准的 NFO 元数据与海报墙，实现开箱即用的家庭影院体验。
+7. ⚡ 强劲性能：内置 headless Chrome 统一浏览器管理器、自动内存垃圾回收机制，配合 Intel/AMD 核显硬件加速转码。
+
+---
+
+Easy-VDL is an all-in-one visual download platform integrating multi-platform video subscriptions, unattended live stream recording, AI-powered highlight clipping, and media server integration.
 
 [Key Features]
 1. 🎬 Multi-Platform Batch Download: Auto-detect and download from Douyin, Bilibili, YouTube, Xiaohongshu, TikTok, Instagram, X (Twitter), NetEase Cloud Music, and more.
@@ -23,8 +36,6 @@
 
 ---
 
-Easy-VDL 是一款集多平台视频订阅、直播自动值守录制、AI 智能高光切片与媒体服务器联动的全能型可视化下载平台。
-
 [主要功能特色]
 1. 🎬 多平台订阅与批量下载：支持抖音、B站、YouTube、小红书、TikTok、Instagram、X(Twitter)、网易云音乐等平台自动检测更新下载。
 2. 🔴 直播自动监控录制：实时监控抖音、斗鱼、B站、虎牙、小红书、YouTube、咪咕、快手、网易CC、Twitch 直播间开播状态，自动静默录制直播流并支持弹幕同步录制归档，停播自动转码。
@@ -33,6 +44,19 @@ Easy-VDL 是一款集多平台视频订阅、直播自动值守录制、AI 智�
 5. ✈️ 突破限制的 Telegram 集成：支持通过 TG Bot 接收指令，直接向 Bot 发送最大 2GB 媒体文件并静默转存至本地。
 6. 🍿 完美联动 Emby/Jellyfin：自动生成符合标准的 NFO 元数据与海报墙，实现开箱即用的家庭影院体验。
 7. ⚡ 强劲性能：内置 headless Chrome 统一浏览器管理器、自动内存垃圾回收机制，配合 Intel/AMD 核显硬件加速转码。
+
+---
+
+Easy-VDL is an all-in-one visual download platform integrating multi-platform video subscriptions, unattended live stream recording, AI-powered highlight clipping, and media server integration.
+
+[Key Features]
+1. 🎬 Multi-Platform Batch Download: Auto-detect and download from Douyin, Bilibili, YouTube, Xiaohongshu, TikTok, Instagram, X (Twitter), NetEase Cloud Music, and more.
+2. 🔴 Live Stream Auto-Recording: Real-time monitoring of Douyin, Douyu, Bilibili, Huya, Xiaohongshu, YouTube, Migu, Kuaishou, NetEase CC, Twitch — auto-record streams with danmaku (bullet chat) sync, auto-transcode when stream ends.
+3. 🤖 AI Highlight Clipping: After recording, automatically extract highlight clips based on danmaku activity and sentiment analysis, with LLM-generated (e.g. DeepSeek) titles and summaries.
+4. 📺 Built-in Player & Timeline Replay: In-browser video player with exclusive seamless timeline replay of recorded live streams with synced danmaku display.
+5. ✈️ Telegram Integration: Receive commands via Telegram Bot, send media files up to 2GB directly to the bot for silent local storage.
+6. 🍿 Emby/Jellyfin Integration: Auto-generate standard NFO metadata and poster wall for a plug-and-play home theater experience.
+7. ⚡ High Performance: Built-in headless Chrome browser manager, automatic memory garbage collection, and Intel/AMD iGPU hardware-accelerated transcoding.
   </Overview>
   <Category>Downloaders: Status:Beta</Category>
   <Beta>true</Beta>
@@ -40,42 +64,42 @@ Easy-VDL 是一款集多平台视频订阅、直播自动值守录制、AI 智�
   <TemplateURL>https://raw.githubusercontent.com/wlaosj/easy-vdl/main/easy-vdl.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/refs/heads/main/favicon.png</Icon>
   <Banner/>
-  <ExtraParams>--cap-add PERFMON --security-opt seccomp=unconfined --memory=4g --memory-swap=4g</ExtraParams>
+  <ExtraParams>--cap-add PERFMON --memory=4g --memory-swap=4g</ExtraParams>
   <PostArgs/>
   <CPUset/>
   <Date>2026-05-27</Date>
   <Changes>
-### 🚀 Easy-VDL now available on Unraid CA Store!
-- Full support for x86_64 and ARM64 architectures.
-- Intel/AMD iGPU (/dev/dri) hardware-accelerated transcoding.
-- 10 live streaming platforms: Douyin, Douyu, Bilibili, Huya, Xiaohongshu, YouTube, Migu, Kuaishou, NetEase CC, Twitch.
-- 8 download platforms: Douyin, Bilibili, YouTube, Xiaohongshu, TikTok, Instagram, X (Twitter), NetEase Cloud Music.
-- Built-in Telegram privileged transfer for files up to 2GB.
-
 Easy-VDL 现已登录 Unraid CA 商店！
 - 完美支持 x86_64 和 ARM64 架构设备。
 - 支持 Intel/AMD 核显（/dev/dri）硬件加速转码。
 - 支持 10 大直播平台：抖音、斗鱼、B站、虎牙、小红书、YouTube、咪咕、快手、网易CC、Twitch。
 - 支持 8 大下载平台：抖音、B站、YouTube、小红书、TikTok、Instagram、X(Twitter)、网易云音乐。
 - 内置 Telegram 突破限制的大文件传输（最大 2GB）。
+
+### 🚀 Easy-VDL now available on Unraid CA Store!
+- Full support for x86_64 and ARM64 architectures.
+- Intel/AMD iGPU (/dev/dri) hardware-accelerated transcoding.
+- 10 live streaming platforms: Douyin, Douyu, Bilibili, Huya, Xiaohongshu, YouTube, Migu, Kuaishou, NetEase CC, Twitch.
+- 8 download platforms: Douyin, Bilibili, YouTube, Xiaohongshu, TikTok, Instagram, X (Twitter), NetEase Cloud Music.
+- Built-in Telegram privileged transfer for files up to 2GB.
   </Changes>
 
   <!-- 端口配置 -->
-  <Config Name="WebUI Port" Target="80" Default="888" Mode="tcp" Description="Internal container port is 80. Modify the external host port for Unraid access here. / 容器内部服务端口为 80，请在此修改 Unraid 宿主机的外部访问端口。" Type="Port" Display="always" Required="true" Mask="false">888</Config>
+  <Config Name="WebUI Port" Target="80" Default="888" Mode="tcp" Description="容器内部服务端口为 80，请在此修改 Unraid 宿主机的外部访问端口。 / Internal container port is 80. Modify the external host port for Unraid access here." Type="Port" Display="always" Required="true" Mask="false">888</Config>
 
   <!-- 挂载目录 -->
-  <Config Name="Download Path" Target="/app/downloads" Default="" Mode="rw" Description="Video and media download directory. Map to a NAS shared storage path (e.g. /mnt/user/downloads/). / 视频下载保存路径，建议映射到 NAS 的共享存储目录（如 /mnt/user/downloads/）。" Type="Path" Display="always" Required="true" Mask="false"/>
-  <Config Name="Database &amp; Config Path" Target="/app/database" Default="/mnt/user/appdata/easy-vdl/database" Mode="rw" Description="Database and configuration directory. For best performance, map to an SSD cache pool (e.g. /mnt/user/appdata/easy-vdl/database). / 数据库与全局配置路径，强烈建议映射到 SSD 缓存池（如 /mnt/user/appdata/easy-vdl/database）。" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/easy-vdl/database</Config>
-  <Config Name="Logs Path" Target="/app/logs" Default="/mnt/user/appdata/easy-vdl/logs" Mode="rw" Description="Application log storage path (e.g. /mnt/user/appdata/easy-vdl/logs). / 程序运行日志保存路径（如 /mnt/user/appdata/easy-vdl/logs）。" Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/easy-vdl/logs</Config>
+  <Config Name="Download Path" Target="/app/downloads" Default="" Mode="rw" Description="视频下载保存路径，建议映射到 NAS 的共享存储目录（如 /mnt/user/downloads/）。 / Video and media download directory. Map to a NAS shared storage path (e.g. /mnt/user/downloads/)." Type="Path" Display="always" Required="true" Mask="false"/>
+  <Config Name="Database &amp; Config Path" Target="/app/database" Default="/mnt/user/appdata/easy-vdl/database" Mode="rw" Description="数据库与全局配置路径，强烈建议映射到 SSD 缓存池（如 /mnt/user/appdata/easy-vdl/database）。 / Database and configuration directory. For best performance, map to an SSD cache pool (e.g. /mnt/user/appdata/easy-vdl/database)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/easy-vdl/database</Config>
+  <Config Name="Logs Path" Target="/app/logs" Default="/mnt/user/appdata/easy-vdl/logs" Mode="rw" Description="程序运行日志保存路径（如 /mnt/user/appdata/easy-vdl/logs）。 / Application log storage path (e.g. /mnt/user/appdata/easy-vdl/logs)." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/appdata/easy-vdl/logs</Config>
 
   <!-- 环境变量 -->
-  <Config Name="PUID" Target="PUID" Default="1000" Description="Host user UID. Default is 1000 (on Unraid, 99 for nobody is recommended). / 宿主机用户的 UID，Unraid 环境下推荐为 99 (nobody)。" Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
-  <Config Name="PGID" Target="PGID" Default="100" Description="Host user GID. Default is 100 (users group on Unraid). / 宿主机用户的 GID，Unraid 中默认为 100 (users)。" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
-  <Config Name="Admin Username" Target="EASY_VDL_ADMIN_USERNAME" Default="admin" Description="Default admin login username. / 预设的管理员登录用户名。" Type="Variable" Display="always" Required="true" Mask="false">admin</Config>
-  <Config Name="Admin Password" Target="EASY_VDL_ADMIN_PASSWORD" Default="admin123456" Description="Default admin login password. Strongly recommended to change after deployment. / 预设的管理员登录密码，强烈建议在部署后修改。" Type="Variable" Display="always" Required="true" Mask="false">admin123456</Config>
-  <Config Name="Internal Container Port" Target="EASY_VDL_PORT" Default="80" Description="Internal Nginx service port (default 80). Usually no need to change in Bridge mode. / 内部容器 Nginx 服务端口（默认 80），Bridge 模式下通常无需修改。" Type="Variable" Display="advanced" Required="false" Mask="false">80</Config>
-  <Config Name="Timezone" Target="TZ" Default="Asia/Shanghai" Description="System timezone setting. / 系统运行的时区设置。" Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Shanghai</Config>
+  <Config Name="PUID" Target="PUID" Default="1000" Description="宿主机用户的 UID，通常设为你的管理员账户 UID 即可（默认 1000）。终端执行 id 命令查看。 / Host user UID. Default 1000 works in most cases; check with the id command." Type="Variable" Display="advanced" Required="true" Mask="false">1000</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Description="宿主机用户组 GID，Unraid 默认为 100 (users)，终端执行 id 命令查看。 / Host user group GID. Default is 100 (users group) on Unraid; check with the id command." Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="Admin Username" Target="EASY_VDL_ADMIN_USERNAME" Default="admin" Description="预设的管理员登录用户名。 / Default admin login username." Type="Variable" Display="always" Required="true" Mask="false">admin</Config>
+  <Config Name="Admin Password" Target="EASY_VDL_ADMIN_PASSWORD" Default="" Description="管理员登录密码，首次使用前必须设置。 / Admin login password. Must be set before first use." Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="Internal Container Port" Target="EASY_VDL_PORT" Default="80" Description="内部容器 Nginx 服务端口（默认 80），Bridge 模式下通常无需修改。 / Internal Nginx service port (default 80). Usually no need to change in Bridge mode." Type="Variable" Display="advanced" Required="false" Mask="false">80</Config>
+  <Config Name="Timezone" Target="TZ" Default="Asia/Shanghai" Description="系统运行的时区设置。 / System timezone setting." Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Shanghai</Config>
 
   <!-- 硬件加速设备映射 -->
-  <Config Name="Intel/AMD iGPU Device" Target="/dev/dri" Default="/dev/dri" Description="Intel/AMD iGPU hardware acceleration device mapping (x86 with iGPU only). / Intel/AMD 核显硬件加速映射通道（仅限 x86 且拥有核显的机器）。" Type="Device" Display="advanced" Required="false" Mask="false">/dev/dri</Config>
+  <Config Name="Intel/AMD iGPU Device" Target="/dev/dri" Default="/dev/dri" Description="Intel/AMD 核显硬件加速映射通道（仅限 x86 且拥有核显的机器）。 / Intel/AMD iGPU hardware acceleration device mapping (x86 with iGPU only)." Type="Device" Display="advanced" Required="false" Mask="false">/dev/dri</Config>
 </Container>
