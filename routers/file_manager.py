@@ -868,15 +868,15 @@ def delete_task(task_id: str, delete_file: bool = Query(True), delete_related: b
             file_errors.append(f"任务文件清理失败: {str(cleanup_exc)}")
             logger.error(f"删除任务前清理失败: task_id={task_id}, error={cleanup_exc}")
         
-        # 更新关联视频的下载状态（默认启用）
-        if delete_related:
-            videos = db.query(models.SubscriptionVideo).filter(
-                models.SubscriptionVideo.download_task_id == task_id
-            ).all()
-            # 同一个任务可能被多条记录引用，必须全量重置避免脏状态残留
-            for video in videos:
+        # 清理关联的视频引用（防止 download_task_id 悬空成为孤儿数据）
+        videos = db.query(models.SubscriptionVideo).filter(
+            models.SubscriptionVideo.download_task_id == task_id
+        ).all()
+        # 同一个任务可能被多条记录引用，必须全量重置避免脏状态残留
+        for video in videos:
+            video.download_task_id = None  # 始终清除悬空引用
+            if delete_related:
                 video.downloaded = "false"
-                video.download_task_id = None
                 video.error_message = None
 
         # 删除任务记录

@@ -423,15 +423,14 @@ async def get_subscription_videos(
                     else:
                         video.status = "unknown"
                 else:
-                    # 修复：task_id 存在但 task 不存在的情况（通常发生在快速取消下载）
-                    if not simple:
-                        # 在非 simple 模式下，自动清理无效的 task_id 引用
-                        video.download_task_id = None
-                        video.downloaded = "false"
-                        status_updated = True
-                        logger.info(
-                            f"视频 {video.title} 的任务已被清理，自动重置为未下载状态"
-                        )
+                    # 修复：task_id 存在但 task 不存在的情况（通常发生在取消下载）
+                    # 直接清理无效引用，确保视频能出现在"未下载"分类中
+                    video.download_task_id = None
+                    video.downloaded = "false"
+                    status_updated = True
+                    logger.info(
+                        f"视频 {video.title} 的任务已被清理，自动重置为未下载状态"
+                    )
                     video.status = "not_downloaded"
             else:
                 video.status = "not_downloaded"
@@ -446,7 +445,7 @@ async def get_subscription_videos(
                     pass
 
         # 如果在状态判断过程中有清理操作，提交事务
-        if not simple and status_updated:
+        if status_updated:
             db.commit()
 
         # simple=true：仅返回当前页 + total，其余统计交给独立接口
