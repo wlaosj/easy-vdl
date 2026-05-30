@@ -107,6 +107,7 @@ async def _export_live_subscriptions(db: Session) -> Dict[str, Any]:
             "proxy": sub.proxy,
             "cookies": sub.cookies,
             "remark": sub.remark,
+            "extra_data": sub.extra_data,
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
         }
         export_data["subscriptions"].append(sub_data)
@@ -201,6 +202,7 @@ async def import_live_subscriptions_backup(
     新增订阅时，会自动为其创建监控任务。
     """
     from live.scheduler import live_scheduler  # 延迟导入避免循环引用
+    from live.danmu import is_danmu_supported
     import uuid
 
     subs_data = payload.subscriptions or []
@@ -236,6 +238,17 @@ async def import_live_subscriptions_backup(
                 errors.append(f"已存在相同直播订阅（{platform} - {room_url}），已跳过")
                 continue
 
+            # 处理 extra_data（弹幕设置等）
+            extra_data_raw = item.get("extra_data")
+            if extra_data_raw:
+                # 保留备份中的 extra_data（如弹幕设置）
+                extra_data = extra_data_raw
+            else:
+                # 旧备份无 extra_data，按平台自动开启弹幕
+                extra_data = json.dumps({
+                    "danmu_enabled": is_danmu_supported(platform),
+                })
+
             sub = LiveSubscription(
                 id=str(uuid.uuid4()),
                 platform=platform,
@@ -258,6 +271,7 @@ async def import_live_subscriptions_backup(
                 proxy=item.get("proxy"),
                 cookies=item.get("cookies"),
                 remark=item.get("remark"),
+                extra_data=extra_data,
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
             )

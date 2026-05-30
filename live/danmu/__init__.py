@@ -120,6 +120,13 @@ def register_danmu(platform: str, recorder_cls: Type[BaseDanmuRecorder]) -> None
     _DANMU_REGISTRY[platform.lower()] = recorder_cls
 
 
+def is_danmu_supported(platform: str) -> bool:
+    """Check whether the given platform has a registered danmaku recorder."""
+    if not platform:
+        return False
+    return platform.lower() in _DANMU_REGISTRY
+
+
 def get_danmu_recorder(
     platform: str,
     *,

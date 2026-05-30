@@ -561,7 +561,7 @@
             <input type="checkbox" v-model="addForm.danmu_enabled" />
             <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch）</span>
           </label>
-          <p class="form-hint">默认关闭。当前支持抖音/B站/斗鱼/虎牙/Twitch，开启后会额外写入 .danmu.jsonl 文件</p>
+          <p class="form-hint">当前支持抖音/B站/斗鱼/虎牙/Twitch，开启后会额外写入 .danmu.jsonl 文件</p>
         </div>
       </div>
 
@@ -1775,7 +1775,7 @@ const addForm = ref({
   monitor_enabled: true,
   check_interval: 60,
   notification_enabled: true,
-  danmu_enabled: false
+  danmu_enabled: true
 })
 const addBatchText = ref('')
 
@@ -3935,7 +3935,7 @@ function resetAddForm() {
     monitor_enabled: true,
     check_interval: 60,
     notification_enabled: true,
-    danmu_enabled: false
+    danmu_enabled: true
   }
   addBatchText.value = ''
 }

@@ -24,7 +24,8 @@ from sql.database_postgresql import get_session
 from sql.models import LiveSubscription, LiveRecord, User
 from .recorder import live_recorder
 from .scheduler import live_scheduler
-from . import adapters 
+from . import adapters
+from .danmu import is_danmu_supported
 
 logger = logging.getLogger(__name__)
 
@@ -685,7 +686,7 @@ async def add_live_subscription(
     monitor_enabled: str = Query("true"),
     check_interval: int = Query(60),
     notification_enabled: str = Query("true"),
-    danmu_enabled: str = Query("false"),
+    danmu_enabled: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user_or_token),
     db: Session = Depends(get_session)
 ):
@@ -694,7 +695,10 @@ async def add_live_subscription(
     auto_record_bool = _parse_bool(auto_record, False)
     monitor_enabled_bool = _parse_bool(monitor_enabled, True)
     notification_enabled_bool = _parse_bool(notification_enabled, True)
-    danmu_enabled_bool = _parse_bool(danmu_enabled, False)
+    if danmu_enabled is not None:
+        danmu_enabled_bool = _parse_bool(danmu_enabled, False)
+    else:
+        danmu_enabled_bool = is_danmu_supported(platform)
 
     try:
         return await _create_live_subscription(
@@ -765,7 +769,7 @@ async def batch_add_live_subscriptions(
         auto_record_bool = _parse_bool(item.auto_record, False)
         monitor_enabled_bool = _parse_bool(item.monitor_enabled, True)
         notification_enabled_bool = _parse_bool(item.notification_enabled, True)
-        danmu_enabled_bool = _parse_bool(item.danmu_enabled, False)
+        danmu_enabled_bool = is_danmu_supported(platform) if item.danmu_enabled is None else item.danmu_enabled
         check_interval = item.check_interval if item.check_interval is not None else 60
 
         db_local = get_session()

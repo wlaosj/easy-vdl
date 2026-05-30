@@ -4233,6 +4233,7 @@ class TelegramBotService:
                 return
 
             from live import adapters
+            from live.danmu import is_danmu_supported
             from sql.models import LiveSubscription
             
             # 1. 获取适配器
@@ -4311,7 +4312,10 @@ class TelegramBotService:
                     quality="原画", # 默认配置
                     auto_record="true", # 默认自动录制
                     check_interval=60,
-                    notification_enabled="true"
+                    notification_enabled="true",
+                    extra_data=json.dumps({
+                        "danmu_enabled": is_danmu_supported(platform_name),
+                    }),
                 )
                 db.add(new_sub)
                 db.commit()
@@ -4344,6 +4348,8 @@ class TelegramBotService:
                     f"📹 **自动录制已开启**\n"
                     f"检测频率: 60秒 / 画质: 原画"
                 )
+                if is_danmu_supported(platform_name):
+                    msg += f"\n💬 **弹幕录制已开启**"
                 await self.send_message(chat_id, msg)
 
         except Exception as e:
