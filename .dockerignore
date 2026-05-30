@@ -48,6 +48,16 @@ Thumbs.db
 test-*.js
 *.test.js
 *.spec.js
+*.test.ts
+*.spec.ts
+*.test.tsx
+*.spec.tsx
+*.test.vue
+*.spec.vue
+tests/
+**/tests/
+**/test_*.py
+**/*_test.py
 
 # 临时文件
 tmp
@@ -96,7 +106,6 @@ dyd/.gitignore
 **/*备份*
 **/*backup*
 **/*.backup
-routers/subscribe/旧版完整，供排查参考使用subscribe.py
 # 明确保留 routers/backup.py（这是功能模块，不是备份文件）
 !routers/backup.py
 
@@ -113,6 +122,7 @@ easy-vdl.code-workspace
 backup.sh
 build_and_run.sh
 build_and_push_dockerhub.sh
+dockerhub_sync_readme.sh
 
 # Cursor / 编辑器生成的辅助目录（如果存在）
 .agent/
