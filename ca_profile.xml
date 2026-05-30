@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CommunityApplications>
   <Profile>
-    Easy-VDL Official Unraid Template Repository — one-click deployment for the all-in-one live streaming monitor, auto-recorder, and multi-platform video downloader with GPU transcoding and Emby/Jellyfin integration.
+    Easy-VDL Official Unraid Template Repository — one-click deployment for the all-in-one live stream recorder with danmaku sync, seamless timeline replay, AI highlight clipping, GPU hardware transcoding, multi-platform video downloader, and Emby/Jellyfin media server integration.
 
-    Easy-VDL 官方 Unraid 模版仓库，提供综合直播监控、自动录制与多平台视频订阅下载的一键部署，支持 GPU 硬件加速转码与 Emby/Jellyfin 媒体服务器联动。
+    Easy-VDL 官方 Unraid 模版仓库，提供直播自动录制、弹幕同步、无缝时间轴回放、AI智能高光剪辑、GPU硬件加速转码与多平台视频订阅下载的一键部署，支持 Emby/Jellyfin 媒体服务器联动。
   </Profile>
   <Icon>https://raw.githubusercontent.com/wlaosj/easy-vdl/refs/heads/main/favicon.png</Icon>
   <WebPage>https://github.com/wlaosj/easy-vdl</WebPage>
