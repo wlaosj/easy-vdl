@@ -127,6 +127,7 @@ class TwitchAdapter(BaseAdapter):
                 "this live event has ended",
                 "this live stream recording is not available",
                 "is offline",
+                "not currently live",
             )
             auth_markers = (
                 "sign in to confirm you're not a bot",
