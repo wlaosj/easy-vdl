@@ -1640,8 +1640,25 @@ async def xhs_parse_video(
         if today not in usage_stats["daily_stats"]:
             usage_stats["daily_stats"][today] = {"success": 0, "failed": 0}
         usage_stats["daily_stats"][today]["failed"] += 1
-        logger.error(f"[xiaohongshu] 解析失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"解析失败: {str(e)}")
+        err_msg = str(e)
+        # 将常见 yt-dlp 错误映射为友好中文提示
+        friendly_msg = err_msg
+        if "No video formats" in err_msg:
+            friendly_msg = "该链接可能已失效或需要登录，请确认链接是否正确"
+        elif "does not look like a Netscape format" in err_msg:
+            friendly_msg = "Cookie 文件格式异常，请前往「设置 → Cookie 管理 → 小红书」重新粘贴 Cookie"
+        elif "HTTP Error 403" in err_msg or "Forbidden" in err_msg:
+            friendly_msg = "访问被拒绝，Cookie 可能已过期，请前往「设置 → Cookie 管理 → 小红书」更新 Cookie"
+        elif "Video unavailable" in err_msg:
+            friendly_msg = "该视频不可用，可能已被删除或设为私密"
+        elif "Private video" in err_msg:
+            friendly_msg = "该视频为私密视频，无法下载"
+        elif "This video is private" in err_msg:
+            friendly_msg = "该视频为私密视频，无法下载"
+        elif "Unable to extract" in err_msg:
+            friendly_msg = "无法解析该链接，小红书接口可能已变更"
+        logger.error(f"[xiaohongshu] 解析失败: {err_msg}")
+        raise HTTPException(status_code=500, detail=f"解析失败: {friendly_msg}")
 
 @router.post("/api/xhs/note_info_full")
 async def xhs_note_info_full(
