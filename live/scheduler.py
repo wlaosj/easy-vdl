@@ -46,6 +46,7 @@ class LiveScheduler:
         self._exit_handling_subscriptions = set()  # 防止同一订阅并发处理异常退出
         self._sub_config_cache: Dict[str, dict] = {}  # [优化] 订阅配置内存缓存，减少每轮监控的 DB 查询
         self._offline_streaks: Dict[str, int] = {}  # 连续离线次数（用于抖动过滤）
+        self._probe_streaks: Dict[str, int] = {}  # 连续探测失败次数（房间失效时自动停止监控）
         self._last_live_status: Dict[str, bool] = {}  # 订阅最近一次稳定状态缓存
         self._recording_file_sizes: Dict[str, int] = {}  # 订阅ID -> 录制文件上次大小
         self._recording_file_stale_start: Dict[str, float] = {}  # 订阅ID -> 文件停止增长起始时间
@@ -542,13 +543,34 @@ class LiveScheduler:
                                 logger.warning(f"YouTube Cookie 自动刷新失败: {refresh_err}")
 
                     if not probe_success:
-                        if subscription_id in self._last_live_status:
-                            is_live = self._last_live_status[subscription_id]
-                            logger.warning(
-                                f"[{platform}] 状态采集失败，沿用上次状态: {subscription_id}, is_live={is_live}"
-                            )
+                        streak = self._probe_streaks.get(subscription_id, 0) + 1
+                        self._probe_streaks[subscription_id] = streak
+                        if streak >= 30:
+                            from sql.database_postgresql import get_db
+                            try:
+                                d = next(get_db())
+                                d.query(LiveSubscription).filter(
+                                    LiveSubscription.id == subscription_id
+                                ).update({"monitor_enabled": "false"})
+                                d.commit()
+                                logger.warning(
+                                    f"[{platform}] 房间疑似已失效，已自动停止监控: {subscription_id}"
+                                )
+                            except Exception as e:
+                                logger.warning(f"停止监控失败: {e}")
+                            finally:
+                                try:
+                                    d.close()
+                                except Exception:
+                                    pass
                         else:
-                            is_live = False
+                            if subscription_id in self._last_live_status:
+                                is_live = self._last_live_status[subscription_id]
+                                logger.warning(
+                                    f"[{platform}] 状态采集失败（{streak}/30），沿用上次状态: {subscription_id}, is_live={is_live}"
+                                )
+                            else:
+                                is_live = False
 
                 if is_live:
                     first_offline_time = None # 重置下播计时

@@ -48,12 +48,13 @@ class CCAdapter(BaseAdapter):
             channel_id = room_meta.get("channel_id")
             
             if not channel_id:
-                logger.warning(f"[CCAdapter] 未能解析到 CuteID {room_id} 的 channel_id")
+                logger.warning(f"[CCAdapter] 未能解析到 CuteID {room_id} 的 channel_id，标记为失效房间")
                 return {
                     "anchor_name": room_meta.get("nickname", ""),
                     "room_id": room_id,
                     "avatar_url": None,
                     "is_live": False,
+                    "probe_success": False,
                     "raw_data": {}
                 }
                 
