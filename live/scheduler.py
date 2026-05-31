@@ -566,11 +566,19 @@ class LiveScheduler:
                                         d.close()
                                     except Exception:
                                         pass
+                            else:
+                                if subscription_id in self._last_live_status:
+                                    is_live = self._last_live_status[subscription_id]
+                                    logger.warning(
+                                        f"[cc] 状态采集失败（{streak}/2），沿用上次状态: {subscription_id}, is_live={is_live}"
+                                    )
+                                else:
+                                    is_live = False
                         else:
                             if subscription_id in self._last_live_status:
                                 is_live = self._last_live_status[subscription_id]
                                 logger.warning(
-                                    f"[{platform}] 状态采集失败（{streak}/2），沿用上次状态: {subscription_id}, is_live={is_live}"
+                                    f"[{platform}] 状态采集失败，沿用上次状态: {subscription_id}, is_live={is_live}"
                                 )
                             else:
                                 is_live = False
