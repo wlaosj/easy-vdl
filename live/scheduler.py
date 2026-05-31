@@ -545,8 +545,9 @@ class LiveScheduler:
                     if not probe_success:
                         streak = self._probe_streaks.get(subscription_id, 0) + 1
                         self._probe_streaks[subscription_id] = streak
-                        if streak >= 5:
+                        if streak >= 2:
                             from sql.database_postgresql import get_db
+                            from sql.models import LiveSubscription
                             try:
                                 d = next(get_db())
                                 d.query(LiveSubscription).filter(
@@ -567,7 +568,7 @@ class LiveScheduler:
                             if subscription_id in self._last_live_status:
                                 is_live = self._last_live_status[subscription_id]
                                 logger.warning(
-                                    f"[{platform}] 状态采集失败（{streak}/5），沿用上次状态: {subscription_id}, is_live={is_live}"
+                                    f"[{platform}] 状态采集失败（{streak}/2），沿用上次状态: {subscription_id}, is_live={is_live}"
                                 )
                             else:
                                 is_live = False
