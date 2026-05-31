@@ -740,10 +740,10 @@ class XiaohongshuAPI:
                 return None
 
     async def close_browser(self):
-        """关闭浏览器"""
+        """关闭浏览器页面（仅关闭当前平台的标签页，不关闭整个浏览器以避免其他平台登录态丢失）"""
         try:
-            # 使用管理器关闭
-            await self._browser.close_browser()
+            # 只关闭当前平台的标签页，与抖音/B站/YouTube保持一致
+            await self._browser.close_page(self._platform)
             return True
         except Exception as e:
             logger.error(f"关闭浏览器失败: {str(e)}")
