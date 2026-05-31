@@ -543,27 +543,29 @@ class LiveScheduler:
                                 logger.warning(f"YouTube Cookie 自动刷新失败: {refresh_err}")
 
                     if not probe_success:
-                        streak = self._probe_streaks.get(subscription_id, 0) + 1
-                        self._probe_streaks[subscription_id] = streak
-                        if streak >= 2:
-                            from sql.database_postgresql import get_db
-                            from sql.models import LiveSubscription
-                            try:
-                                d = next(get_db())
-                                d.query(LiveSubscription).filter(
-                                    LiveSubscription.id == subscription_id
-                                ).update({"monitor_enabled": "false"})
-                                d.commit()
-                                logger.warning(
-                                    f"[{platform}] 房间疑似已失效，已自动停止监控: {subscription_id}"
-                                )
-                            except Exception as e:
-                                logger.warning(f"停止监控失败: {e}")
-                            finally:
+                        # 仅对明确可判定房间失效的平台启用自动停止
+                        if platform == "cc":
+                            streak = self._probe_streaks.get(subscription_id, 0) + 1
+                            self._probe_streaks[subscription_id] = streak
+                            if streak >= 2:
+                                from sql.database_postgresql import get_db
+                                from sql.models import LiveSubscription
                                 try:
-                                    d.close()
-                                except Exception:
-                                    pass
+                                    d = next(get_db())
+                                    d.query(LiveSubscription).filter(
+                                        LiveSubscription.id == subscription_id
+                                    ).update({"monitor_enabled": "false"})
+                                    d.commit()
+                                    logger.warning(
+                                        f"[cc] 房间疑似已失效，已自动停止监控: {subscription_id}"
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"停止监控失败: {e}")
+                                finally:
+                                    try:
+                                        d.close()
+                                    except Exception:
+                                        pass
                         else:
                             if subscription_id in self._last_live_status:
                                 is_live = self._last_live_status[subscription_id]
