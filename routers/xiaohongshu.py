@@ -52,6 +52,26 @@ _xhs_preheat_lock = asyncio.Lock()
 _xhs_last_preheat_ts = 0.0
 _XHS_PREHEAT_COOLDOWN_SECONDS = 30.0
 
+
+class CookieNotConfiguredError(Exception):
+    """小红书 Cookie 未配置，需要用户手动粘贴"""
+    pass
+
+
+def _has_valid_xhs_cookie(cookie_path: str = "/app/database/cookie/xiaohongshu_cookie.txt") -> bool:
+    """检查磁盘上的 cookie 文件是否含有有效登录态（a1 cookie）"""
+    try:
+        if os.path.exists(cookie_path):
+            with open(cookie_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                # Netscape 格式（tab 分隔）: "...\ta1\t..."
+                # HTTP Header 格式（手动粘贴）: "a1=..."
+                return "\ta1\t" in content or "a1=" in content
+    except Exception:
+        pass
+    return False
+
+
 class RateLimiter:
     def __init__(self, max_requests: int = 30, time_window: int = 60):
         self.max_requests = max_requests
@@ -217,13 +237,11 @@ def _summarize_video_fields(feed_json: Dict) -> Dict:
 async def _ensure_xhs_cookie_file(force_refresh: bool = False) -> bool:
     """确保小红书 cookie 文件存在且可用，必要时从内置浏览器刷新导出。"""
     cookie_path = "/app/database/cookie/xiaohongshu_cookie.txt"
-    try:
-        if not force_refresh and os.path.exists(cookie_path):
-            with open(cookie_path, "r", encoding="utf-8") as f:
-                if f.read().strip():
-                    return True
-    except Exception:
-        pass
+    # 无论是否 force_refresh，先检查磁盘文件是否已有有效 cookie
+    if _has_valid_xhs_cookie(cookie_path):
+        return True
+    if not force_refresh:
+        return False
 
     try:
         from routers.unified_browser_manager import unified_browser
@@ -234,8 +252,10 @@ async def _ensure_xhs_cookie_file(force_refresh: bool = False) -> bool:
                 await xhs_api.init_browser()
                 cookie_text = await xhs_api.export_cookies_netscape(force_refresh=True)
         if cookie_text:
-            with open(cookie_path, "w", encoding="utf-8") as f:
+            tmp_path = cookie_path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(cookie_text)
+            os.replace(tmp_path, cookie_path)
             return True
     except Exception as e:
         logger.warning("[xiaohongshu] 刷新 cookie 失败: %s", e)
@@ -296,11 +316,53 @@ def _xhs_ydl_headers(url: str) -> dict:
     }
 
 
+async def _do_refresh_xhs_token(page, note_id: str) -> Optional[str]:
+    """在指定页面上导航到笔记页并提取最新的 xsec_token（不自持锁）"""
+    try:
+        note_page_url = f"https://www.xiaohongshu.com/explore/{note_id}"
+        await page.goto(note_page_url, wait_until="networkidle", timeout=20000)
+        await asyncio.sleep(0.5)
+        current_url = page.url
+        parsed = urlparse(current_url)
+        qs = parse_qs(parsed.query)
+        fresh = (qs.get("xsec_token") or [""])[0].strip()
+        if fresh:
+            logger.info("[xiaohongshu] 刷新 token 成功 note_id=%s new=%s", note_id, _mask_xsec_token(fresh))
+            return fresh
+        logger.warning("[xiaohongshu] 刷新 token 为空 note_id=%s url=%s", note_id, current_url)
+        return None
+    except Exception as e:
+        logger.debug("[xiaohongshu] 刷新 token 失败 note_id=%s: %s", note_id, e)
+        return None
+
+
+async def _refresh_xhs_token(note_id: str) -> Optional[str]:
+    """打开浏览器导航到笔记页，从 URL 中提取最新的 xsec_token（自持锁）"""
+    from routers.unified_browser_manager import unified_browser
+    from routers.xhsapi import xhs_api
+    try:
+        async with _xhs_browser_lock:
+            async with unified_browser.task_context("xiaohongshu", "xhs_refresh_token"):
+                await xhs_api.init_browser()
+                if xhs_api.page:
+                    return await _do_refresh_xhs_token(xhs_api.page, note_id)
+                return None
+    except Exception as e:
+        logger.debug("[xiaohongshu] 刷新 token 失败 note_id=%s: %s", note_id, e)
+        return None
+
+
 async def parse_xiaohongshu_with_ytdlp(url: str, allow_token_refresh: bool = True) -> VideoInfo:
     """使用 yt-dlp 解析小红书视频"""
     try:
         logger.debug(f"[xiaohongshu] 开始使用 yt-dlp 解析: {url}")
-        
+
+        # 先检查 cookie 是否存在，不存在则直接抛友好错误
+        if not _has_valid_xhs_cookie():
+            raise CookieNotConfiguredError(
+                "小红书 Cookie 未配置，请前往「设置 → Cookie 管理 → 小红书」粘贴 Netscape 格式的 Cookie"
+            )
+
         info = None
         last_err = None
         for attempt in range(2):
@@ -350,32 +412,12 @@ async def parse_xiaohongshu_with_ytdlp(url: str, allow_token_refresh: bool = Tru
         if not info and last_err:
             err_str = str(last_err)
             if allow_token_refresh and ("No video formats" in err_str or "403" in err_str or "Forbidden" in err_str):
-                try:
-                    note_id = _xhs_note_id_from_url(url)
-                    if note_id:
-                        from routers.unified_browser_manager import unified_browser
-                        from routers.xhsapi import xhs_api
-                        fresh_token = ""
-                        async with _xhs_browser_lock:
-                            async with unified_browser.task_context("xiaohongshu", "xhs_refresh_token_parse"):
-                                await xhs_api.init_browser()
-                                note_page_url = f"https://www.xiaohongshu.com/explore/{note_id}"
-                                await xhs_api.page.goto(note_page_url, wait_until="networkidle", timeout=20000)
-                                await asyncio.sleep(0.5)
-                                current_url = xhs_api.page.url
-                                parsed = urlparse(current_url)
-                                qs = parse_qs(parsed.query)
-                                fresh_token = (qs.get("xsec_token") or [""])[0].strip()
-                        if fresh_token:
-                            logger.info(
-                                "[xiaohongshu] 解析阶段刷新 token 成功 (fail_stage=parse, token_refresh) note_id=%s new=%s",
-                                note_id,
-                                _mask_xsec_token(fresh_token),
-                            )
-                            explore_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={fresh_token}&xsec_source=pc_feed"
-                            return await parse_xiaohongshu_with_ytdlp(explore_for_ydl, allow_token_refresh=False)
-                except Exception as e:
-                    logger.debug("[xiaohongshu] 解析阶段刷新 token 失败: %s", e)
+                note_id = _xhs_note_id_from_url(url)
+                if note_id:
+                    fresh_token = await _refresh_xhs_token(note_id)
+                    if fresh_token:
+                        explore_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={fresh_token}&xsec_source=pc_feed"
+                        return await parse_xiaohongshu_with_ytdlp(explore_for_ydl, allow_token_refresh=False)
             raise last_err
 
         if not info:
@@ -979,106 +1021,13 @@ async def _do_xhs_download_video_task(task_id: str, url: str, custom_download_di
             if not note_id or not xsec_token:
                 raise Exception(f"订阅视频缺少必要参数: note_id={'有' if note_id else '无'}, xsec_token={'有' if xsec_token else '无'}")
 
-            from routers.unified_browser_manager import unified_browser
-            from routers.xhsapi import xhs_api
-
+            # 视频订阅：跳过 Feed API（origin_video_key 已无法获取），直接使用 yt-dlp
             token_for_feed = xsec_token
-            try:
-                # 串行化：多任务共享同一 page，同时 goto 会触发 Execution context destroyed
-                async with _xhs_browser_lock:
-                    async with unified_browser.task_context("xiaohongshu", "xhs_download_feed"):
-                        await xhs_api.init_browser()
-                        profile_url = None
-                        sub = db.query(Subscription).filter(Subscription.id == subscription_video.subscription_id).first()
-                        if sub:
-                            profile_url = getattr(sub, "profile_url", None) or ""
-                        
-                        # 优化：直接使用创作者主页（与同步阶段一致），避免多次页面跳转导致超时
-                        if profile_url and "xsec_token" in profile_url and xhs_api.page:
-                            logger.info("[xiaohongshu] 下载阶段访问创作者主页建立会话 note_id=%s", note_id)
-                            try:
-                                # 使用 domcontentloaded 替代 networkidle，减少超时风险（与同步阶段一致）
-                                await xhs_api.page.goto(profile_url, wait_until="domcontentloaded", timeout=60000)
-                                await xhs_api._simulate_human_behavior()
-                                await asyncio.sleep(0.4)
-                                
-                            except Exception as e:
-                                logger.warning("[xiaohongshu] 访问创作者主页失败 note_id=%s: %s", note_id, e)
-                                # 如果访问失败，继续尝试调用 feed（可能页面已在正确状态）
-
-                        logger.info("[xiaohongshu] 订阅任务通过 feed 获取笔记详情 note_id=%s", note_id)
-                        # 传递 profile_url 用于设置正确的 Referer（与同步阶段一致）
-                        note_card = await xhs_api.get_note_detail_by_feed(note_id, token_for_feed, "pc_feed", profile_url)
-            except Exception as api_err:
-                raise Exception(f"订阅任务通过 feed 获取详情失败 note_id={note_id}: {api_err}") from api_err
-
-            if not note_card:
-                raise Exception(f"订阅任务 feed 未返回笔记详情 note_id={note_id}")
-
-            video_urls, from_origin = _get_video_url_from_note_card(note_card)
-            try:
-                video_dict = note_card.get("video") or {}
-                consumer = (video_dict.get("consumer") or video_dict.get("Consumer") or {}) if isinstance(video_dict, dict) else {}
-                origin_key = consumer.get("origin_video_key") or consumer.get("originVideoKey")
-                logger.info("[xiaohongshu] origin_video_key=%s", "present" if origin_key else "missing")
-            except Exception as e:
-                logger.debug("[xiaohongshu] origin_video_key 检查失败 note_id=%s: %s", note_id, e)
-            if not from_origin:
-                try:
-                    og_url = await xhs_api._try_og_video(note_id)
-                    if og_url:
-                        video_urls = [og_url]
-                        from_origin = True
-                        logger.info("[xiaohongshu] 订阅任务通过 og:video 获取直链（可能无水印）: %s", title[:50] if title else note_id)
-                    else:
-                        logger.info("[xiaohongshu] og:video 未命中 note_id=%s", note_id)
-                except Exception as e:
-                    logger.debug("[xiaohongshu] og:video 获取失败 note_id=%s: %s", note_id, e)
-            if not from_origin:
-                try:
-                    note_url_full = url if "xsec_token=" in url else (
-                        f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={token_for_feed}&xsec_source=pc_feed"
-                    )
-                    full_json = await xhs_api.get_note_info_full(note_url_full)
-                    origin_url = _extract_origin_url_from_feed_json(full_json)
-                    if origin_url:
-                        video_urls = [origin_url]
-                        from_origin = True
-                        logger.info("[xiaohongshu] 订阅任务通过 note_info_full 获取 origin 直链（理论无水印）: %s", title[:50] if title else note_id)
-                    else:
-                        summary = _summarize_video_fields(full_json)
-                        logger.info("[xiaohongshu] note_info_full 视频字段概要 note_id=%s: %s", note_id, summary)
-                        logger.info("[xiaohongshu] note_info_full 未返回 origin 直链 note_id=%s", note_id)
-                except Exception as e:
-                    logger.debug("[xiaohongshu] note_info_full 获取失败 note_id=%s: %s", note_id, e)
-            if not video_urls:
-                raise Exception(f"订阅任务 feed 笔记详情中无视频直链 note_id={note_id}")
-
-            title = (subscription_video.title or "").strip() or note_card.get("title") or note_card.get("desc") or "小红书视频"
-            user_info = note_card.get("user") or note_card.get("User") or {}
-            thumb = None
-            if isinstance(note_card.get("image_list"), list) and note_card["image_list"]:
-                thumb = (note_card["image_list"][0] or {}).get("url") or (note_card["image_list"][0] or {}).get("url_default")
-            if not thumb and isinstance(note_card.get("cover"), dict):
-                thumb = note_card["cover"].get("url")
-
-            # 改为 ytdlp 优先，origin 直链仅作为兜底
-            stream_fallback_url = video_urls[0]
-            stream_fallback_note_card = note_card
-            stream_fallback_title = title
-            stream_fallback_note_id = note_id
-            stream_fallback_subscription = True
-            stream_fallback_publish_time = subscription_video.publish_time if subscription_video else None
-            stream_fallback_author = (user_info.get("nickname") or user_info.get("user_name") or "未知作者")[:100]
-            stream_fallback_thumb = thumb
             url_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={token_for_feed}&xsec_source=pc_feed"
-            if from_origin:
-                logger.info("[xiaohongshu] 订阅任务命中 origin 直链，改为 ytdlp 优先（直链兜底）: %s", title[:50] if title else note_id)
-            else:
-                logger.info("[xiaohongshu] 订阅任务将优先使用 ytdlp，无水印失败再回退 stream: %s", title[:50] if title else note_id)
+            logger.info("[xiaohongshu] 订阅视频跳过 Feed API，直接使用 ytdlp note_id=%s", note_id)
 
-        # 手动下载且链接包含 xsec_token 时，优先走 feed/origin 直链（尽量无水印）
-        if not used_api_fallback:
+        # 手动下载：跳过 Feed API（origin_video_key 已无法获取），直接使用 yt-dlp
+        if not used_api_fallback and not (custom_download_dir and subscription_video):
             note_id = _xhs_note_id_from_url(url)
             xsec_token = ""
             if "xsec_token=" in url:
@@ -1089,68 +1038,8 @@ async def _do_xhs_download_video_task(task_id: str, url: str, custom_download_di
                 except Exception:
                     xsec_token = ""
             if note_id and xsec_token:
-                from routers.unified_browser_manager import unified_browser
-                from routers.xhsapi import xhs_api
-                try:
-                    async with _xhs_browser_lock:
-                        async with unified_browser.task_context("xiaohongshu", "xhs_download_feed"):
-                            await xhs_api.init_browser()
-                            note_card = await xhs_api.get_note_detail_by_feed(note_id, xsec_token, "pc_feed", None)
-                    if note_card:
-                        video_urls, from_origin = _get_video_url_from_note_card(note_card)
-                        if not from_origin:
-                            try:
-                                og_url = await xhs_api._try_og_video(note_id)
-                                if og_url:
-                                    video_urls = [og_url]
-                                    from_origin = True
-                                    logger.info("[xiaohongshu] 手动下载通过 og:video 获取直链（可能无水印）: %s", note_id)
-                                else:
-                                    logger.info("[xiaohongshu] og:video 未命中 note_id=%s", note_id)
-                            except Exception as e:
-                                logger.debug("[xiaohongshu] og:video 获取失败 note_id=%s: %s", note_id, e)
-                        if not from_origin:
-                            try:
-                                note_url_full = url if "xsec_token=" in url else (
-                                    f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_feed"
-                                )
-                                full_json = await xhs_api.get_note_info_full(note_url_full)
-                                origin_url = _extract_origin_url_from_feed_json(full_json)
-                                if origin_url:
-                                    video_urls = [origin_url]
-                                    from_origin = True
-                                    logger.info("[xiaohongshu] 手动下载通过 note_info_full 获取 origin 直链（理论无水印）: %s", note_id)
-                                else:
-                                    summary = _summarize_video_fields(full_json)
-                                    logger.info("[xiaohongshu] note_info_full 视频字段概要 note_id=%s: %s", note_id, summary)
-                                    logger.info("[xiaohongshu] note_info_full 未返回 origin 直链 note_id=%s", note_id)
-                            except Exception as e:
-                                logger.debug("[xiaohongshu] note_info_full 获取失败 note_id=%s: %s", note_id, e)
-                        if video_urls:
-                            user_info = note_card.get("user") or note_card.get("User") or {}
-                            title = (note_card.get("title") or note_card.get("desc") or "小红书视频").strip()
-                            thumb = None
-                            if isinstance(note_card.get("image_list"), list) and note_card["image_list"]:
-                                thumb = (note_card["image_list"][0] or {}).get("url") or (note_card["image_list"][0] or {}).get("url_default")
-                            if not thumb and isinstance(note_card.get("cover"), dict):
-                                thumb = note_card["cover"].get("url")
-
-                            # 改为 ytdlp 优先，origin 直链仅作为兜底
-                            stream_fallback_url = video_urls[0]
-                            stream_fallback_note_card = note_card
-                            stream_fallback_title = title
-                            stream_fallback_note_id = note_id
-                            stream_fallback_subscription = False
-                            stream_fallback_publish_time = None
-                            stream_fallback_author = (user_info.get("nickname") or user_info.get("user_name") or "未知作者")[:100]
-                            stream_fallback_thumb = thumb
-                            url_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_feed"
-                            if from_origin:
-                                logger.info("[xiaohongshu] 手动下载命中 origin 直链，改为 ytdlp 优先（直链兜底）: %s", title[:50] if title else note_id)
-                            else:
-                                logger.info("[xiaohongshu] 手动下载将优先使用 ytdlp，无水印失败再回退 stream: %s", title[:50] if title else note_id)
-                except Exception as api_err:
-                    logger.warning("[xiaohongshu] 手动下载 feed 直链失败: %s", api_err)
+                url_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={xsec_token}&xsec_source=pc_feed"
+                logger.info("[xiaohongshu] 手动下载跳过 Feed API，直接使用 ytdlp note_id=%s", note_id)
 
         # 手动下载（或非常早期的订阅数据缺少 extra_data）才使用 yt-dlp + 浏览器刷新 token 逻辑
         if not used_api_fallback:
@@ -1174,6 +1063,19 @@ async def _do_xhs_download_video_task(task_id: str, url: str, custom_download_di
                             async with _xhs_browser_lock:
                                 async with unified_browser.task_context("xiaohongshu", "xhs_download_feed"):
                                     await xhs_api.init_browser()
+                                    # 如果磁盘 cookie 已过时，从浏览器导出最新 cookie 覆盖文件，确保 a1 新鲜
+                                    if not _has_valid_xhs_cookie():
+                                        try:
+                                            cookie_text = await xhs_api.export_cookies_netscape(force_refresh=True)
+                                            if cookie_text:
+                                                xhs_cookie_path = "/app/database/cookie/xiaohongshu_cookie.txt"
+                                                os.makedirs(os.path.dirname(xhs_cookie_path), exist_ok=True)
+                                                tmp_path = xhs_cookie_path + ".tmp"
+                                                with open(tmp_path, "w", encoding="utf-8") as f:
+                                                    f.write(cookie_text)
+                                                os.replace(tmp_path, xhs_cookie_path)
+                                        except Exception as e:
+                                            logger.debug("[xiaohongshu] 订阅下载导出 cookie 失败（忽略）: %s", e)
                                     profile_url = None
                                     sub = db.query(Subscription).filter(Subscription.id == subscription_video.subscription_id).first()
                                     if sub:
@@ -1182,61 +1084,32 @@ async def _do_xhs_download_video_task(task_id: str, url: str, custom_download_di
                                         await xhs_api.page.goto(profile_url, wait_until="networkidle", timeout=20000)
                                         await asyncio.sleep(0.6)
                                         logger.debug("[xiaohongshu] 已打开订阅 profile 建立会话 note_id=%s", note_id)
-                                    token_for_feed = xsec_token  # 优先用页面刷新后的 token 调 feed，否则用库里的
                                     if xhs_api.page and not video_info:
-                                        note_page_url = f"https://www.xiaohongshu.com/discovery/item/{note_id}?xsec_token={xsec_token}&xsec_source=pc_feed"
-                                        try:
-                                            await xhs_api.page.goto(note_page_url, wait_until="networkidle", timeout=20000)
-                                            await asyncio.sleep(0.5)
-                                            current_url = xhs_api.page.url
-                                            parsed = urlparse(current_url)
-                                            qs = parse_qs(parsed.query)
-                                            fresh_token = (qs.get("xsec_token") or [""])[0].strip()
-                                            if fresh_token:
-                                                old_mask = _mask_xsec_token(token_for_feed)
-                                                new_mask = _mask_xsec_token(fresh_token)
-                                                logger.info("[xiaohongshu] 刷新 token 成功 note_id=%s old=%s new=%s", note_id, old_mask, new_mask)
-                                                token_for_feed = fresh_token
-                                                explore_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={fresh_token}&xsec_source=pc_feed"
-                                                if not preheated_cookie:
-                                                    await _preheat_xhs_cookie("ytdlp-refresh-token")
-                                                    preheated_cookie = True
-                                                video_info = await parse_xiaohongshu_with_ytdlp(explore_for_ydl)
-                                                if video_info:
-                                                    url_for_ydl = explore_for_ydl
-                                                    logger.info("[xiaohongshu] 已用浏览器访问笔记页获取当前 token，yt-dlp 解析成功（无水印） note_id=%s", note_id)
-                                        except Exception as e:
-                                            logger.debug("[xiaohongshu] 浏览器取 token 再试 yt-dlp 失败: %s", e)
+                                        fresh_token = await _do_refresh_xhs_token(xhs_api.page, note_id)
+                                        if fresh_token:
+                                            explore_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={fresh_token}&xsec_source=pc_feed"
+                                            if not preheated_cookie:
+                                                await _preheat_xhs_cookie("ytdlp-refresh-token")
+                                                preheated_cookie = True
+                                            video_info = await parse_xiaohongshu_with_ytdlp(explore_for_ydl)
+                                            if video_info:
+                                                url_for_ydl = explore_for_ydl
+                                                logger.info("[xiaohongshu] 已用浏览器访问笔记页获取当前 token，yt-dlp 解析成功（无水印） note_id=%s", note_id)
                         except Exception as api_err:
                             logger.warning("[xiaohongshu] feed 直链兜底异常: %s", api_err)
                 elif "No video formats" in err_str and not (custom_download_dir and subscription_video):
                     note_id = _xhs_note_id_from_url(url)
                     if note_id:
-                        from routers.unified_browser_manager import unified_browser
-                        from routers.xhsapi import xhs_api
-                        try:
-                            async with _xhs_browser_lock:
-                                async with unified_browser.task_context("xiaohongshu", "xhs_refresh_token_manual"):
-                                    await xhs_api.init_browser()
-                                    note_page_url = f"https://www.xiaohongshu.com/explore/{note_id}"
-                                    await xhs_api.page.goto(note_page_url, wait_until="networkidle", timeout=20000)
-                                    await asyncio.sleep(0.5)
-                                    current_url = xhs_api.page.url
-                                    parsed = urlparse(current_url)
-                                    qs = parse_qs(parsed.query)
-                                    fresh_token = (qs.get("xsec_token") or [""])[0].strip()
-                                    if fresh_token:
-                                        logger.info("[xiaohongshu] 刷新 token 成功 note_id=%s new=%s", note_id, _mask_xsec_token(fresh_token))
-                                        explore_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={fresh_token}&xsec_source=pc_feed"
-                                        if not preheated_cookie:
-                                            await _preheat_xhs_cookie("ytdlp-refresh-token-manual")
-                                            preheated_cookie = True
-                                        video_info = await parse_xiaohongshu_with_ytdlp(explore_for_ydl)
-                                        if video_info:
-                                            url_for_ydl = explore_for_ydl
-                                            logger.info("[xiaohongshu] 手动下载已用浏览器访问笔记页获取当前 token，yt-dlp 解析成功（无水印） note_id=%s", note_id)
-                        except Exception as e:
-                            logger.debug("[xiaohongshu] 手动下载浏览器取 token 再试 yt-dlp 失败: %s", e)
+                        fresh_token = await _refresh_xhs_token(note_id)
+                        if fresh_token:
+                            if not preheated_cookie:
+                                await _preheat_xhs_cookie("ytdlp-refresh-token-manual")
+                                preheated_cookie = True
+                            explore_for_ydl = f"https://www.xiaohongshu.com/explore/{note_id}?xsec_token={fresh_token}&xsec_source=pc_feed"
+                            video_info = await parse_xiaohongshu_with_ytdlp(explore_for_ydl)
+                            if video_info:
+                                url_for_ydl = explore_for_ydl
+                                logger.info("[xiaohongshu] 手动下载已用浏览器访问笔记页获取当前 token，yt-dlp 解析成功（无水印） note_id=%s", note_id)
                 if not used_api_fallback and not video_info and stream_fallback_url and stream_fallback_note_card:
                     try:
                         if stream_fallback_subscription:
@@ -1405,13 +1278,8 @@ async def _do_xhs_download_video_task(task_id: str, url: str, custom_download_di
                                     async with _xhs_browser_lock:
                                         async with unified_browser.task_context("xiaohongshu", "xhs_refresh_token_download"):
                                             await xhs_api.init_browser()
-                                            note_page_url = f"https://www.xiaohongshu.com/explore/{note_id}"
-                                            await xhs_api.page.goto(note_page_url, wait_until="networkidle", timeout=20000)
-                                            await asyncio.sleep(0.5)
-                                            current_url = xhs_api.page.url
-                                            parsed = urlparse(current_url)
-                                            qs = parse_qs(parsed.query)
-                                            fresh_token = (qs.get("xsec_token") or [""])[0].strip()
+                                            if xhs_api.page:
+                                                fresh_token = await _do_refresh_xhs_token(xhs_api.page, note_id)
                                 except Exception as token_err:
                                     logger.debug("[xiaohongshu] 下载阶段浏览器取 token 失败: %s", token_err)
 
@@ -1722,8 +1590,19 @@ async def xhs_parse_video(
             raise HTTPException(status_code=400, detail="URL不能为空")
         
         # 使用 yt-dlp 解析
-        video_info = await parse_xiaohongshu_with_ytdlp(url)
-        
+        try:
+            video_info = await parse_xiaohongshu_with_ytdlp(url)
+        except CookieNotConfiguredError as e:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "error",
+                    "code": "COOKIE_NOT_CONFIGURED",
+                    "message": str(e),
+                    "redirect": "/settings?tab=cookie"
+                }
+            )
+
         response_data = {
             "status": "success",
             "platform": video_info.platform,
