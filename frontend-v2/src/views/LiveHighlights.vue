@@ -128,7 +128,10 @@
 
       <template v-if="activeTab === 'ai' && selectedStreamerId">
       <div class="content-grid workspace-grid">
-        <div class="records-column">
+        <!-- 移动端专属侧边栏抽屉背景遮罩 -->
+        <div class="mobile-sidebar-backdrop" :class="{ active: showRecordsSidebarDrawer }" @click="showRecordsSidebarDrawer = false"></div>
+
+        <div class="records-column" :class="{ 'drawer-open': showRecordsSidebarDrawer }">
           <!-- 紧凑切换标签 -->
           <div class="mode-tabs compact-mode-tabs">
             <button class="mode-tab" :class="{ active: activeTab === 'ai' }" @click="activeTab = 'ai'">
@@ -242,8 +245,32 @@
     </div> <!-- records-column ends here -->
 
         <div class="analysis-panel card mobile-analysis-panel">
+          <!-- 移动端主界面头部：展示当前选中的主播与录制，并提供切换按钮 -->
+          <div class="mobile-main-header" @click="showRecordsSidebarDrawer = true">
+            <div class="header-left-info" v-if="selectedStreamer && selectedRecord">
+              <img :src="selectedStreamer.avatar_url" class="active-avatar" referrerpolicy="no-referrer" />
+              <div class="active-text">
+                <div class="active-name">
+                  {{ selectedStreamer.anchor_name }}
+                  <span class="active-platform" :class="platformTagClass(selectedStreamer.platform)">
+                    {{ platformTagText(selectedStreamer.platform) }}
+                  </span>
+                </div>
+                <div class="active-record">{{ formatTime(selectedRecord.start_time) }}</div>
+              </div>
+            </div>
+            <div class="header-left-info placeholder" v-else>
+              <Icon name="zap" :size="16" />
+              <span>请选择博主与录制记录</span>
+            </div>
+            <button class="btn-switch-record">
+              <Icon name="refresh" :size="14" />
+              <span>切换录制</span>
+            </button>
+          </div>
+
           <div class="controls">
-            <div class="options-row">
+            <div class="options-row pc-only">
               <div class="option-cell wide-cell">
                 <label>高光类型</label>
                 <select v-model="form.highlight_type">
@@ -316,7 +343,110 @@
               </div>
             </div>
 
-            <div class="actions mobile-action-dock">
+            <!-- 移动端专属：简易常驻操作条 -->
+            <div class="mobile-action-trigger-bar" v-if="selectedRecordId">
+              <button
+                class="btn btn-primary analyze-trigger-btn"
+                :class="{ 'btn-danger': analyzing }"
+                :disabled="terminatingAnalyze"
+                @click="handleAnalyzeAction"
+              >
+                {{ analyzeActionText }}
+              </button>
+              <button class="btn btn-outline more-trigger-btn" @click="showActionsDrawer = true">
+                <Icon name="settings" :size="16" />
+                <span>设置</span>
+              </button>
+            </div>
+
+            <!-- 移动端专属操作抽屉遮罩 -->
+            <div class="mobile-actions-backdrop" :class="{ active: showActionsDrawer }" @click="showActionsDrawer = false"></div>
+
+            <div class="actions mobile-action-dock" :class="{ 'drawer-active': showActionsDrawer }">
+              <!-- 移动端抽屉控制头部 -->
+              <div class="drawer-header-mobile">
+                <div class="drawer-handle"></div>
+                <div class="drawer-title-row">
+                  <h3>切片设置</h3>
+                  <button class="drawer-close-btn" @click="showActionsDrawer = false">✕</button>
+                </div>
+              </div>
+
+              <!-- 移动端专属：参数设置区也在操作抽屉中展示 -->
+              <div class="controls mobile-only-drawer">
+                <div class="options-row">
+                  <div class="option-cell wide-cell">
+                    <label>高光类型</label>
+                    <select v-model="form.highlight_type">
+                      <option value="high_energy">高能操作</option>
+                      <option value="funny">搞笑整活</option>
+                      <option value="controversy">争议对线</option>
+                      <option value="teaching">教学讲解</option>
+                      <option value="emotion">情绪高潮</option>
+                    </select>
+                  </div>
+
+                  <div class="option-cell small-cell">
+                    <label>最大候选</label>
+                    <input type="number" min="1" max="100" v-model.number="form.max_candidates" />
+                  </div>
+
+                  <div class="option-cell compact-cell seed-cell">
+                    <label title="-1 表示全随机（每次分析都不同），输入固定数值可精确复现结果。">随机种子</label>
+                    <div class="seed-input-group">
+                      <input
+                        v-model.number="form.seed"
+                        type="number"
+                        placeholder="-1"
+                        class="input-seed"
+                      />
+                      <button class="btn-dice" title="随机生成种子" @click="randomizeSeed">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
+                          <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle>
+                          <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle>
+                          <circle cx="12" cy="12" r="1.2" fill="currentColor"></circle>
+                          <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"></circle>
+                          <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="option-cell compact-cell randomness-cell">
+                    <label title="决定基于种子产生变数的力度。0 为标准热度排序，100 为最大化随机探索。">随机强度 (%)</label>
+                    <input
+                      v-model.number="form.randomness"
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="0-100"
+                    />
+                  </div>
+
+                  <div class="option-cell compact-cell delay-cell">
+                    <label title="弹幕天然会晚于画面，设置后会将弹幕时间整体前移用于高光定位。">弹幕延迟补偿(秒)</label>
+                    <input
+                      v-model.number="form.danmu_delay_compensation_seconds"
+                      type="number"
+                      min="0"
+                      max="30"
+                      placeholder="0-30"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <button
                 class="btn btn-outline"
                 title="切片参数设置"
@@ -701,7 +831,10 @@
           <!-- 第二步：录制列表 -->
           <template v-else>
             <div class="content-grid workspace-grid">
-              <div class="records-column">
+              <!-- 移动端专属侧边栏抽屉背景遮罩 -->
+              <div class="mobile-sidebar-backdrop" :class="{ active: showRecordsSidebarDrawer }" @click="showRecordsSidebarDrawer = false"></div>
+
+              <div class="records-column" :class="{ 'drawer-open': showRecordsSidebarDrawer }">
                 <!-- 紧凑切换标签 -->
                 <div class="mode-tabs compact-mode-tabs">
                   <button class="mode-tab" :class="{ active: activeTab === 'ai' }" @click="activeTab = 'ai'">
@@ -800,6 +933,30 @@
 
               <!-- ===== 手动切片结果面板 ===== -->
               <div class="analysis-panel card mobile-analysis-panel">
+                <!-- 移动端主界面头部（手动切片模式） -->
+                <div class="mobile-main-header" @click="showRecordsSidebarDrawer = true">
+                  <div class="header-left-info" v-if="manualStreamerName && manualSelectedVideo">
+                    <img v-if="manualStreamerAvatar" :src="manualStreamerAvatar" class="active-avatar" referrerpolicy="no-referrer" />
+                    <div class="active-text">
+                      <div class="active-name">
+                        {{ manualStreamerName }}
+                        <span v-if="selectedManualStreamer?.platform" class="active-platform" :class="platformTagClass(selectedManualStreamer.platform)">
+                          {{ platformTagText(selectedManualStreamer.platform) }}
+                        </span>
+                      </div>
+                      <div class="active-record">{{ formatTime(manualSelectedVideo.start_time) }}</div>
+                    </div>
+                  </div>
+                  <div class="header-left-info placeholder" v-else>
+                    <Icon name="edit" :size="16" />
+                    <span>请选择博主与录制记录</span>
+                  </div>
+                  <button class="btn-switch-record">
+                    <Icon name="refresh" :size="14" />
+                    <span>切换录制</span>
+                  </button>
+                </div>
+
                 <div class="panel-title">
                   <span>手动切片结果</span>
                   <div class="panel-actions">
@@ -967,6 +1124,12 @@ const manualBundling = ref(false)
 const restoringPageState = ref(false)
 const pendingRestoreAiRecordId = ref('')
 const pendingRestoreManualRecordId = ref('')
+
+// 移动端整页录制侧边栏展开状态
+const showRecordsSidebarDrawer = ref(false)
+
+// 移动端底部操作面板展开状态
+const showActionsDrawer = ref(false)
 
 // 录制视频筛选（博主选择 → 录制列表）
 const manualDateFilterMode = ref('all')
@@ -2583,6 +2746,7 @@ function formatDuration(seconds) {
 function selectManualRecord(item) {
   manualSelectedRecordId.value = item.id
   manualSelectedVideo.value = item
+  showRecordsSidebarDrawer.value = false
   savePageState()
   loadManualClips(item.id)
 }
@@ -3223,6 +3387,7 @@ function goBackToStreamerList() {
 
 function selectRecord(record) {
   selectedRecordId.value = record.id
+  showRecordsSidebarDrawer.value = false
   savePageState()
 }
 
@@ -5750,7 +5915,245 @@ input[type="number"] {
   }
 }
 
+.mobile-main-header,
+.mobile-sidebar-backdrop,
+.mobile-action-trigger-bar,
+.mobile-actions-backdrop,
+.mobile-only-drawer,
+.drawer-header-mobile {
+  display: none;
+}
+
 @media (max-width: 760px) {
+  /* 解决移动端网格高度和列宽限制，使其高度自适应流体排版 */
+  .workspace-grid {
+    height: auto !important;
+    margin-top: 0 !important;
+  }
+
+  /* 移动端主界面头部（切换按钮与当前选中显示卡） */
+  .mobile-main-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    width: 100%;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+    position: sticky !important;
+    top: 10px !important; /* 悬浮留有 10px 间隙显得极其灵动 */
+    z-index: 80 !important; /* 确保盖在滚动列表上方 */
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  [data-theme="dark"] .mobile-main-header {
+    background: rgba(24, 24, 24, 0.9) !important;
+    border-color: var(--color-border) !important;
+  }
+
+  .mobile-main-header:active {
+    transform: scale(0.98);
+    background: var(--color-bg-hover);
+  }
+
+  .header-left-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .active-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--color-primary);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .active-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    min-width: 0;
+  }
+
+  .active-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .active-platform {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .active-record {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .placeholder {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .btn-switch-record {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-primary);
+    color: var(--color-primary);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .btn-switch-record:active {
+    background: var(--color-bg-hover);
+  }
+
+  /* 移动端专属遮罩背景 */
+  .mobile-sidebar-backdrop {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* 将整个 records-column (截图页面) 在移动端转换为左侧拉出抽屉 */
+  .records-column {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 300px !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    background: var(--color-bg-card) !important;
+    z-index: 999 !important;
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.15) !important;
+    transform: translateX(-100%) !important; /* 默认隐藏在左侧屏幕外 */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 16px 14px env(safe-area-inset-bottom) 14px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+  }
+
+  .records-column.drawer-open {
+    transform: translateX(0) !important; /* 划入屏幕 */
+  }
+
+  /* 移动端常驻底部快捷简易操作栏 */
+  .mobile-action-trigger-bar {
+    display: flex !important;
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    z-index: 90 !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    border: 1px solid var(--color-border-primary) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+    box-sizing: border-box !important;
+    align-items: center !important;
+  }
+
+  [data-theme="dark"] .mobile-action-trigger-bar {
+    background: rgba(24, 24, 24, 0.94) !important;
+    border-color: var(--color-border) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .analyze-trigger-btn {
+    flex: 1 1 auto !important;
+    height: 40px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    justify-content: center !important;
+  }
+
+  .more-trigger-btn {
+    flex: 0 0 110px !important;
+    height: 40px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  /* 移动端专属操作面板遮罩 */
+  .mobile-actions-backdrop {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-actions-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .live-highlights-page {
     padding-bottom: calc(92px + env(safe-area-inset-bottom));
     width: 100%;
@@ -5998,19 +6401,15 @@ input[type="number"] {
   }
 
   .record-list {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(220px, 78vw);
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 8px;
-    padding-bottom: 6px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    max-height: none;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    padding-bottom: 24px !important;
   }
 
   .records-toolbar {
@@ -6038,69 +6437,95 @@ input[type="number"] {
   }
 
   .record-item {
-    scroll-snap-align: start;
-    border-radius: 12px;
-    min-height: 80px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    padding: 10px 12px;
+    border-radius: 12px !important;
+    min-height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    padding: 12px 14px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border: 1px solid var(--color-border-primary) !important;
+    background: var(--color-bg-secondary) !important;
+    transition: all 0.2s ease !important;
+    scroll-snap-align: none !important;
+  }
+
+  .record-item.active {
+    border-color: #ef6c24 !important;
+    background: rgba(239, 108, 36, 0.05) !important;
+    box-shadow: inset 3px 0 0 #ef6c24 !important;
   }
 
   .record-line1 {
-    display: contents;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 4px 8px !important;
   }
 
   .record-badge {
-    order: 1;
+    display: inline-block;
   }
 
   .record-time {
-    order: 2;
-    font-size: 14px;
-    font-weight: 700;
-    flex: 1 1 auto;
-    width: calc(100% - 60px); /* 留出空间给 Badge */
-    white-space: normal;
-    word-break: break-all;
-    line-height: 1.3;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    flex: 1 1 100% !important; /* 独占第一整行 */
+    text-align: left !important;
+    margin-bottom: 2px !important;
   }
 
   .record-mid-tags {
-    order: 3;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    min-width: auto;
-    margin-left: auto;
-    padding: 0;
-    border: none;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important; /* 不独占，与状态栏共享第二行 */
+    justify-content: flex-start !important;
+    margin-left: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    margin-top: 0 !important;
   }
 
   .record-format-tag {
     height: 18px;
     font-size: 10px;
     padding: 0 6px;
+    border-radius: 4px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-primary);
+    display: inline-flex;
+    align-items: center;
   }
 
   .record-meta-info {
     height: 18px;
     font-size: 10px;
     padding: 0 6px;
+    border-radius: 4px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-primary);
+    display: inline-flex;
+    align-items: center;
   }
 
   .record-right-tags {
-    order: 4;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    min-width: auto;
-    margin: 0 0 0 12px;
-    padding: 0;
-    border: none;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 4px !important;
+    width: auto !important;
+    justify-content: flex-end !important;
+    margin: 0 0 0 auto !important; /* 强制靠右，共享第二行右侧 */
+    padding: 0 !important;
+    border: none !important;
+    flex-shrink: 0 !important;
   }
 
   .record-highlight-tag {
@@ -6109,6 +6534,9 @@ input[type="number"] {
     padding: 0 6px;
     white-space: nowrap;
     flex-shrink: 0;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .record-status {
@@ -6119,6 +6547,9 @@ input[type="number"] {
     flex-shrink: 0;
     margin-right: 0;
     opacity: 1;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .record-sep {
@@ -6206,50 +6637,162 @@ input[type="number"] {
     grid-column: auto;
   }
 
+  .pc-only {
+    display: none !important;
+  }
+
+  .mobile-only-drawer {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    border-bottom: 1px solid var(--color-border-primary) !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mobile-only-drawer .options-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+  }
+
+  .mobile-only-drawer .option-cell {
+    flex: 1 1 calc(50% - 4px) !important;
+    box-sizing: border-box !important;
+    background: var(--color-bg-secondary) !important;
+    border: 1px solid var(--color-border-primary) !important;
+    border-radius: 10px !important;
+    padding: 6px 8px !important;
+  }
+
+  .mobile-only-drawer .option-cell.seed-cell {
+    flex: 1 1 100% !important; /* 随机种子独占一行 */
+  }
+
+  .drawer-header-mobile {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    margin-bottom: 16px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .drawer-handle {
+    width: 36px !important;
+    height: 4px !important;
+    background: var(--color-border-primary) !important;
+    border-radius: 2px !important;
+    margin-bottom: 12px !important;
+    opacity: 0.8 !important;
+  }
+
+  .drawer-title-row {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .drawer-title-row h3 {
+    margin: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+  }
+
+  .drawer-close-btn {
+    border: none !important;
+    background: var(--color-bg-secondary) !important;
+    color: var(--color-text-secondary) !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    outline: none !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    padding: 0 !important;
+  }
+
+  .drawer-close-btn:active {
+    background: var(--color-bg-hover) !important;
+    transform: scale(0.9) !important;
+    color: var(--color-text-primary) !important;
+  }
+
   .mobile-action-dock {
-    position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: calc(8px + env(safe-area-inset-bottom));
-    z-index: 28;
-    margin-top: 0;
-    padding: 8px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid var(--color-border-primary);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-    overflow-x: clip;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999 !important;
+    margin-top: 0 !important;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px !important;
+    border-radius: 20px 20px 0 0 !important;
+    background: var(--color-bg-card) !important;
+    border: none !important;
+    border-top: 1px solid var(--color-border-primary) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
+    box-sizing: border-box !important;
+    transform: translateY(100%) !important; /* 默认隐藏在底部屏幕外 */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    max-height: 80vh !important; /* 防止超出屏幕，让抽屉在手机上最高占80%高度 */
+    overflow-y: auto !important; /* 允许抽屉内部滚动 */
+  }
+
+  .mobile-action-dock.drawer-active {
+    transform: translateY(0) !important; /* 划入屏幕 */
   }
 
   [data-theme="dark"] .mobile-action-dock {
-    background: rgba(24, 24, 24, 0.9);
+    background: rgba(24, 24, 24, 0.94);
     border-color: var(--color-border);
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   }
 
   .actions {
     display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    gap: 8px;
-    padding-bottom: 2px;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding-bottom: 0 !important;
   }
 
   .actions .btn {
-    width: auto;
-    flex: 0 0 auto;
-    min-width: max(132px, 36vw);
-    justify-content: center;
-    height: 42px;
-    border-radius: 12px;
-    padding-left: 8px;
-    padding-right: 8px;
-    font-size: 13px;
-    font-weight: 600;
+    width: auto !important;
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    padding: 0 8px !important;
+    white-space: nowrap !important;
+    font-weight: 600 !important;
+  }
+
+  .actions .analyze-action-btn {
+    flex: 1 1 100% !important; /* 核心的“开始分析”主按钮独占一整行 */
+    height: 42px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
   }
 
   [data-theme="dark"] .mobile-action-dock .btn-outline {
@@ -6268,6 +6811,11 @@ input[type="number"] {
     margin-top: 10px;
     overflow: visible;
     padding-right: 0;
+  }
+
+  .segment-list,
+  .manual-clips-list {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; /* 给底部悬浮条留出绝对宽裕的占位高度 */
   }
 
   .result-head {
