@@ -3504,7 +3504,7 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                 else:
                     logger.error(f"[yt-dlp] 进程退出码: {process.returncode}, 错误信息: {last_stderr_msg}")
 
-                # 判断是否值得重试：典型瞬时错误（无数据块、超时、连接问题、下载不完整等）
+                # 判断是否值得重试：典型瞬时错误（无数据块、超时、连接问题、SSL故障、下载不完整等）
                 if attempt < max_ytdlp_attempts - 1:
                     retryable = (
                         "Did not get any data blocks" in last_stderr_msg
@@ -3513,6 +3513,7 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                         or "Connection" in last_stderr_msg
                         or "reset" in last_stderr_msg.lower()
                         or "refused" in last_stderr_msg.lower()
+                        or "SSL" in last_stderr_msg  # SSL握手失败（偶发性网络故障）
                         or "Downloaded" in last_stderr_msg and "expected" in last_stderr_msg and "bytes" in last_stderr_msg  # 下载不完整错误
                         or "Giving up after" in last_stderr_msg  # 重试后放弃的错误
                     )
