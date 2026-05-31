@@ -1995,8 +1995,10 @@ def set_global_config(
         # 保存万能嗅探Cookie（保持原有逻辑，因为wnxt没有自动更新机制）
         if wnxt_cookie is not None:
             wnxt_cookie_file = "/app/database/cookie/wnxt_cookie.txt"
-            with open(wnxt_cookie_file, 'w', encoding='utf-8') as f:
+            tmp_path = wnxt_cookie_file + ".tmp"
+            with open(tmp_path, 'w', encoding='utf-8') as f:
                 f.write(wnxt_cookie)
+            os.replace(tmp_path, wnxt_cookie_file)
             print(f"万能嗅探Cookie已保存到文件: {wnxt_cookie_file}")
             
     except Exception as e:

@@ -723,8 +723,10 @@ def save_youtube_cookie(
         file_path = COOKIE_PATHS["youtube"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
         
         # 更新配置缓存
         now = datetime.now(tz=timezone.utc)
@@ -763,8 +765,10 @@ def save_bilibili_cookie(
         file_path = COOKIE_PATHS["bilibili"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
         
         # 更新配置缓存
         now = datetime.now(tz=timezone.utc)
@@ -803,8 +807,10 @@ def save_tiktok_cookie(
         file_path = COOKIE_PATHS["tiktok"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
         
         # 更新配置缓存
         now = datetime.now(tz=timezone.utc)
@@ -900,8 +906,10 @@ def save_netease_cookie(
         file_path = COOKIE_PATHS["netease"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
         
         # 更新配置缓存
         now = datetime.now(tz=timezone.utc)
@@ -946,8 +954,10 @@ def save_x_cookie(
         file_path = COOKIE_PATHS["x"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
 
         now = datetime.now(tz=timezone.utc)
         if "x" not in _cached_config:
@@ -989,8 +999,10 @@ def save_xiaohongshu_cookie(
         file_path = COOKIE_PATHS["xiaohongshu"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
         
         # 更新配置缓存
         now = datetime.now(tz=timezone.utc)
@@ -1060,8 +1072,10 @@ def save_kuaishou_cookie(
         file_path = COOKIE_PATHS["kuaishou"]
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         
-        with open(file_path, 'w', encoding='utf-8') as f:
+        tmp_path = file_path + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             f.write(cookie_content)
+        os.replace(tmp_path, file_path)
         
         # 更新配置缓存
         now = datetime.now(tz=timezone.utc)
