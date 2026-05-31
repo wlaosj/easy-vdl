@@ -92,7 +92,7 @@ RUN pip install --no-cache-dir \
     aiofiles==23.2.1 \
     pydantic==2.13.4 \
     yt-dlp==2026.03.17 \
-    instagrapi==2.6.7 \
+    instagrapi==2.7.20 \
     orjson==3.9.10 \
     ujson==5.9.0 \
     uvloop==0.19.0 \
