@@ -2216,17 +2216,28 @@ async def get_live_stats(db: Session = Depends(get_session)):
         today_start = datetime.combine(date.today(), datetime.min.time())
         
         # 数据库查询操作很快
-        # 数据库查询操作很快
         total_msg = db.query(LiveSubscription).count()
         live_count = db.query(LiveSubscription).filter(LiveSubscription.is_live == "true").count()
         today_records = db.query(LiveRecord).filter(LiveRecord.start_time >= today_start).count()
         recording_count = len(live_recorder.get_all_recording_ids())
-        
+
+        # 监控状态统计
+        disabled_all = db.query(LiveSubscription).filter(
+            LiveSubscription.monitor_enabled == "false"
+        ).count()
+        invalid_count = db.query(LiveSubscription).filter(
+            LiveSubscription.monitor_enabled == "false",
+            LiveSubscription.extra_data.like('%auto_disabled%')
+        ).count()
+        paused_count = disabled_all - invalid_count
+
         # 磁盘占用直接从内存返回，响应时间 < 1ms
         return {
             "success": True,
             "data": {
                 "total_subscriptions": total_msg,
+                "paused_count": paused_count,
+                "invalid_count": invalid_count,
                 "live_count": live_count,
                 "recording_count": recording_count,
                 "today_records": today_records,

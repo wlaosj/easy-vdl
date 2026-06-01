@@ -577,12 +577,24 @@ class LiveScheduler:
                             if streak >= threshold:
                                 from sql.database_postgresql import get_db
                                 from sql.models import LiveSubscription
+                                import json as _json
                                 try:
                                     d = next(get_db())
-                                    d.query(LiveSubscription).filter(
+                                    sub = d.query(LiveSubscription).filter(
                                         LiveSubscription.id == subscription_id
-                                    ).update({"monitor_enabled": "false"})
-                                    d.commit()
+                                    ).first()
+                                    if sub:
+                                        sub.monitor_enabled = "false"
+                                        # 在 extra_data 中标记为系统自动停止，用于区分用户手动暂停
+                                        extra = {}
+                                        try:
+                                            if sub.extra_data:
+                                                extra = _json.loads(sub.extra_data)
+                                        except Exception:
+                                            pass
+                                        extra["auto_disabled"] = True
+                                        sub.extra_data = _json.dumps(extra, ensure_ascii=False)
+                                        d.commit()
                                     logger.warning(
                                         f"[{platform}] 房间已永久失效（{probe_error_type}），已自动停止监控: {subscription_id}"
                                     )
