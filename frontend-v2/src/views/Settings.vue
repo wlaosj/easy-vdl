@@ -2,11 +2,6 @@
   <div class="settings-view">
     <!-- 移动端设置中心九宫格门户 -->
     <div v-if="isMobile && !showMobileDetail" class="mobile-settings-portal">
-      <div class="portal-header">
-        <h2>设置中心</h2>
-        <p>SYSTEM SETTINGS</p>
-      </div>
-      
       <div class="portal-grid">
         <div 
           v-for="item in navItems" 
