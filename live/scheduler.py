@@ -179,6 +179,16 @@ class LiveScheduler:
                                 sub.room_url = resolved
                                 db.commit()
                                 room_url = resolved
+
+                    # 存量 Twitch /videos/ 录播链接自动迁移为频道直播页
+                    if sub.platform == "twitch":
+                        from .adapters.twitch import is_vod_url, resolve_channel_url as resolve_twitch_channel_url
+                        if is_vod_url(room_url):
+                            resolved = await resolve_twitch_channel_url(room_url)
+                            if resolved and resolved != room_url:
+                                sub.room_url = resolved
+                                db.commit()
+                                room_url = resolved
                     await self.add_monitor(sub.id, room_url, sub.platform, sub.check_interval)
                     count += 1
                 logger.info(f"直播调度器已加载并监控 {count} 个直播间")

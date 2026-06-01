@@ -26,6 +26,7 @@ from .recorder import live_recorder
 from .scheduler import live_scheduler
 from . import adapters
 from .adapters.youtube import is_watch_video_url, resolve_channel_live_url
+from .adapters.twitch import is_vod_url, resolve_channel_url as resolve_twitch_channel_url
 from .danmu import is_danmu_supported
 
 logger = logging.getLogger(__name__)
@@ -482,6 +483,15 @@ async def _create_live_subscription(
             room_url = resolved
         else:
             logger.warning(f"无法解析 YouTube 频道信息，使用原链接: {room_url}")
+
+    # 对于 Twitch /videos/ 录播链接，自动转换为频道直播页
+    if platform == "twitch" and is_vod_url(room_url):
+        resolved = await resolve_twitch_channel_url(room_url)
+        if resolved:
+            logger.info(f"Twitch 链接已自动转换为频道直播页: {room_url} -> {resolved}")
+            room_url = resolved
+        else:
+            logger.warning(f"无法解析 Twitch 频道信息，使用原链接: {room_url}")
 
     # 2. 验证检测间隔
     if check_interval < 10 or check_interval > 600:

@@ -13,6 +13,46 @@ from .base import BaseAdapter
 logger = logging.getLogger(__name__)
 
 
+def is_vod_url(url: str) -> bool:
+    """判断是否为 Twitch 录播回放链接（/videos/xxx），而非频道直播页"""
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url)
+        path = (parsed.path or "").strip("/")
+        return path.startswith("videos/")
+    except Exception:
+        return False
+
+
+async def resolve_channel_url(url: str) -> Optional[str]:
+    """通过 yt-dlp 将录播链接解析为频道直播页 URL (twitch.tv/username)
+
+    返回转换后的 URL，如果解析失败则返回 None，保持原链接不变。
+    """
+    def _resolve() -> Optional[str]:
+        try:
+            result = subprocess.run(
+                ["yt-dlp", "-j", "--no-download", "--no-warnings", url],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                data = json.loads(result.stdout)
+                uploader_id = data.get("uploader_id", "")
+                if uploader_id:
+                    return f"https://m.twitch.tv/{uploader_id}"
+        except Exception:
+            pass
+        return None
+
+    resolved = await asyncio.to_thread(_resolve)
+    if resolved:
+        logger.info(f"[Twitch] 已解析频道直播页: {url} -> {resolved}")
+    else:
+        logger.warning(f"[Twitch] 解析频道直播页失败，保持原链接: {url}")
+    return resolved
+
+
 class TwitchAdapter(BaseAdapter):
     """Twitch 直播适配器"""
 
