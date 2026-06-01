@@ -169,7 +169,17 @@ class LiveScheduler:
                 
                 count = 0
                 for sub in subscriptions:
-                    await self.add_monitor(sub.id, sub.room_url, sub.platform, sub.check_interval)
+                    room_url = sub.room_url
+                    # 存量 YouTube watch?v= 链接自动迁移为频道永久直播页
+                    if sub.platform == "youtube":
+                        from .adapters.youtube import is_watch_video_url, resolve_channel_live_url
+                        if is_watch_video_url(room_url):
+                            resolved = await resolve_channel_live_url(room_url)
+                            if resolved and resolved != room_url:
+                                sub.room_url = resolved
+                                db.commit()
+                                room_url = resolved
+                    await self.add_monitor(sub.id, room_url, sub.platform, sub.check_interval)
                     count += 1
                 logger.info(f"直播调度器已加载并监控 {count} 个直播间")
         except Exception as e:
@@ -543,11 +553,18 @@ class LiveScheduler:
                                 logger.warning(f"YouTube Cookie 自动刷新失败: {refresh_err}")
 
                     if not probe_success:
-                        # 仅对明确可判定房间失效的平台启用自动停止
-                        if platform == "cc":
+                        # 判断是否为明确可判定永久失效的房间
+                        probe_error_type = (room_info or {}).get("raw_data", {}).get("probe_error_type", "")
+                        is_permanent_failure = (
+                            platform == "youtube" and probe_error_type == "permanent_offline"
+                        )
+
+                        if platform == "cc" or is_permanent_failure:
                             streak = self._probe_streaks.get(subscription_id, 0) + 1
                             self._probe_streaks[subscription_id] = streak
-                            if streak >= 2:
+                            threshold = 3  # CC/YouTube 统一连续 3 次确认后自动停止
+
+                            if streak >= threshold:
                                 from sql.database_postgresql import get_db
                                 from sql.models import LiveSubscription
                                 try:
@@ -557,7 +574,7 @@ class LiveScheduler:
                                     ).update({"monitor_enabled": "false"})
                                     d.commit()
                                     logger.warning(
-                                        f"[cc] 房间疑似已失效，已自动停止监控: {subscription_id}"
+                                        f"[{platform}] 房间已永久失效（{probe_error_type}），已自动停止监控: {subscription_id}"
                                     )
                                 except Exception as e:
                                     logger.warning(f"停止监控失败: {e}")
@@ -570,7 +587,7 @@ class LiveScheduler:
                                 if subscription_id in self._last_live_status:
                                     is_live = self._last_live_status[subscription_id]
                                     logger.warning(
-                                        f"[cc] 状态采集失败（{streak}/2），沿用上次状态: {subscription_id}, is_live={is_live}"
+                                        f"[{platform}] 探测失败（{streak}/{threshold}），沿用上次状态: {subscription_id}, is_live={is_live}"
                                     )
                                 else:
                                     is_live = False
@@ -582,7 +599,6 @@ class LiveScheduler:
                                 )
                             else:
                                 is_live = False
-
                 if is_live:
                     first_offline_time = None # 重置下播计时
                 

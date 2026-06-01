@@ -13,6 +13,53 @@ from .base import BaseAdapter
 logger = logging.getLogger(__name__)
 
 
+def is_watch_video_url(url: str) -> bool:
+    """判断是否为 YouTube 单场视频链接（watch?v= 或 youtu.be），而非频道直播页"""
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url)
+        host = (parsed.netloc or "").lower()
+        if "youtube.com" in host:
+            query = parse_qs(parsed.query or "")
+            if "v" in query and query["v"]:
+                return True
+        if "youtu.be" in host:
+            path = (parsed.path or "").strip("/")
+            return bool(path)
+    except Exception:
+        pass
+    return False
+
+
+async def resolve_channel_live_url(url: str) -> Optional[str]:
+    """通过 yt-dlp 将单场视频链接解析为频道永久直播页 URL (@handle/live)
+
+    返回转换后的 URL，如果解析失败则返回 None，保持原链接不变。
+    """
+    def _resolve() -> Optional[str]:
+        try:
+            result = subprocess.run(
+                ["yt-dlp", "-j", "--no-download", "--no-warnings", url],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                data = json.loads(result.stdout)
+                uploader_url = data.get("uploader_url") or data.get("channel_url", "")
+                if uploader_url:
+                    return uploader_url.rstrip("/") + "/live"
+        except Exception:
+            pass
+        return None
+
+    resolved = await asyncio.to_thread(_resolve)
+    if resolved:
+        logger.info(f"[YouTube] 已解析频道直播页: {url} -> {resolved}")
+    else:
+        logger.warning(f"[YouTube] 解析频道直播页失败，保持原链接: {url}")
+    return resolved
+
+
 class YoutubeAdapter(BaseAdapter):
     """YouTube 直播适配器"""
 
@@ -128,6 +175,9 @@ class YoutubeAdapter(BaseAdapter):
                 "this live event has ended",
                 "this live stream recording is not available",
             )
+            permanent_offline_markers = (
+                "video unavailable",
+            )
             auth_markers = (
                 "sign in to confirm you're not a bot",
                 "cookies-from-browser or --cookies",
@@ -138,10 +188,15 @@ class YoutubeAdapter(BaseAdapter):
                 "subprocess.timeoutexpired",
             )
             is_known_offline = any(marker in lower_err for marker in offline_markers)
+            is_permanent_offline = any(marker in lower_err for marker in permanent_offline_markers)
             is_auth_required = any(marker in lower_err for marker in auth_markers)
             is_timeout = any(marker in lower_err for marker in timeout_markers)
             if is_known_offline:
                 logger.debug(f"[YoutubeAdapter] 直播不可用/已结束（按离线处理）: {err_text}")
+            elif is_permanent_offline:
+                logger.warning(
+                    f"[YoutubeAdapter] 视频已永久不可用（Video unavailable），将触发自动停止检测: {err_text}"
+                )
             elif is_auth_required:
                 logger.warning(
                     "[YoutubeAdapter] YouTube 触发人机验证，建议更新 YouTube Cookie（设置页->Cookie管理）"
@@ -158,14 +213,17 @@ class YoutubeAdapter(BaseAdapter):
                 "avatar_url": "",
                 "is_live": False,
                 "live_status": None,
-                # 已知离线场景应视为“探测成功但离线”，避免调度层误报为采集失败。
+                # Video unavailable 是永久失效，标记 probe_success=False 让调度层走自动停止
                 "probe_success": is_known_offline,
+                "permanent_offline": is_permanent_offline,
                 "raw_data": {
                     "probe_error": err_text,
                     "probe_error_type": (
                         "auth_required"
                         if is_auth_required
-                        else ("offline" if is_known_offline else ("timeout" if is_timeout else "unknown"))
+                        else ("permanent_offline"
+                              if is_permanent_offline
+                              else ("offline" if is_known_offline else ("timeout" if is_timeout else "unknown")))
                     ),
                 },
             }

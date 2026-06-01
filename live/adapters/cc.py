@@ -48,13 +48,14 @@ class CCAdapter(BaseAdapter):
             channel_id = room_meta.get("channel_id")
             
             if not channel_id:
-                logger.warning(f"[CCAdapter] 未能解析到 CuteID {room_id} 的 channel_id，标记为失效房间")
+                # 主播未开播时 API 不会返回 channel_id，这是正常离线状态，不是房间失效
+                logger.info(f"[CCAdapter] CuteID {room_id} 当前未开播（无 channel_id），标记为离线")
                 return {
                     "anchor_name": room_meta.get("nickname", ""),
                     "room_id": room_id,
                     "avatar_url": None,
                     "is_live": False,
-                    "probe_success": False,
+                    "probe_success": True,
                     "raw_data": {}
                 }
                 
