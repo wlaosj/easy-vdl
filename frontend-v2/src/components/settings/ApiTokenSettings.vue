@@ -149,7 +149,7 @@
                     <div class="token-actions">
                       <button @click="showRegenerateDialog(token)" class="btn btn-sm btn-outline">
                         <Icon name="refresh-cw" :size="14" />
-                        重新生成
+                        重置
                       </button>
                       <button @click="showEditDialog(token)" class="btn btn-sm btn-outline">
                         <Icon name="edit" :size="14" />
@@ -209,23 +209,23 @@
       </div>
     </div>
 
-    <!-- 重新生成确认对话框 -->
+    <!-- 重置确认对话框 -->
     <div v-if="regeneratingToken" class="modal-overlay" @click="closeRegenerateDialog">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>重新生成 Token</h3>
+          <h3>重置 Token</h3>
           <button @click="closeRegenerateDialog" class="btn-icon">
             <Icon name="x" :size="20" />
           </button>
         </div>
         <div class="modal-body">
-          <p>重新生成后，旧的 Token 将立即失效，请确保已更新所有使用该 Token 的应用。</p>
+          <p>重置后，旧的 Token 将立即失效，请确保已更新所有使用该 Token 的应用。</p>
           <p class="warning-text">此操作不可撤销！</p>
         </div>
         <div class="modal-footer">
           <button @click="closeRegenerateDialog" class="btn btn-outline">取消</button>
           <button @click="confirmRegenerate" :disabled="regenerating" class="btn btn-danger">
-            {{ regenerating ? '生成中...' : '确认重新生成' }}
+            {{ regenerating ? '重置中...' : '确认重置' }}
           </button>
         </div>
       </div>
@@ -463,7 +463,7 @@ async function confirmRegenerate() {
   regenerating.value = true
   try {
     const data = await authApi.regenerateToken(regeneratingToken.value.id)
-    toast.success('Token 已重新生成')
+    toast.success('Token 已重置')
     
     // 显示新 Token 模态框
     createdToken.value = data
@@ -473,7 +473,7 @@ async function confirmRegenerate() {
     await loadTokens()
   } catch (err) {
     console.error('Failed to regenerate token:', err)
-    toast.error('重新生成失败')
+    toast.error('重置失败')
   } finally {
     regenerating.value = false
   }
@@ -600,6 +600,8 @@ onMounted(() => {
   gap: 24px;
   align-items: stretch;
   margin-bottom: 32px;
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1280px) {
@@ -675,6 +677,11 @@ onMounted(() => {
     grid-template-columns: 1fr;
     gap: 16px;
     width: 100%;
+    min-width: 0;
+  }
+
+  .settings-column {
+    min-width: 0;
   }
 
   .token-list {
@@ -708,14 +715,19 @@ onMounted(() => {
   }
 
   /* 核心修复：内边距自适应 */
+  .card {
+    padding: 0; /* 覆盖全局 .card 的 padding: 24px，避免和 card-body 双层内边距 */
+  }
+
   .card-header {
     padding: 12px 16px;
-    flex-wrap: wrap; /* 允许标题和按钮换列 */
+    flex-wrap: wrap;
     gap: 8px;
   }
 
   .card-body {
     padding: 16px;
+    min-width: 0;
   }
 
   .form-actions {
@@ -728,29 +740,71 @@ onMounted(() => {
   }
 
   /* Token 列表自适应 */
+  .token-list {
+    min-width: 0;
+  }
+
   .token-item {
-    padding: 16px;
+    padding: 14px;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   .token-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 6px;
+  }
+
+  .token-header h4 {
+    word-break: break-all;
+  }
+
+  .token-details {
     gap: 8px;
   }
 
   .token-value-row {
-    margin: 10px 0;
+    margin: 8px 0;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
   }
 
   .token-value {
-    padding: 10px;
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .token-value code {
+    width: 100%;
+    display: block;
+  }
+
+  .token-actions {
+    flex-wrap: wrap;
   }
 
   .token-actions .btn {
     flex: 1;
-    min-width: 100px;
+    min-width: 0;
     justify-content: center;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* 浏览器横幅按钮避免溢出 */
+  .banner-link {
+    white-space: normal;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
   }
 }
 
@@ -780,6 +834,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .card-header {
@@ -803,6 +859,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 /* Token 列表卡片：当内容过多时允许滚动 */
@@ -813,6 +871,8 @@ onMounted(() => {
 .settings-column:last-child .card-body {
   overflow: hidden;
   max-height: none;
+  width: 100%;
+  min-width: 0;
 }
 
 .form-group {
@@ -962,6 +1022,8 @@ onMounted(() => {
   max-height: 325px;
   overflow-y: auto;
   padding-right: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .token-list::-webkit-scrollbar {

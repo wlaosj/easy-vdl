@@ -45,7 +45,7 @@
       <!-- 移动端面包屑导航 -->
       <div v-if="isMobile && showMobileDetail" class="mobile-breadcrumb-header">
         <button class="back-portal-btn" @click="backToPortal">
-          <Icon name="chevron-left" :size="14" />
+          <Icon name="chevron-left" :size="20" />
           <span>设置中心</span>
         </button>
         <span class="breadcrumb-divider">/</span>
@@ -519,18 +519,18 @@ watch(() => route.query.platform, () => {
   /* 移动端面包屑导航 */
   .mobile-breadcrumb-header {
     position: sticky;
-    top: calc(-1 * var(--spacing-sm));
+    top: 0;
     left: 0;
     right: 0;
     z-index: 100;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 14px;
+    padding: 8px 14px;
     background: rgba(255, 255, 255, 0.88);
     border-bottom: 1px solid var(--color-border);
-    margin: calc(-1 * var(--spacing-sm)) calc(-1 * var(--spacing-sm)) 12px calc(-1 * var(--spacing-sm));
-    width: calc(100% + 2 * var(--spacing-sm));
+    margin: 0;
+    width: 100%;
     box-sizing: border-box;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -543,16 +543,17 @@ watch(() => route.query.platform, () => {
   .back-portal-btn {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     background: transparent;
     border: none;
     color: var(--color-primary);
-    font-size: 0.82rem;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
     transition: background-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .back-portal-btn:active {
@@ -561,12 +562,12 @@ watch(() => route.query.platform, () => {
 
   .breadcrumb-divider {
     color: var(--color-text-muted);
-    font-size: 0.78rem;
+    font-size: 0.95rem;
     opacity: 0.5;
   }
 
   .current-module-title {
-    font-size: 0.82rem;
+    font-size: 0.95rem;
     font-weight: 500;
     color: var(--color-text-primary);
   }
@@ -579,7 +580,7 @@ watch(() => route.query.platform, () => {
   }
 
   .settings-container {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -588,8 +589,8 @@ watch(() => route.query.platform, () => {
   /* 强制覆盖子组件中的 Grid 布局，转为移动端垂直堆叠 */
   :deep(.setting-item) {
       grid-template-columns: 1fr !important;
-      gap: 12px !important;
-      padding: 20px 0 !important;
+      gap: 8px !important;
+      padding: 12px 0 !important;
   }
   
   :deep(.setting-control) {
