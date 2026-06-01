@@ -23,7 +23,7 @@
             <p>{{ item.desc || '管理系统全局配置项' }}</p>
           </div>
           <div class="portal-card-arrow">
-            <Icon name="arrow-right" :size="12" />
+            <Icon name="chevron-right" :size="12" />
           </div>
         </div>
       </div>
