@@ -900,6 +900,7 @@ async def live_status_endpoint(websocket: WebSocket):
             today_records = db.query(LiveRecord).filter(LiveRecord.start_time >= today_start).count()
             
             # 监控状态统计
+            from sqlalchemy import cast, String
             disabled_all = db.query(LiveSubscription).filter(
                 LiveSubscription.monitor_enabled == "false"
             ).count()
@@ -1543,6 +1544,7 @@ async def _collect_metrics_snapshot() -> dict:
                             pass
 
                         # 监控状态统计
+                        from sqlalchemy import cast, String
                         disabled_all = db_session.query(LiveSubscription).filter(
                             LiveSubscription.monitor_enabled == "false"
                         ).count()
