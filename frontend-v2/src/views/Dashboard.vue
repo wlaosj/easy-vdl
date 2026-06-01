@@ -442,6 +442,18 @@ async function fetchSubscriptionStats() {
   }
 }
 
+// 获取直播统计（HTTP 兜底，不等 WebSocket 推送）
+async function fetchLiveStats() {
+  try {
+    const res = await liveApi.getLiveStats()
+    if (res?.data) {
+      liveStats.value = res.data
+    }
+  } catch (err) {
+    console.error('Failed to fetch live stats:', err)
+  }
+}
+
 // 获取直播平台分布
 async function fetchLivePlatformStats() {
   try {
@@ -1162,6 +1174,7 @@ onMounted(() => {
   systemStore.fetchBuildVersion() // 保持 HTTP：静态数据，变化频率极低
   // 改用轻量统计接口替代全量订阅列表，减少首屏数据传输量
   fetchSubscriptionStats()
+  fetchLiveStats() // HTTP 兜底，不等 WebSocket 首次推送
   fetchLivePlatformStats() // 获取直播平台分布数据（用于显示饼图和开启录播数量）
   // 公告列表不在页面加载时主动获取，参考旧版本逻辑：
   // - 只通过 checkAnnouncementState() 检查状态
