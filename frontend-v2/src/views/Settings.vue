@@ -50,7 +50,7 @@
       <!-- 移动端面包屑导航 -->
       <div v-if="isMobile && showMobileDetail" class="mobile-breadcrumb-header">
         <button class="back-portal-btn" @click="backToPortal">
-          <Icon name="arrow-left" :size="14" />
+          <Icon name="chevron-left" :size="14" />
           <span>设置中心</span>
         </button>
         <span class="breadcrumb-divider">/</span>
