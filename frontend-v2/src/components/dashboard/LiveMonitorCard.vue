@@ -36,6 +36,24 @@
             </div>
           </div>
 
+          <!-- 暂停监控 & 失效订阅 (并列显示) -->
+          <div class="live-row">
+            <div class="live-list-item flex-1" @click="handleStatusClick('paused')">
+              <div class="live-list-left">
+                <span class="status-dot warning"></span>
+                <span class="live-list-label">暂停监控</span>
+              </div>
+              <div class="live-list-value font-bold" style="color:var(--color-text-primary)">{{ stats.paused_count ?? 0 }}</div>
+            </div>
+            <div class="live-list-item flex-1" @click="handleStatusClick('invalid')">
+              <div class="live-list-left">
+                <span class="status-dot invalid"></span>
+                <span class="live-list-label">失效订阅</span>
+              </div>
+              <div class="live-list-value text-error font-bold">{{ stats.invalid_count ?? 0 }}</div>
+            </div>
+          </div>
+
           <!-- 直播中 & 录制中 (并列显示) -->
           <div class="live-row">
             <div class="live-list-item flex-1" @click="handleStatusClick('live', 'all')">
@@ -103,6 +121,8 @@ const props = defineProps({
     required: true,
     default: () => ({
       total_subscriptions: 0,
+      paused_count: 0,
+      invalid_count: 0,
       live_count: 0,
       recording_count: 0,
       today_records: 0,
@@ -262,6 +282,11 @@ function handleStorageClick() {
 .status-dot.error {
   background: #e74c3c;
   box-shadow: 0 0 4px rgba(231, 76, 60, 0.5);
+}
+
+.status-dot.invalid {
+  background: #b71c1c;
+  box-shadow: 0 0 4px rgba(183, 28, 28, 0.5);
 }
 
 .live-list-label {

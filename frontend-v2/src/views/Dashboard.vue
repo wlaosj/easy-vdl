@@ -364,6 +364,8 @@ const formatAnnouncementContent = (content) => {
 // 直播统计
 const liveStats = ref({
   total_subscriptions: 0,
+  paused_count: 0,
+  invalid_count: 0,
   live_count: 0,  // 正在直播的数量
   recording_count: 0,
   today_records: 0,

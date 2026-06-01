@@ -899,8 +899,20 @@ async def live_status_endpoint(websocket: WebSocket):
             today_start = datetime.combine(date.today(), datetime.min.time())
             today_records = db.query(LiveRecord).filter(LiveRecord.start_time >= today_start).count()
             
+            # 监控状态统计
+            disabled_all = db.query(LiveSubscription).filter(
+                LiveSubscription.monitor_enabled == "false"
+            ).count()
+            invalid_count = db.query(LiveSubscription).filter(
+                LiveSubscription.monitor_enabled == "false",
+                LiveSubscription.extra_data.like('%auto_disabled%')
+            ).count()
+            paused_count = disabled_all - invalid_count
+            
             stats_snapshot = {
                 "total_subscriptions": total_subscriptions,
+                "paused_count": paused_count,
+                "invalid_count": invalid_count,
                 "recording_count": recording_count,
                 "today_records": today_records,
                 # total_size 计算太慢，初始推送暂时省略，或者由前端保留上次的值
@@ -1488,7 +1500,7 @@ async def _collect_metrics_snapshot() -> dict:
         except Exception:
             pass
         _LIVE_STATS_CACHE = {
-            "total_subscriptions": 0, "live_count": 0, "recording_count": 0, "today_records": 0, "total_size": initial_total_size
+            "total_subscriptions": 0, "paused_count": 0, "invalid_count": 0, "live_count": 0, "recording_count": 0, "today_records": 0, "total_size": initial_total_size
         }
         _LIVE_STATS_LAST_TS = 0
         
@@ -1500,7 +1512,7 @@ async def _collect_metrics_snapshot() -> dict:
     
     if not is_licensed:
         live_stats_data = {
-            "total_subscriptions": 0, "live_count": 0, "recording_count": 0, "today_records": 0, "total_size": 0
+            "total_subscriptions": 0, "paused_count": 0, "invalid_count": 0, "live_count": 0, "recording_count": 0, "today_records": 0, "total_size": 0
         }
     elif time.time() - _LIVE_STATS_LAST_TS > 10:
         try:
@@ -1530,8 +1542,20 @@ async def _collect_metrics_snapshot() -> dict:
                         except Exception:
                             pass
 
+                        # 监控状态统计
+                        disabled_all = db_session.query(LiveSubscription).filter(
+                            LiveSubscription.monitor_enabled == "false"
+                        ).count()
+                        invalid_count = db_session.query(LiveSubscription).filter(
+                            LiveSubscription.monitor_enabled == "false",
+                            LiveSubscription.extra_data.like('%auto_disabled%')
+                        ).count()
+                        paused_count = disabled_all - invalid_count
+
                         return {
                             "total_subscriptions": total_subs,
+                            "paused_count": paused_count,
+                            "invalid_count": invalid_count,
                             "live_count": live_count,
                             "recording_count": rec_count,
                             "today_records": today_recs,
