@@ -1431,8 +1431,20 @@
       </template>
     </Modal>
     
-    <!-- 移动端更多操作模态框 -->
-    <Modal v-model:show="showToolsModal" title="更多工具" width="450px">
+    <!-- 移动端更多操作遮罩 -->
+    <div class="mobile-actions-backdrop" :class="{ active: showToolsModal }" @click="showToolsModal = false"></div>
+
+    <!-- 移动端更多操作抽屉 -->
+    <div class="mobile-action-dock" :class="{ 'drawer-active': showToolsModal }">
+      <!-- 移动端抽屉控制头部 -->
+      <div class="drawer-header-mobile">
+        <div class="drawer-handle"></div>
+        <div class="drawer-title-row">
+          <h3>更多工具</h3>
+          <button class="drawer-close-btn" @click="showToolsModal = false">✕</button>
+        </div>
+      </div>
+
       <div class="tools-modal-content">
         <!-- 批量操作 -->
         <div class="tool-section" v-if="filteredSubscriptions.length > 0">
@@ -1465,10 +1477,7 @@
           </div>
         </div>
       </div>
-      <template #footer>
-        <button class="btn btn-secondary btn-block" @click="showToolsModal = false">关闭</button>
-      </template>
-    </Modal>
+    </div>
     </template>
 
     </div>
@@ -8768,6 +8777,63 @@ function getStatusText(status) {
 
   :deep(.timeline-modal .header-actions) {
     flex-shrink: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  /* 移动端专属操作抽屉中的按钮与网格样式美化 */
+  .tools-modal-content {
+    padding: 0 !important;
+    gap: 20px !important;
+  }
+
+  .tool-section-title {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 4px !important;
+    border-bottom: 1px solid var(--color-border) !important;
+  }
+
+  .tool-grid {
+    gap: 8px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .tool-grid .btn {
+    height: 38px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 0 8px !important;
+    justify-content: center !important;
+    outline: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  .tool-grid .btn-outline {
+    border: 1px solid var(--color-primary) !important;
+    background: transparent !important;
+    color: var(--color-primary) !important;
+  }
+
+  .tool-grid .btn-danger {
+    border: 1px solid var(--color-error) !important;
+    background: transparent !important;
+    color: var(--color-error) !important;
+  }
+
+  [data-theme="dark"] .tool-grid .btn-outline {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text-primary) !important;
+  }
+
+  [data-theme="dark"] .tool-grid .btn-danger {
+    background: rgba(231, 76, 60, 0.06) !important;
+    border-color: rgba(231, 76, 60, 0.3) !important;
+    color: #ff8f88 !important;
   }
 }
 

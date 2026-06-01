@@ -249,14 +249,22 @@
         </div>
       </div>
 
-      <!-- 移动端功能区折叠按钮 (移到这里) -->
-      <button class="mobile-panel-toggle" @click="actionPanelExpanded = !actionPanelExpanded">
-        <Icon :name="actionPanelExpanded ? 'chevron-up' : 'chevron-down'" :size="16" />
-        <span>{{ actionPanelExpanded ? '收起' : '展开' }}</span>
+      <!-- 移动端功能区折叠按钮 (改造成呼出抽屉) -->
+      <button class="mobile-panel-toggle" @click="actionPanelExpanded = true">
+        <Icon name="settings" :size="16" />
+        <span>更多功能</span>
       </button>
 
       <!-- 折叠的更多功能 -->
-      <div class="action-panel secondary-panel" :class="{ 'mobile-collapsed': !actionPanelExpanded }">
+      <div class="action-panel secondary-panel" :class="{ 'drawer-active': actionPanelExpanded }">
+        <!-- 移动端抽屉控制头部 -->
+        <div class="drawer-header-mobile">
+          <div class="drawer-handle"></div>
+          <div class="drawer-title-row">
+            <h3>更多功能</h3>
+            <button class="drawer-close-btn" @click="actionPanelExpanded = false">✕</button>
+          </div>
+        </div>
         <!-- 备份管理：仅导出/导入订阅列表 -->
         <div class="action-group">
           <div class="action-group-title">备份管理</div>
@@ -1042,6 +1050,9 @@
       accept=".json"
       style="display: none;"
     />
+
+    <!-- 移动端更多操作面板遮罩 -->
+    <div class="mobile-actions-backdrop" :class="{ active: actionPanelExpanded }" @click="actionPanelExpanded = false"></div>
     </div>
   </div>
 
@@ -5800,7 +5811,7 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   font-size: 13px !important;
   font-weight: 600 !important;
   border-radius: 10px !important;
-  border: 1.5px solid var(--color-primary) !important;
+  border: 1px solid var(--color-primary) !important;
   background: transparent !important;
   color: var(--color-primary) !important;
   white-space: nowrap;
@@ -5995,27 +6006,38 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   }
 
   .action-panel-container .secondary-panel {
-      background: var(--color-bg-tertiary);
-      padding: 4px 8px;
-      border-radius: 0 0 12px 12px;
-      margin-top: -8px;
-      border: 1px solid var(--color-border);
-      border-top: none;
-      max-width: 100%;
-      overflow: hidden;
-      transition: max-height 0.3s ease, opacity 0.3s ease;
-      max-height: 1000px;
-      opacity: 1;
-      box-sizing: border-box;
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      z-index: 999 !important;
+      margin-top: 0 !important;
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px !important;
+      border-radius: 20px 20px 0 0 !important;
+      background: var(--color-bg-card) !important;
+      border: none !important;
+      border-top: 1px solid var(--color-border) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
+      box-sizing: border-box !important;
+      transform: translateY(100%) !important;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      max-height: 80vh !important;
+      overflow-y: auto !important;
+      opacity: 1 !important;
   }
 
-  .action-panel-container .secondary-panel.mobile-collapsed {
-      max-height: 0;
-      opacity: 0;
-      margin: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-      border: none;
+  .action-panel-container .secondary-panel.drawer-active {
+      transform: translateY(0) !important;
+  }
+
+  [data-theme="dark"] .action-panel-container .secondary-panel {
+      background: rgba(24, 24, 24, 0.94) !important;
+      border-color: var(--color-border) !important;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
   }
   
   .action-group {
@@ -6056,19 +6078,26 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
       margin: 12px 0;
       justify-content: center;
       align-items: center;
-      gap: 6px;
-      padding: 10px;
+      gap: 8px;
+      padding: 12px;
       font-size: 14px;
-      color: var(--color-primary);
-      background: var(--color-bg-tertiary);
-      border: 1px solid var(--color-border);
-      border-radius: 8px;
+      font-weight: 600;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #e96a2e 0%, #f39c12 100%) !important;
+      box-shadow: 0 3px 10px rgba(233, 106, 46, 0.28) !important;
+      border: none !important;
+      border-radius: 12px !important;
       transition: all 0.2s ease;
   }
 
+  .mobile-panel-toggle:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+  }
+
   [data-theme="dark"] .mobile-panel-toggle {
-      background: rgba(255,255,255,0.05);
-      color: var(--color-text-tertiary);
+      background: linear-gradient(135deg, #e96a2e 0%, #f39c12 100%) !important;
+      color: #ffffff !important;
   }
 
 

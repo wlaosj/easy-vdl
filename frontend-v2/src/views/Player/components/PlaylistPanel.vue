@@ -584,14 +584,22 @@ const getPlatformName = (platform) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .playlist-mobile-wrapper .playlist-filter-panel {
   padding: 10px 16px;
+  flex-shrink: 0;
 }
 
 .playlist-drawer-list {
   padding: 0 !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  -webkit-overflow-scrolling: touch; /* 增强 iOS 上的滑动流畅度 */
 }
 
 .playlist-drawer-list .playlist-item {

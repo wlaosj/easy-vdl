@@ -1879,7 +1879,7 @@ video.enhance-on {
     height: 100%;
   }
 
-  .bottom-drawer .multi-screen-segments {
+  .mobile-action-dock .multi-screen-segments {
     width: 100%;
     min-width: 0;
   }
@@ -2413,57 +2413,7 @@ video.enhance-on {
     opacity: 0.8;
   }
 
-  /* 底部抽屉样式 - 移除遮罩 */
-  .bottom-drawer-overlay {
-    position: fixed;
-    inset: 0;
-    background: transparent;
-    z-index: 1000;
-    display: flex;
-    align-items: flex-end;
-  }
 
-  .bottom-drawer {
-    width: 100%;
-    background: var(--color-bg-secondary);
-    border-radius: 16px 16px 0 0;
-    max-height: 75vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
-  }
-
-  .drawer-header {
-    padding: 8px 16px;
-    /* 减小头部内边距 */
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--color-border);
-    position: relative;
-  }
-
-  .drawer-handle {
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 36px;
-    height: 4px;
-    background: var(--color-border);
-    border-radius: 2px;
-  }
-
-  .drawer-header h4 {
-    margin: 0;
-    font-size: 1rem;
-  }
-
-  .close-btn {
-    background: transparent;
-    padding: 4px;
-    border-radius: 50%;
-  }
 
   .drawer-content {
     flex: 1;
@@ -2538,12 +2488,16 @@ video.enhance-on {
   }
 
   /* 播放列表抽屉特有样式 */
+  .playlist-drawer-dock {
+    overflow: hidden !important;
+  }
+
   .playlist-drawer-list {
     padding: 0 !important;
   }
 
   /* 移动端抽屉中的筛选状态条 */
-  .bottom-drawer .filter-status-bar {
+  .mobile-action-dock .filter-status-bar {
     margin: 0;
     border-radius: 0;
     border-top: 1px solid rgba(237, 137, 54, 0.2);
@@ -3195,17 +3149,17 @@ video.enhance-on {
   background: rgba(30, 41, 59, 0.92);
 }
 
-[data-theme="dark"] .bottom-drawer .setting-item .label {
+[data-theme="dark"] .mobile-action-dock .setting-item .label {
   color: rgba(248, 250, 252, 0.94);
 }
 
-[data-theme="dark"] .bottom-drawer .pill-option {
+[data-theme="dark"] .mobile-action-dock .pill-option {
   background: rgba(30, 41, 59, 0.9);
   border-color: rgba(148, 163, 184, 0.26);
   color: rgba(226, 232, 240, 0.86);
 }
 
-[data-theme="dark"] .bottom-drawer .pill-option.active {
+[data-theme="dark"] .mobile-action-dock .pill-option.active {
   background: rgba(251, 146, 60, 0.2);
   border-color: rgba(251, 146, 60, 0.75);
   color: rgba(255, 237, 213, 0.98);

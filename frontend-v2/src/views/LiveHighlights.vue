@@ -310,11 +310,11 @@
                       stroke-linejoin="round"
                     >
                       <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
-                      <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle>
-                      <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle>
-                      <circle cx="12" cy="12" r="1.2" fill="currentColor"></circle>
-                      <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"></circle>
-                      <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle>
+                      <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"></circle>
+                      <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"></circle>
+                      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"></circle>
+                      <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"></circle>
+                      <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"></circle>
                     </svg>
                   </button>
                 </div>
@@ -362,7 +362,7 @@
             <!-- 移动端专属操作抽屉遮罩 -->
             <div class="mobile-actions-backdrop" :class="{ active: showActionsDrawer }" @click="showActionsDrawer = false"></div>
 
-            <div class="actions mobile-action-dock" :class="{ 'drawer-active': showActionsDrawer }">
+            <div class="mobile-action-dock" :class="{ 'drawer-active': showActionsDrawer }">
               <!-- 移动端抽屉控制头部 -->
               <div class="drawer-header-mobile">
                 <div class="drawer-handle"></div>
@@ -413,11 +413,11 @@
                           stroke-linejoin="round"
                         >
                           <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
-                          <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle>
-                          <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"></circle>
-                          <circle cx="12" cy="12" r="1.2" fill="currentColor"></circle>
-                          <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"></circle>
-                          <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle>
+                          <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"></circle>
+                          <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"></circle>
+                          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"></circle>
+                          <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"></circle>
+                          <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"></circle>
                         </svg>
                       </button>
                     </div>
@@ -447,41 +447,44 @@
                 </div>
               </div>
 
-              <button
-                class="btn btn-outline"
-                title="切片参数设置"
-                @click="showSettingsModal = true"
-              >
-                <Icon name="settings" :size="16" />
-                <span>切片参数</span>
-              </button>
-              <button
-                class="btn analyze-action-btn"
-                :class="analyzing ? 'btn-danger' : 'btn-primary'"
-                :disabled="!selectedRecordId || terminatingAnalyze"
-                @mouseenter="analyzeButtonHover = true"
-                @mouseleave="analyzeButtonHover = false"
-                @focus="analyzeButtonHover = true"
-                @blur="analyzeButtonHover = false"
-                @click="handleAnalyzeAction"
-              >
-                {{ analyzeActionText }}
-              </button>
-              <button class="btn btn-outline" :disabled="!selectedRecordId || loadingResult" @click="loadResult">
-                刷新结果
-              </button>
-              <button class="btn btn-danger" :disabled="!selectedRecordId || analyzing || cleaning || cleaningStreamer" @click="cleanupCurrentRecord">
-                {{ cleaning ? '清理中...' : '清理本场切片' }}
-              </button>
-              <button class="btn btn-danger" :disabled="!selectedStreamerId || analyzing || cleaning || cleaningStreamer" @click="cleanupCurrentStreamer">
-                {{ cleaningStreamer ? '清理中...' : '清理该博主全部切片' }}
-              </button>
-              <button class="btn btn-secondary" :disabled="selectedSegmentIds.length === 0 || exporting" @click="exportSelected">
-                {{ exporting ? '切片中...' : `批量切片（含剧情字幕）(${selectedSegmentIds.length})` }}
-              </button>
-              <button class="btn btn-outline" :disabled="selectedSegmentIds.length === 0 || bundling" @click="downloadBundle">
-                {{ bundling ? '打包中...' : `导出资源包（${selectedSegmentIds.length}）` }}
-              </button>
+              <!-- 按钮区移动端改造成独立的包裹器 -->
+              <div class="actions">
+                <button
+                  class="btn btn-outline"
+                  title="切片参数设置"
+                  @click="showSettingsModal = true"
+                >
+                  <Icon name="settings" :size="16" />
+                  <span>切片参数</span>
+                </button>
+                <button
+                  class="btn analyze-action-btn"
+                  :class="analyzing ? 'btn-danger' : 'btn-primary'"
+                  :disabled="!selectedRecordId || terminatingAnalyze"
+                  @mouseenter="analyzeButtonHover = true"
+                  @mouseleave="analyzeButtonHover = false"
+                  @focus="analyzeButtonHover = true"
+                  @blur="analyzeButtonHover = false"
+                  @click="handleAnalyzeAction"
+                >
+                  {{ analyzeActionText }}
+                </button>
+                <button class="btn btn-outline" :disabled="!selectedRecordId || loadingResult" @click="loadResult">
+                  刷新结果
+                </button>
+                <button class="btn btn-danger" :disabled="!selectedRecordId || analyzing || cleaning || cleaningStreamer" @click="cleanupCurrentRecord">
+                  {{ cleaning ? '清理中...' : '清理本场切片' }}
+                </button>
+                <button class="btn btn-danger" :disabled="!selectedStreamerId || analyzing || cleaning || cleaningStreamer" @click="cleanupCurrentStreamer">
+                  {{ cleaningStreamer ? '清理中...' : '清理该博主全部切片' }}
+                </button>
+                <button class="btn btn-secondary" :disabled="selectedSegmentIds.length === 0 || exporting" @click="exportSelected">
+                  {{ exporting ? '切片中...' : `批量切片（含剧情字幕）(${selectedSegmentIds.length})` }}
+                </button>
+                <button class="btn btn-outline" :disabled="selectedSegmentIds.length === 0 || bundling" @click="downloadBundle">
+                  {{ bundling ? '打包中...' : `导出资源包（${selectedSegmentIds.length}）` }}
+                </button>
+              </div>
             </div>
             <div v-if="analyzing" class="analyze-progress-row">
               <div class="analyze-progress-head">
@@ -6132,27 +6135,7 @@ input[type="number"] {
     gap: 4px !important;
   }
 
-  /* 移动端专属操作面板遮罩 */
-  .mobile-actions-backdrop {
-    display: block !important;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 998;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
 
-  .mobile-actions-backdrop.active {
-    opacity: 1;
-    pointer-events: auto;
-  }
 
   .live-highlights-page {
     padding-bottom: calc(92px + env(safe-area-inset-bottom));
@@ -6673,98 +6656,7 @@ input[type="number"] {
     flex: 1 1 100% !important; /* 随机种子独占一行 */
   }
 
-  .drawer-header-mobile {
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    margin-bottom: 16px !important;
-    flex-shrink: 0 !important;
-  }
 
-  .drawer-handle {
-    width: 36px !important;
-    height: 4px !important;
-    background: var(--color-border-primary) !important;
-    border-radius: 2px !important;
-    margin-bottom: 12px !important;
-    opacity: 0.8 !important;
-  }
-
-  .drawer-title-row {
-    width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-  }
-
-  .drawer-title-row h3 {
-    margin: 0 !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
-    color: var(--color-text-primary) !important;
-  }
-
-  .drawer-close-btn {
-    border: none !important;
-    background: var(--color-bg-secondary) !important;
-    color: var(--color-text-secondary) !important;
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 12px !important;
-    cursor: pointer !important;
-    font-weight: bold !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    outline: none !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-    padding: 0 !important;
-  }
-
-  .drawer-close-btn:active {
-    background: var(--color-bg-hover) !important;
-    transform: scale(0.9) !important;
-    color: var(--color-text-primary) !important;
-  }
-
-  .mobile-action-dock {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 999 !important;
-    margin-top: 0 !important;
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px !important;
-    border-radius: 20px 20px 0 0 !important;
-    background: var(--color-bg-card) !important;
-    border: none !important;
-    border-top: 1px solid var(--color-border-primary) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
-    box-sizing: border-box !important;
-    transform: translateY(100%) !important; /* 默认隐藏在底部屏幕外 */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    max-height: 80vh !important; /* 防止超出屏幕，让抽屉在手机上最高占80%高度 */
-    overflow-y: auto !important; /* 允许抽屉内部滚动 */
-  }
-
-  .mobile-action-dock.drawer-active {
-    transform: translateY(0) !important; /* 划入屏幕 */
-  }
-
-  [data-theme="dark"] .mobile-action-dock {
-    background: rgba(24, 24, 24, 0.94);
-    border-color: var(--color-border);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
 
   .actions {
     display: flex;
@@ -6786,6 +6678,9 @@ input[type="number"] {
     padding: 0 8px !important;
     white-space: nowrap !important;
     font-weight: 600 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease;
   }
 
   .actions .analyze-action-btn {
@@ -6795,16 +6690,42 @@ input[type="number"] {
     font-weight: 700 !important;
   }
 
-  [data-theme="dark"] .mobile-action-dock .btn-outline {
-    background: var(--color-bg-secondary);
-    border-color: var(--color-border-light);
-    color: var(--color-text-primary);
+  /* 强力定制移动端按钮风格，彻底杜绝双边框或胶囊形不协调问题 */
+  .actions .btn-outline {
+    border: 1px solid var(--color-primary) !important;
+    background: transparent !important;
+    color: var(--color-primary) !important;
   }
 
-  [data-theme="dark"] .mobile-action-dock .btn-danger {
-    background: rgba(231, 76, 60, 0.16);
-    border-color: rgba(231, 76, 60, 0.5);
-    color: #ff8f88;
+  .actions .btn-primary {
+    background: linear-gradient(135deg, #e96a2e 0%, #f39c12 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(233, 106, 46, 0.18) !important;
+  }
+
+  .actions .btn-danger {
+    background: transparent !important;
+    border: 1px solid var(--color-error) !important;
+    color: var(--color-error) !important;
+  }
+
+  .actions .btn-secondary {
+    background: transparent !important;
+    border: 1px solid var(--color-text-secondary) !important;
+    color: var(--color-text-secondary) !important;
+  }
+
+  [data-theme="dark"] .actions .btn-outline {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text-primary) !important;
+  }
+
+  [data-theme="dark"] .actions .btn-danger {
+    background: rgba(231, 76, 60, 0.06) !important;
+    border-color: rgba(231, 76, 60, 0.3) !important;
+    color: #ff8f88 !important;
   }
 
   .result {

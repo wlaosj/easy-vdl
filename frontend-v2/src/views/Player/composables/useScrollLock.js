@@ -56,7 +56,7 @@ export function useScrollLock() {
       try {
         const target = evt.target;
         if (target && typeof target.closest === "function") {
-          if (target.closest(".bottom-drawer")) {
+          if (target.closest(".bottom-drawer") || target.closest(".mobile-action-dock")) {
             return;
           }
         }

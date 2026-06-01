@@ -794,3 +794,124 @@ img {
         padding: var(--spacing-xs) !important;
     }
 }
+
+/* ===== 通用移动端底部抽屉与遮罩样式 (Drawer System) ===== */
+
+/* 移动端/通用遮罩层 */
+.mobile-actions-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-actions-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 移动端底部抽屉主体 */
+.mobile-action-dock {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999 !important;
+    margin-top: 0 !important;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px !important;
+    border-radius: 20px 20px 0 0 !important;
+    background: var(--color-bg-card) !important;
+    border: none !important;
+    border-top: 1px solid var(--color-border) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15) !important;
+    box-sizing: border-box !important;
+    transform: translateY(100%) !important; /* 默认隐藏在屏幕外 */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    flex-direction: column !important; /* 统一设为垂直排列 */
+    max-height: 80vh !important; /* 最高占80%高度 */
+    overflow-y: auto !important; /* 允许内部滚动 */
+}
+
+.mobile-action-dock.drawer-active,
+.mobile-action-dock.drawer-open {
+    transform: translateY(0) !important; /* 划入屏幕 */
+}
+
+[data-theme="dark"] .mobile-action-dock {
+    background: rgba(24, 24, 24, 0.94) !important;
+    border-color: var(--color-border) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 抽屉头部组件 */
+.drawer-header-mobile {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    margin-bottom: 16px !important;
+    flex-shrink: 0 !important;
+}
+
+.drawer-handle {
+    width: 36px !important;
+    height: 4px !important;
+    background: var(--color-border) !important;
+    border-radius: 2px !important;
+    margin-bottom: 12px !important;
+    opacity: 0.8 !important;
+}
+
+.drawer-title-row {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.drawer-title-row h3 {
+    margin: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+}
+
+.drawer-close-btn {
+    border: none !important;
+    background: var(--color-bg-secondary) !important;
+    color: var(--color-text-secondary) !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    outline: none !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    padding: 0 !important;
+}
+
+[data-theme="dark"] .drawer-close-btn {
+    background: var(--color-bg-tertiary) !important;
+}
+
+.drawer-close-btn:active {
+    background: var(--color-bg-hover) !important;
+    transform: scale(0.9) !important;
+    color: var(--color-text-primary) !important;
+}

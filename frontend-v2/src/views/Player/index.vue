@@ -552,42 +552,47 @@
         </div>
       </div>
 
+      <!-- 移动端播放列表抽屉遮罩 -->
+      <div
+        class="mobile-actions-backdrop"
+        :class="{ active: showPlaylistDrawer }"
+        @click="showPlaylistDrawer = false"
+      ></div>
+
       <!-- 移动端播放列表抽屉 -->
       <div
-        class="bottom-drawer-overlay playlist-drawer"
-        v-if="showPlaylistDrawer"
-        @click="showPlaylistDrawer = false"
+        class="mobile-action-dock playlist-drawer-dock"
+        :class="{ 'drawer-active': showPlaylistDrawer }"
       >
-        <div class="bottom-drawer" @click.stop>
-          <div class="drawer-header">
-            <div class="drawer-handle"></div>
+        <!-- 移动端抽屉控制头部 -->
+        <div class="drawer-header-mobile">
+          <div class="drawer-handle"></div>
+          <div class="drawer-title-row">
             <h3>播放列表 ({{ filteredPlaylist.length }}/{{ playlist.length }})</h3>
-            <button class="close-btn" @click="showPlaylistDrawer = false">
-              <Icon name="x" :size="20" />
-            </button>
+            <button class="drawer-close-btn" @click="showPlaylistDrawer = false">✕</button>
           </div>
-          <PlaylistPanel
-            v-model:playlistFilterPlatform="playlistFilterPlatform"
-            v-model:playlistFilterScope="playlistFilterScope"
-            v-model:playlistFilterAuthor="playlistFilterAuthor"
-            v-model:playlistFilterKeyword="playlistFilterKeyword"
-            :isMobile="true"
-            :filteredPlaylist="filteredPlaylist"
-            :playlist="playlist"
-            :currentVideoId="currentVideoId"
-            :subscriptionId="subscriptionId"
-            :subscriptionName="subscriptionName"
-            :playlistAuthorOptions="playlistAuthorOptions"
-            @play="playByVideoId"
-            @refresh="refreshPlaylist"
-            @clear-subscription-filter="clearSubscriptionFilter"
-            @reset-filters="resetPlaylistFilters"
-            @apply-filters="applyPlaylistFilters"
-            :getThumbnailUrl="getThumbnailUrl"
-            :handleThumbnailError="handleThumbnailError"
-            :formatTime="formatTime"
-          />
         </div>
+        <PlaylistPanel
+          v-model:playlistFilterPlatform="playlistFilterPlatform"
+          v-model:playlistFilterScope="playlistFilterScope"
+          v-model:playlistFilterAuthor="playlistFilterAuthor"
+          v-model:playlistFilterKeyword="playlistFilterKeyword"
+          :isMobile="true"
+          :filteredPlaylist="filteredPlaylist"
+          :playlist="playlist"
+          :currentVideoId="currentVideoId"
+          :subscriptionId="subscriptionId"
+          :subscriptionName="subscriptionName"
+          :playlistAuthorOptions="playlistAuthorOptions"
+          @play="playByVideoId"
+          @refresh="refreshPlaylist"
+          @clear-subscription-filter="clearSubscriptionFilter"
+          @reset-filters="resetPlaylistFilters"
+          @apply-filters="applyPlaylistFilters"
+          :getThumbnailUrl="getThumbnailUrl"
+          :handleThumbnailError="handleThumbnailError"
+          :formatTime="formatTime"
+        />
       </div>
 
       <!-- 播放设置组件 -->
