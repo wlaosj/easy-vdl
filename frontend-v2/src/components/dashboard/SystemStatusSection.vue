@@ -295,6 +295,11 @@ function handleCoreUpdate() {
   gap: var(--spacing-xs);
 }
 
+/* 数据库卡片高度微调 */
+.status-card:has(.db-stats-row) {
+  min-height: 220px;
+}
+
 .status-header {
   display: flex;
   align-items: center;

@@ -3085,10 +3085,15 @@ watch(storageUnitMode, (mode) => {
   min-width: 0;
 }
 
+.split-col.activity-col {
+  overflow: hidden;
+}
+
 /* 让底部3列的最后一个卡片自动对齐到底部 */
 .split-col.side-col > *:last-child,
 .split-col.activity-col > *:last-child {
   margin-top: auto;
+  margin-bottom: 0;
 }
 
 @media (max-width: 1024px) {
