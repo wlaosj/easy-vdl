@@ -908,7 +908,7 @@ async def live_status_endpoint(websocket: WebSocket):
                 LiveSubscription.monitor_enabled == "false",
                 cast(LiveSubscription.extra_data, String).like('%auto_disabled%')
             ).count()
-            paused_count = disabled_all - invalid_count
+            paused_count = disabled_all  # 暂停监控 = 所有停止检测的（含手动 + 自动）
             
             stats_snapshot = {
                 "total_subscriptions": total_subscriptions,
@@ -1552,7 +1552,7 @@ async def _collect_metrics_snapshot() -> dict:
                             LiveSubscription.monitor_enabled == "false",
                             cast(LiveSubscription.extra_data, String).like('%auto_disabled%')
                         ).count()
-                        paused_count = disabled_all - invalid_count
+                        paused_count = disabled_all  # 暂停监控 = 所有停止检测的（含手动 + 自动）
 
                         return {
                             "total_subscriptions": total_subs,

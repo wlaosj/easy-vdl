@@ -118,6 +118,7 @@
               <option value="live">直播中</option>
               <option value="recording">录制中</option>
               <option value="paused">暂停检测</option>
+              <option value="invalid">失效订阅</option>
               <option value="offline">离线</option>
             </select>
             <select v-model="sortBy" class="form-select filter-select" @change="saveSortPreference">
@@ -200,6 +201,7 @@
                 <option value="live">直播中</option>
                 <option value="recording">录制中</option>
                 <option value="paused">暂停检测</option>
+                <option value="invalid">失效订阅</option>
                 <option value="offline">离线</option>
               </select>
               <select v-model="sortBy" class="form-select filter-select" style="margin-left: 8px;" @change="saveSortPreference">
@@ -1666,6 +1668,8 @@ const filteredSubscriptions = computed(() => {
       statusMatch = sub.is_recording === 'true'
     } else if (filterStatus.value === 'paused') {
       statusMatch = sub.monitor_enabled === 'false'
+    } else if (filterStatus.value === 'invalid') {
+      statusMatch = sub.auto_disabled === true
     } else if (filterStatus.value === 'offline') {
       statusMatch = sub.is_live !== 'true' && sub.is_recording !== 'true' && sub.monitor_enabled !== 'false'
     }

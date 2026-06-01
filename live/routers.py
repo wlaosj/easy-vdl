@@ -652,6 +652,7 @@ async def get_live_subscriptions(
         # 解析 extra_data 获取 danmu_enabled 和 compat_mode 状态
         danmu_enabled = False
         compat_mode = False
+        extra = {}
         if sub.extra_data:
             try:
                 extra = json.loads(sub.extra_data) if isinstance(sub.extra_data, str) else sub.extra_data
@@ -685,6 +686,7 @@ async def get_live_subscriptions(
             "created_at": sub.created_at.isoformat() if sub.created_at else None,
             "danmu_enabled": danmu_enabled,
             "compat_mode": compat_mode,
+            "auto_disabled": sub.monitor_enabled == "false" and (extra.get("auto_disabled", False) if isinstance(extra, dict) else False),
         }
 
         # 从批量结果中直接取录制状态（无需再次查询）
@@ -2229,7 +2231,8 @@ async def get_live_stats(db: Session = Depends(get_session)):
             LiveSubscription.monitor_enabled == "false",
             cast(LiveSubscription.extra_data, String).like('%auto_disabled%')
         ).count()
-        paused_count = disabled_all - invalid_count
+        paused_count = disabled_all  # 暂停监控 = 所有停止检测的（含手动 + 自动）
+                                     # 失效订阅 = 其中被系统判定失效的
 
         # 磁盘占用直接从内存返回，响应时间 < 1ms
         return {
