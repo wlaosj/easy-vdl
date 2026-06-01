@@ -1626,6 +1626,13 @@
     display: none;
   }
 }
+
+/* 桌面端隐藏抽屉头部（display:contents 会使其上浮到工具栏） */
+@media (min-width: 769px) {
+  .drawer-header-mobile {
+    display: none !important;
+  }
+}
 </style>
 
 <script setup>
