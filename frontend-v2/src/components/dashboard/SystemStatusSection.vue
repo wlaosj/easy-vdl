@@ -649,6 +649,10 @@ function handleCoreUpdate() {
     min-height: 0;
   }
 
+  .status-card:has(.db-stats-row) {
+    min-height: 0;
+  }
+
   .status-header {
     flex-direction: column;
     align-items: flex-start;
