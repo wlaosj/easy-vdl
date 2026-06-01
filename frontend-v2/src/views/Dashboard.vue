@@ -46,7 +46,7 @@
               <div class="live-stats-row mobile-stats-append">
                 <div class="live-stat-item" @click="router.push('/live-record?status=all&platform=all')">
                   <span class="stat-mini-label">直播监控</span>
-                  <div class="live-stat-val">{{ liveStats.total_subscriptions }}</div>
+                  <div class="live-stat-val">{{ liveStats.total_subscriptions - (liveStats.paused_count ?? 0) - (liveStats.invalid_count ?? 0) }}</div>
                 </div>
                 <div class="stat-divider-vertical"></div>
                 <div class="live-stat-item" @click="router.push('/live-record?status=paused')">

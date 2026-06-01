@@ -25,7 +25,7 @@
                 <span class="status-dot primary"></span>
                 <span class="live-list-label">正在订阅</span>
               </div>
-              <div class="live-list-value text-primary font-bold">{{ stats.total_subscriptions }}</div>
+              <div class="live-list-value text-primary font-bold">{{ stats.total_subscriptions - (stats.paused_count ?? 0) - (stats.invalid_count ?? 0) }}</div>
             </div>
             <div class="live-list-item flex-1" @click="handleStatusClick('all', 'all')">
               <div class="live-list-left">
