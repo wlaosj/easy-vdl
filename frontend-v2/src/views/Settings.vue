@@ -474,20 +474,12 @@ watch(() => route.query.platform, () => {
     justify-content: center;
     border-radius: 12px;
     flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    /* 统一高雅的主题橙半透明底与高对比前景色线框 */
+    background: rgba(237, 137, 54, 0.08) !important;
+    color: var(--color-primary) !important;
+    border: 1px solid rgba(237, 137, 54, 0.18) !important;
+    box-sizing: border-box;
   }
-
-  /* 炫彩渐变图标颜色背景对齐 */
-  .portal-card-icon-wrapper.proxy { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
-  .portal-card-icon-wrapper.cookie { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
-  .portal-card-icon-wrapper.notifications { background: linear-gradient(135deg, #ec4899, #db2777); color: white; }
-  .portal-card-icon-wrapper.download { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-  .portal-card-icon-wrapper.transcode-gpu { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
-  .portal-card-icon-wrapper.ai-model { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; }
-  .portal-card-icon-wrapper.media-library { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; }
-  .portal-card-icon-wrapper.api-tokens { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-  .portal-card-icon-wrapper.logs { background: linear-gradient(135deg, #6b7280, #4b5563); color: white; }
-  .portal-card-icon-wrapper.license { background: linear-gradient(135deg, #14b8a6, #0d9488); color: white; }
 
   .portal-card-content {
     position: relative;
