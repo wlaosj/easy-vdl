@@ -49,6 +49,16 @@
                   <div class="live-stat-val">{{ liveStats.total_subscriptions }}</div>
                 </div>
                 <div class="stat-divider-vertical"></div>
+                <div class="live-stat-item" @click="router.push('/live-record?status=paused')">
+                  <span class="stat-mini-label">暂停监控</span>
+                  <div class="live-stat-val">{{ liveStats.paused_count ?? 0 }}</div>
+                </div>
+                <div class="stat-divider-vertical"></div>
+                <div class="live-stat-item" @click="router.push('/live-record?status=invalid')">
+                  <span class="stat-mini-label">失效订阅</span>
+                  <div class="live-stat-val text-error">{{ liveStats.invalid_count ?? 0 }}</div>
+                </div>
+                <div class="stat-divider-vertical"></div>
                 <div class="live-stat-item" @click="router.push('/live-record?status=live&platform=all')">
                   <span class="stat-mini-label">正在直播</span>
                   <div class="live-stat-val" :class="{ 'text-success': liveStats.live_count > 0 }">{{ liveStats.live_count }}</div>
@@ -62,11 +72,6 @@
                 <div class="live-stat-item" @click="router.push({ path: '/live-record', query: { action: 'history' } })">
                   <span class="stat-mini-label">今日成果</span>
                   <div class="live-stat-val">{{ liveStats.today_records }}</div>
-                </div>
-                <div class="stat-divider-vertical"></div>
-                <div class="live-stat-item" @click="router.push('/live-record')">
-                  <span class="stat-mini-label">空间</span>
-                  <div class="live-stat-val" style="min-height: 20px; display: flex; align-items: center; justify-content: center; font-size: 13px !important;">{{ formatBytes(liveStats.total_size, 2).replace(' ', '') }}</div>
                 </div>
               </div>
             </template>
