@@ -2,7 +2,11 @@
   <div class="cookie-settings">
     <div class="cookie-top-tips">
       <!-- Security Notice -->
-      <div class="security-tip">
+      <div 
+        class="security-tip" 
+        :class="{ 'clickable': isMobile, 'expanded': isSecurityExpanded || !isMobile }"
+        @click="isMobile && (isSecurityExpanded = !isSecurityExpanded)"
+      >
         <div class="notice-icon security">
           <Icon name="shield" :size="20" />
         </div>
@@ -20,6 +24,10 @@
               <li><b>怀疑泄露请立刻处理</b>：平台退出所有设备/修改密码/重新登录并生成新的 Cookie，然后在此重新保存。</li>
             </ul>
           </div>
+        </div>
+        <!-- 移动端展开/折叠指示图标 -->
+        <div v-if="isMobile" class="tip-expand-arrow" :class="{ 'arrow-rotated': isSecurityExpanded }">
+          <Icon name="chevron-down" :size="14" />
         </div>
       </div>
 
@@ -504,7 +512,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSettingsStore } from '@/stores/settings'
 import { useSystemStore } from '@/stores/system'
@@ -526,6 +534,13 @@ const xCookie = ref('')
 const neteaseCookie = ref('')
 const xiaohongshuCookie = ref('')
 const kuaishouCookie = ref('')
+
+const isMobile = ref(false)
+const isSecurityExpanded = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 const youtubeInterval = ref(10)
 const bilibiliInterval = ref(10)
@@ -778,9 +793,15 @@ watch(() => settingsStore.cookieStatus.xiaohongshu.autoUpdateInterval, (val) => 
 }, { immediate: true })
 
 onMounted(async () => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   await settingsStore.loadCookieStatus()
   // 必须确保加载最新的授权状态
   await systemStore.fetchLicenseStatus()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -789,11 +810,15 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
   gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 1300px) {
   .cookie-settings {
     grid-template-columns: 1fr;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -837,6 +862,51 @@ onMounted(async () => {
   padding-left: 18px;
   display: grid;
   gap: 6px;
+  max-height: 500px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin-top 0.3s ease;
+}
+
+.security-tip.clickable {
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.security-tip.clickable:hover {
+  background: rgba(245, 158, 11, 0.16);
+}
+
+[data-theme="dark"] .security-tip.clickable:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.tip-expand-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  opacity: 0.7;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tip-expand-arrow.arrow-rotated {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 768px) {
+  .security-list {
+    max-height: 0;
+    opacity: 0;
+  }
+  
+  .security-tip.expanded .security-list {
+    max-height: 500px;
+    opacity: 1;
+    margin-top: 10px;
+  }
 }
 
 .security-list li {
@@ -1198,11 +1268,41 @@ onMounted(async () => {
   .cookie-settings {
     grid-template-columns: 1fr;
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .card {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
+  .form-textarea, .form-input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cookie-top-tips {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .security-tip {
+    padding: 12px 16px;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
   .plugin-tip {
     padding: 12px 16px;
     gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
   .card-header {

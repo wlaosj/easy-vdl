@@ -518,17 +518,26 @@ watch(() => route.query.platform, () => {
 
   /* 移动端面包屑导航 */
   .mobile-breadcrumb-header {
+    position: sticky;
+    top: calc(-1 * var(--spacing-sm));
+    left: 0;
+    right: 0;
+    z-index: 100;
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 12px 14px;
-    background: var(--color-bg-secondary);
+    background: rgba(255, 255, 255, 0.88);
     border-bottom: 1px solid var(--color-border);
-    margin: 0 0 12px 0;
-    width: 100%;
+    margin: calc(-1 * var(--spacing-sm)) calc(-1 * var(--spacing-sm)) 12px calc(-1 * var(--spacing-sm));
+    width: calc(100% + 2 * var(--spacing-sm));
     box-sizing: border-box;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  [data-theme="dark"] .mobile-breadcrumb-header {
+    background: rgba(37, 37, 37, 0.88);
   }
 
   .back-portal-btn {
@@ -571,7 +580,9 @@ watch(() => route.query.platform, () => {
 
   .settings-container {
     padding: var(--spacing-sm);
-    max-width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
   
   /* 强制覆盖子组件中的 Grid 布局，转为移动端垂直堆叠 */
