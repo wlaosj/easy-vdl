@@ -4,7 +4,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_, and_, func, cast, String
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -2227,7 +2227,7 @@ async def get_live_stats(db: Session = Depends(get_session)):
         ).count()
         invalid_count = db.query(LiveSubscription).filter(
             LiveSubscription.monitor_enabled == "false",
-            LiveSubscription.extra_data.like('%auto_disabled%')
+            cast(LiveSubscription.extra_data, String).like('%auto_disabled%')
         ).count()
         paused_count = disabled_all - invalid_count
 

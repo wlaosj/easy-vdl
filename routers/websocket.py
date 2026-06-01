@@ -905,7 +905,7 @@ async def live_status_endpoint(websocket: WebSocket):
             ).count()
             invalid_count = db.query(LiveSubscription).filter(
                 LiveSubscription.monitor_enabled == "false",
-                LiveSubscription.extra_data.like('%auto_disabled%')
+                cast(LiveSubscription.extra_data, String).like('%auto_disabled%')
             ).count()
             paused_count = disabled_all - invalid_count
             
@@ -1181,7 +1181,7 @@ async def _collect_metrics_snapshot() -> dict:
             try:
                 from sql.database_postgresql import get_db
                 from sql.models import Task, TaskStatus
-                from sqlalchemy import func
+                from sqlalchemy import cast, String, func
                 db = next(get_db())
                 try:
                     # 1. Active tasks (手动任务)
@@ -1548,7 +1548,7 @@ async def _collect_metrics_snapshot() -> dict:
                         ).count()
                         invalid_count = db_session.query(LiveSubscription).filter(
                             LiveSubscription.monitor_enabled == "false",
-                            LiveSubscription.extra_data.like('%auto_disabled%')
+                            cast(LiveSubscription.extra_data, String).like('%auto_disabled%')
                         ).count()
                         paused_count = disabled_all - invalid_count
 
