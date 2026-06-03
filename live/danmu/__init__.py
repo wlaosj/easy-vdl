@@ -8,6 +8,7 @@ from .base import BaseDanmuRecorder
 from .bilibili_danmu import BilibiliDanmuRecorder
 from .douyin_danmu import DouyinDanmuRecorder
 from .twitch_danmu import TwitchDanmuRecorder
+from .youtube_danmu import YoutubeDanmuRecorder
 
 # 斗鱼弹幕使用 Node.js 版本 (Python 版本因 SSL 问题无法连接斗鱼服务器)
 _douyu_node_recorder = None
@@ -110,6 +111,7 @@ _DANMU_REGISTRY: Dict[str, Type[BaseDanmuRecorder]] = {
     "douyu": _douyu_node_recorder,  # Node.js only
     "huya": _huya_node_recorder,  # Node.js only
     "twitch": TwitchDanmuRecorder,
+    "youtube": YoutubeDanmuRecorder,
 }
 
 

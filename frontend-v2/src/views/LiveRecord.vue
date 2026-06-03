@@ -38,7 +38,7 @@
         </div>
         <div class="feature-item">
           <Icon name="check" :size="16" />
-          <span>支持弹幕录制（当前支持抖音 / B站 / 斗鱼）</span>
+          <span>支持弹幕录制（当前支持抖音 / B站 / 斗鱼 / 虎牙 / Twitch / YouTube）</span>
         </div>
       </div>
 
@@ -558,12 +558,12 @@
           <p class="form-hint">需在系统设置中配置通知渠道 (微信/Telegram等)</p>
         </div>
 
-        <div class="form-group" v-if="(addMode === 'batch') || addForm.room_url.includes('douyin.com') || addForm.room_url.includes('bilibili.com') || addForm.room_url.includes('b23.tv') || addForm.room_url.includes('douyu.com') || addForm.room_url.includes('huya.com') || addForm.room_url.includes('twitch.tv')">
+        <div class="form-group" v-if="(addMode === 'batch') || addForm.room_url.includes('douyin.com') || addForm.room_url.includes('bilibili.com') || addForm.room_url.includes('b23.tv') || addForm.room_url.includes('douyu.com') || addForm.room_url.includes('huya.com') || addForm.room_url.includes('twitch.tv') || addForm.room_url.includes('youtube.com') || addForm.room_url.includes('youtu.be')">
           <label class="checkbox-label">
             <input type="checkbox" v-model="addForm.danmu_enabled" />
-            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch）</span>
+            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch / YouTube）</span>
           </label>
-          <p class="form-hint">当前支持抖音/B站/斗鱼/虎牙/Twitch，开启后会额外写入 .danmu.jsonl 文件</p>
+          <p class="form-hint">当前支持抖音/B站/斗鱼/虎牙/Twitch/YouTube，开启后会额外写入 .danmu.jsonl 文件</p>
         </div>
       </div>
 
@@ -667,10 +667,10 @@
           <p class="form-hint">录制时自动生成SRT字幕文件,记录实时时间</p>
         </div>
 
-        <div class="form-group" v-if="editingSubscription?.platform === 'douyin' || editingSubscription?.platform === 'bilibili' || editingSubscription?.platform === 'douyu' || editingSubscription?.platform === 'huya' || editingSubscription?.platform === 'twitch'">
+        <div class="form-group" v-if="editingSubscription?.platform === 'douyin' || editingSubscription?.platform === 'bilibili' || editingSubscription?.platform === 'douyu' || editingSubscription?.platform === 'huya' || editingSubscription?.platform === 'twitch' || editingSubscription?.platform === 'youtube'">
           <label class="checkbox-label">
             <input type="checkbox" v-model="editForm.danmu_enabled" />
-            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch）</span>
+            <span>录制弹幕（抖音 / B站 / 斗鱼 / 虎牙 / Twitch / YouTube）</span>
           </label>
           <p class="form-hint">开启后会额外写入 .danmu.jsonl 文件</p>
         </div>
