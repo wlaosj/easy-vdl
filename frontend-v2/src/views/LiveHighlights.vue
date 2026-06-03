@@ -343,6 +343,45 @@
               </div>
             </div>
 
+            <!-- PC 端操作按钮 -->
+            <div class="actions pc-only">
+              <button
+                class="btn btn-outline"
+                title="切片参数设置"
+                @click="showSettingsModal = true"
+              >
+                <Icon name="settings" :size="16" />
+                <span>切片参数</span>
+              </button>
+              <button
+                class="btn analyze-action-btn"
+                :class="analyzing ? 'btn-danger' : 'btn-primary'"
+                :disabled="!selectedRecordId || terminatingAnalyze"
+                @mouseenter="analyzeButtonHover = true"
+                @mouseleave="analyzeButtonHover = false"
+                @focus="analyzeButtonHover = true"
+                @blur="analyzeButtonHover = false"
+                @click="handleAnalyzeAction"
+              >
+                {{ analyzeActionText }}
+              </button>
+              <button class="btn btn-outline" :disabled="!selectedRecordId || loadingResult" @click="loadResult">
+                刷新结果
+              </button>
+              <button class="btn btn-danger" :disabled="!selectedRecordId || analyzing || cleaning || cleaningStreamer" @click="cleanupCurrentRecord">
+                {{ cleaning ? '清理中...' : '清理本场切片' }}
+              </button>
+              <button class="btn btn-danger" :disabled="!selectedStreamerId || analyzing || cleaning || cleaningStreamer" @click="cleanupCurrentStreamer">
+                {{ cleaningStreamer ? '清理中...' : '清理该博主全部切片' }}
+              </button>
+              <button class="btn btn-secondary" :disabled="selectedSegmentIds.length === 0 || exporting" @click="exportSelected">
+                {{ exporting ? '切片中...' : `批量切片（含剧情字幕）(${selectedSegmentIds.length})` }}
+              </button>
+              <button class="btn btn-outline" :disabled="selectedSegmentIds.length === 0 || bundling" @click="downloadBundle">
+                {{ bundling ? '打包中...' : `导出资源包（${selectedSegmentIds.length}）` }}
+              </button>
+            </div>
+
             <!-- 移动端专属：简易常驻操作条 -->
             <div class="mobile-action-trigger-bar" v-if="selectedRecordId">
               <button
