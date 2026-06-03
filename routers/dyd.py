@@ -3463,6 +3463,7 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                 # 初始30秒超时给握手/重定向留足时间；收到第一个进度行后缩至10秒快速检测
                 STUCK_TIMEOUT = 30
                 has_received_progress = False
+                last_ytdlp_error = ""  # 捕获 stderr 错误信息，供重试判断
                 while True:
                     try:
                         line_bytes = await asyncio.wait_for(
@@ -3517,10 +3518,14 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                     # 如果有错误信息
                     if "ERROR:" in line:
                         logger.error(f"[yt-dlp-error] {line}")
+                        last_ytdlp_error = line
 
                 # 等待进程结束
                 stdout, stderr = await process.communicate()
                 last_stderr_msg = stderr.decode('utf-8', errors='ignore')
+                # stderr 已在 while 循环中被读走大部分内容，用捕获的错误信息补全
+                if not last_stderr_msg and last_ytdlp_error:
+                    last_stderr_msg = last_ytdlp_error
 
                 if process.returncode == 0 and os.path.exists(save_path):
                     file_size = os.path.getsize(save_path)
