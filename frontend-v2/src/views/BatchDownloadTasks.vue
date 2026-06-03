@@ -122,6 +122,7 @@ import Modal from '@/components/common/Modal.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import { subscriptionsApi, resolveAvatarUrl, handleImageError as sharedHandleImageError } from '@/api/subscriptions'
 import { useBatchDownloadProgress } from '@/composables/useBatchDownloadProgress'
+import { wsService } from '@/utils/websocket'
 
 // 使用统一的进度管理 Composable
 const {
@@ -293,7 +294,9 @@ function goBack() {
 
 onMounted(async () => {
   await loadTasks()
-  
+
+  // 连接批量任务全局频道，确保独立打开页面也能收到实时进度
+  wsService.connect('batch_tasks')
   // 启动 WebSocket 监听和轮询
   startWebSocketListener()
   startPolling()
@@ -302,6 +305,7 @@ onMounted(async () => {
 onUnmounted(() => {
   // 清理资源
   cleanup()
+  wsService.close('batch_tasks')
 })
 </script>
 

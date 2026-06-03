@@ -130,7 +130,7 @@ export function useBatchDownloadProgress() {
             setTimeout(() => {
                 if (state.message === '下载完成') {
                     progressStates.delete(subscriptionId)
-                    wsService.close(`subscribe_${subscriptionId}`)
+                    wsService.close(`${subscriptionId}`)
                 }
             }, 3000)
         } else if (data.status === 'partial_completed') {
@@ -141,7 +141,7 @@ export function useBatchDownloadProgress() {
             setTimeout(() => {
                 if (state.message === '部分下载失败') {
                     progressStates.delete(subscriptionId)
-                    wsService.close(`subscribe_${subscriptionId}`)
+                    wsService.close(`${subscriptionId}`)
                 }
             }, 3000)
         } else if (data.status === 'cancelled') {
@@ -151,7 +151,7 @@ export function useBatchDownloadProgress() {
             setTimeout(() => {
                 if (state.message.includes('已取消')) {
                     progressStates.delete(subscriptionId)
-                    wsService.close(`subscribe_${subscriptionId}`)
+                    wsService.close(`${subscriptionId}`)
                 }
             }, 3000)
         } else if (data.status === 'error') {
@@ -161,7 +161,7 @@ export function useBatchDownloadProgress() {
             setTimeout(() => {
                 if (state.message === '下载失败') {
                     progressStates.delete(subscriptionId)
-                    wsService.close(`subscribe_${subscriptionId}`)
+                    wsService.close(`${subscriptionId}`)
                 }
             }, 3000)
         }
@@ -189,7 +189,7 @@ export function useBatchDownloadProgress() {
             })
 
             // 为活跃任务建立 WebSocket 连接
-            wsService.connect(`subscribe_${sub.id}`)
+            wsService.connect(`${sub.id}`)
         })
 
         updateTrigger.value++ // 恢复后强制触发一次 UI 更新
@@ -256,7 +256,7 @@ export function useBatchDownloadProgress() {
 
         // 关闭所有 WebSocket 连接
         progressStates.forEach((_, subscriptionId) => {
-            wsService.close(`subscribe_${subscriptionId}`)
+            wsService.close(`${subscriptionId}`)
         })
 
         progressStates.clear()
@@ -280,7 +280,7 @@ export function useBatchDownloadProgress() {
      */
     function addTask(subscriptionId, initialData = {}) {
         const state = initProgressState(subscriptionId, initialData)
-        wsService.connect(`subscribe_${subscriptionId}`)
+        wsService.connect(`${subscriptionId}`)
         console.log(`添加批量下载任务: ${subscriptionId}`)
         return state
     }
@@ -291,7 +291,7 @@ export function useBatchDownloadProgress() {
      */
     function removeTask(subscriptionId) {
         progressStates.delete(subscriptionId)
-        wsService.close(`subscribe_${subscriptionId}`)
+        wsService.close(`${subscriptionId}`)
     }
 
     /**
