@@ -704,15 +704,6 @@
         </div>
       </div>
     </Modal>
-    
-    <!-- 全屏删除遮罩 -->
-    <div v-if="isDeleting" class="deleting-overlay">
-        <div class="deleting-content">
-            <div class="deleting-spinner"></div>
-            <div class="deleting-text">正在删除任务...</div>
-            <div class="deleting-subtext">请稍候，这可能需要一些时间</div>
-        </div>
-    </div>
     </template>
 
     <!-- 视频列表模态框 -->
@@ -805,9 +796,6 @@ let tipResolve = null
 
 // 图集下载加载状态
 const downloadingGalleryId = ref(null)
-
-// 全屏删除遮罩状态
-const isDeleting = ref(false)
 
 // 订阅视频列表模态框相关
 const showVideosModal = ref(false)
@@ -1983,15 +1971,18 @@ async function clearFilteredTasks() {
               <div>• 将尝试清理关联成品文件与临时文件</div>
               <div>• 关联订阅视频的下载状态会被重置</div>
             </div>
+            <p style="color: #856404; font-size: 0.9em; margin-top: 12px; margin-bottom: 12px; padding: 8px 10px; background: #fff3cd; border-radius: 4px;">
+              ⏱ 清空操作会逐条删除文件，${estimatedCount} 条任务可能需要一定时间。确认后可在后台执行，无需等待，稍后刷新即可查看结果。
+            </p>
             <p style="color: #666; font-size: 0.9em; margin-top: 15px; margin-bottom: 8px;">此为开发者工具，请输入开发者密码：</p>
             <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">密码为当天日期（YYYYMMDD），例如：<strong>${todayPassword}</strong></p>
             </div>
     `)
     if (!password) return
-    
-    // 显示全屏删除遮罩
-    isDeleting.value = true
-    
+
+    // 立即提示用户无需等待
+    toast.info(`正在清空 ${estimatedCount} 条任务，稍后刷新即可查看结果`)
+
     try {
         // 准备参数
     const params = { delete_files: true }
@@ -2012,26 +2003,25 @@ async function clearFilteredTasks() {
     if (queryText) params.query = queryText
 
         await tasksApi.clearTasks(params, password)
-        
+
         // 刷新任务列表
         await downloadsStore.fetchTasks(1)
-        
+
         // 如果清空了博主任务，刷新博主列表
         if (authorFilter) {
             await downloadsStore.fetchAuthors()
         }
-        
-        customAlert('清空成功', `${isClearAll ? '所有任务' : '任务'}已成功清空`, 'success')
+
+        toast.success(`${isClearAll ? '所有任务' : '任务'}已成功清空`)
     } catch (error) {
-        console.error('操作失败:', error)
+        console.error('清空操作:', error)
         if (error.response && error.response.status === 403) {
             customAlert('密码错误', '开发者口令错误，无法执行清空操作', 'error')
+        } else if (error.code === 'ECONNABORTED' || String(error.message || '').toLowerCase().includes('timeout')) {
+            toast.info('请求已超时，但清空操作可能在后台继续执行，请刷新查看实际结果')
         } else {
-            customAlert('操作失败', `清空失败: ${error.message || '未知错误'}`, 'error')
+            toast.error(`清空失败: ${error.message || '未知错误'}`)
         }
-    } finally {
-        // 隐藏全屏删除遮罩
-        isDeleting.value = false
     }
 }
 
@@ -3803,53 +3793,6 @@ async function cleanupDownloadClips() {
   font-size: 14px;
   color: #888;
   margin: 0 0 20px 0;
-}
-
-
-/* 全屏删除遮罩样式 */
-.deleting-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.deleting-content {
-    text-align: center;
-    color: #fff;
-}
-
-.deleting-spinner {
-    width: 60px;
-    height: 60px;
-    margin: 0 auto 24px;
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.deleting-text {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #fff;
-}
-
-.deleting-subtext {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 @keyframes fadeIn {
