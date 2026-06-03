@@ -990,16 +990,16 @@ async def process_download_queue(subscription_id: str, videos: List[Subscription
                             
                             for task_id in download_tasks:
                                 task_status = task_status_dict.get(task_id)
-                                # 只标记 PENDING 的任务为取消，DOWNLOADING 的任务继续下载
+                                # PENDING 任务还没开始下载，直接删除，不留下垃圾记录
+                                # DOWNLOADING 的任务继续下载
                                 if task_status and task_status.status == TaskStatus.PENDING.value:
-                                    task_status.status = TaskStatus.CANCELLED.value
-                                    task_status.error_message = "用户取消批量下载"
+                                    cancel_db.delete(task_status)
                                     video = video_dict.get(task_id)
                                     if video:
                                         video.downloaded = "false"
                                         video.download_task_id = None
                             cancel_db.commit()
-                        
+
                         with get_db_context() as final_db:
                             subscription = final_db.query(Subscription).filter(
                                 Subscription.id == subscription_id
@@ -1068,11 +1068,11 @@ async def process_download_queue(subscription_id: str, videos: List[Subscription
                                 
                                 for task_id in download_tasks:
                                     task_status = task_status_dict.get(task_id)
-                                    # 只标记 PENDING 的任务为取消，DOWNLOADING 的任务继续下载
+                                    # PENDING 任务还没开始下载，直接删除，不留下垃圾记录
+                                    # DOWNLOADING 的任务继续下载
                                     if task_status and task_status.status == TaskStatus.PENDING.value:
-                                        task_status.status = TaskStatus.CANCELLED.value
-                                        task_status.error_message = "用户取消批量下载"
-                                        
+                                        cancel_db.delete(task_status)
+
                                         # 更新对应的视频状态
                                         video = video_dict.get(task_id)
                                         if video:

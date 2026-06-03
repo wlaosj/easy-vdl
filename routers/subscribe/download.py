@@ -565,14 +565,14 @@ async def cancel_batch_download(
         ).all()
         
         for task in pending_tasks:
-            task.status = TaskStatus.CANCELLED.value
-            task.updated_at = datetime.now()
+            # PENDING 任务还没开始下载，直接删除，不留下垃圾记录
+            db.delete(task)
             cancelled_tasks_count += 1
-        
+
         # 注意：不标记"孤儿视频"（无 Task 的视频）。因为这些视频压根没开始下载，
         # 设置 error_message 会导致前端误判为"下载失败"。
         # 没有 Task 的视频自然就是"未下载"状态，取消后保持即可。
-        # 已有 PENDING Task 的视频在上述步骤已被标记为 CANCELLED。
+        # 已有 PENDING Task 的视频在上述步骤已被直接删除，不会残留垃圾记录。
 
         subscription.batch_download_status = "cancelled"
         subscription.batch_download_progress = None
@@ -604,12 +604,12 @@ async def cancel_batch_download(
         except Exception as e:
             logger.warning(f"发送取消WS通知失败: {e}")
         
-        logger.info(f"已取消批量下载任务: {subscription_id}, 取消了 {cancelled_tasks_count} 个待处理任务, "
+        logger.info(f"已取消批量下载任务: {subscription_id}, 删除了 {cancelled_tasks_count} 个待处理任务, "
                     f"从队列移除 {removed_from_queue} 个任务")
 
         return {
             "message": "批量下载任务已取消",
-            "cancelled_tasks": cancelled_tasks_count,
+            "deleted_pending_tasks": cancelled_tasks_count,
             "removed_from_queue": removed_from_queue
         }
         
