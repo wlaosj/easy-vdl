@@ -269,37 +269,22 @@ async def retry_failed_downloads(
         if not failed_videos:
             return {"message": "没有失败的任务需要重试"}
         
-        # 采用和单任务重试一样的逻辑：复用原task_id，只重置状态
+        # 采用和批量重试一样的逻辑：删除旧任务，走 process_download_queue 统一调度
         retry_count = 0
-        retry_task_ids = []
         
         for video in failed_videos:
             try:
                 if video.download_task_id:
-                    task = db.query(Task).filter(Task.id == video.download_task_id).first()
-                    if task:
-                        cleanup_task_before_retry(task, mode="temp_only")
-                        task.status = TaskStatus.PENDING.value
-                        task.progress = 0
-                        task.error_message = None
-                        task.filename = None
-                        task.updated_at = datetime.now()
-                        video.error_message = None
-                        video.downloaded = "false"
-                        retry_task_ids.append(task.id)
-                        retry_count += 1
-                        logger.info(f"重置任务状态: {task.id} - {video.title}")
-                    else:
-                        video.download_task_id = None
-                        video.error_message = None
-                        video.downloaded = "false"
-                        retry_count += 1
-                        logger.info(f"任务不存在，将创建新任务: {video.title}")
-                else:
-                    video.error_message = None
-                    video.downloaded = "false"
-                    retry_count += 1
-                    logger.info(f"无关联任务，将创建新任务: {video.title}")
+                    old_task = db.query(Task).filter(Task.id == video.download_task_id).first()
+                    if old_task:
+                        cleanup_task_before_retry(old_task, mode="temp_only")
+                        db.delete(old_task)
+                        logger.info(f"删除旧任务 {video.download_task_id} for video: {video.title}")
+                
+                video.error_message = None
+                video.download_task_id = None
+                video.downloaded = "false"
+                retry_count += 1
                     
             except Exception as e:
                 logger.error(f"重置任务状态时出错: {str(e)}")
@@ -310,18 +295,19 @@ async def retry_failed_downloads(
         
         if retry_count > 0:
             subscription.batch_download_status = "downloading"
+            subscription.batch_download_progress = 0
+            subscription.batch_download_total = retry_count
+            subscription.batch_download_completed = 0
             subscription.batch_download_failed = 0
+            subscription.batch_download_start_time = datetime.now()
             db.commit()
             
-            for video in failed_videos:
-                if video.download_task_id:
-                    asyncio.create_task(download_manager._add_to_queue(
-                        video.download_task_id, 
-                        subscription_id, 
-                        video.title
-                    ))
-                else:
-                    asyncio.create_task(download_manager.add_subscription_download(video, request.quality))
+            asyncio.create_task(process_download_queue(
+                subscription_id,
+                failed_videos,
+                request.quality,
+                request.batch_size or 1
+            ))
             
             return {
                 "message": f"已重新添加 {retry_count} 个失败任务到下载队列",
