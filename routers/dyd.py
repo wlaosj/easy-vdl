@@ -1444,10 +1444,10 @@ class VideoExtractor:
             
         # 如果缓存未命中，执行原有的获取逻辑
         apis = [
-            f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=1080p&line=1',
             f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=1080p&line=0',
-            f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=720p&line=1',
+            f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=1080p&line=1',
             f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=720p&line=0',
+            f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=720p&line=1',
             f'https://aweme.snssdk.com/aweme/v1/play/?video_id={video_id}&ratio=540p&line=2',
         ]
         
@@ -3421,7 +3421,7 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
         # 注意：禁用并发分片下载以提高兼容性，避免触发CDN反爬机制
         # --retries 10 : 增加重试次数
         # --fragment-retries 10 : 分片重试
-        # --socket-timeout 300 : 增加套接字超时时间（5分钟），适合大文件下载
+        # --socket-timeout 120 : 2分钟套接字超时，CDN节点坏时快速失败，重试换节点
         ytdlp_cmd = [
             "yt-dlp",
             video_url,
@@ -3430,7 +3430,7 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
             "--add-header", f"Referer:{download_headers.get('Referer', '')}",
             "--retries", "10",
             "--fragment-retries", "10",
-            "--socket-timeout", "300",  # 增加超时时间，适合大文件下载
+            "--socket-timeout", "120",  # 2分钟超时，CDN坏节点快速失败重试换节点
             "--newline",              # 强制换行输出便于解析进度
             "--no-playlist",
             "--no-mtime"
@@ -3457,11 +3457,22 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                     stderr=asyncio.subprocess.PIPE
                 )
 
-                last_progress_update = 0
-
-                # 实时读取标准输出以解析进度
+                # 用于检测下载卡死：记录最后一次收到进度的时间（初始化即开始计时）
+                last_progress_time = time.time()
+                # yt-dlp 进度输出在 stderr（stdout 几乎无内容），改为读 stderr
+                # 10秒无任何进度即判定卡死（连到坏CDN节点），杀进程让重试机制换节点
+                STUCK_TIMEOUT = 10
                 while True:
-                    line_bytes = await process.stdout.readline()
+                    try:
+                        line_bytes = await asyncio.wait_for(
+                            process.stderr.readline(),
+                            timeout=STUCK_TIMEOUT
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(f"[yt-dlp] {STUCK_TIMEOUT}秒无输出，下载卡死(可能CDN节点异常)，终止进程重试")
+                        process.kill()
+                        break
+
                     if not line_bytes:
                         break
 
@@ -3476,18 +3487,26 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                         update_dyd_task_progress(task_id, TaskStatus.CANCELLED, error="用户已取消下载")
                         return False
 
-                    # 正则解析进度信息：例如 [download]  12.5% of 100.00MiB at ...
+                    # 解析下载进度：例如 [download]  12.5% of 100.00MiB at ...
+                    # yt-dlp 的进度信息输出到 stderr
                     progress_match = re.search(r'\[download\]\s+([\d.]+)%', line)
                     if progress_match:
                         try:
                             progress_val = float(progress_match.group(1))
-                            # 限制更新频率，提高性能
+                            # 刷新卡死计时器——收到进度说明还在跑
+                            last_progress_time = time.time()
+                            # 限制DB写入频率，提高性能
                             current_time = time.time()
                             if current_time - last_progress_update >= 5.0:
                                 update_dyd_task_progress(task_id, TaskStatus.DOWNLOADING, progress=progress_val)
                                 last_progress_update = current_time
                         except:
                             pass
+                    elif time.time() - last_progress_time > STUCK_TIMEOUT:
+                        # 有输出但不是进度，且已超过10秒没看到进度数据 → 判定卡死
+                        logger.warning(f"[yt-dlp] 超过{STUCK_TIMEOUT}秒无进度更新，下载卡死(可能CDN节点异常)，终止进程重试")
+                        process.kill()
+                        break
 
                     # 如果有错误信息
                     if "ERROR:" in line:
@@ -3520,6 +3539,7 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                         or "SSL" in last_stderr_msg  # SSL握手失败（偶发性网络故障）
                         or "Downloaded" in last_stderr_msg and "expected" in last_stderr_msg and "bytes" in last_stderr_msg  # 下载不完整错误
                         or "Giving up after" in last_stderr_msg  # 重试后放弃的错误
+                        or process.returncode == -9  # 被卡死检测杀掉的进程，重试换CDN节点
                     )
                     if retryable:
                         logger.warning(f"[yt-dlp] 本次失败可重试，将进行第 {attempt + 2} 次尝试。错误信息: {last_stderr_msg[:300]}")
