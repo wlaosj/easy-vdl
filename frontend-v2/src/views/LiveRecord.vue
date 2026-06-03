@@ -1479,6 +1479,7 @@
             <button class="btn btn-outline" @click="showBulkSubtitleModal = true; showToolsModal = false" :disabled="bulkLoading">字幕开关</button>
             <button class="btn btn-outline" @click="showBulkConvertModal = true; showToolsModal = false" :disabled="bulkLoading">转码开关</button>
             <button class="btn btn-outline" @click="showBulkSegmentModal = true; showToolsModal = false" :disabled="bulkLoading">分段录制</button>
+	            <button class="btn btn-outline" @click="showBulkCheckIntervalModal = true; showToolsModal = false" :disabled="bulkLoading">检测间隔</button>
             <button class="btn btn-outline" @click="showBulkQualityModal = true; showToolsModal = false" :disabled="bulkLoading">批量修改画质</button>
             <button class="btn btn-danger" @click="confirmBulkDelete(); showToolsModal = false" :disabled="bulkLoading">批量删除订阅</button>
           </div>
