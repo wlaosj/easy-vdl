@@ -3457,11 +3457,12 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                     stderr=asyncio.subprocess.PIPE
                 )
 
-                # 用于检测下载卡死：记录最后一次收到进度的时间（初始化即开始计时）
+                # 用于检测下载卡死
                 last_progress_time = time.time()
                 # yt-dlp 进度输出在 stderr（stdout 几乎无内容），改为读 stderr
-                # 10秒无任何进度即判定卡死（连到坏CDN节点），杀进程让重试机制换节点
-                STUCK_TIMEOUT = 10
+                # 初始30秒超时给握手/重定向留足时间；收到第一个进度行后缩至10秒快速检测
+                STUCK_TIMEOUT = 30
+                has_received_progress = False
                 while True:
                     try:
                         line_bytes = await asyncio.wait_for(
@@ -3491,6 +3492,10 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                     # yt-dlp 的进度信息输出到 stderr
                     progress_match = re.search(r'\[download\]\s+([\d.]+)%', line)
                     if progress_match:
+                        if not has_received_progress:
+                            has_received_progress = True
+                            STUCK_TIMEOUT = 10  # 有进度了，缩到10秒快速检测
+                            logger.debug(f"[yt-dlp] 收到首次进度，卡死检测切换至{STUCK_TIMEOUT}秒")
                         try:
                             progress_val = float(progress_match.group(1))
                             # 刷新卡死计时器——收到进度说明还在跑
@@ -3503,8 +3508,9 @@ async def _do_download_video_task(task_id: str, url: str, custom_download_dir: s
                         except:
                             pass
                     elif time.time() - last_progress_time > STUCK_TIMEOUT:
-                        # 有输出但不是进度，且已超过10秒没看到进度数据 → 判定卡死
-                        logger.warning(f"[yt-dlp] 超过{STUCK_TIMEOUT}秒无进度更新，下载卡死(可能CDN节点异常)，终止进程重试")
+                        # 有输出但不是进度，且已超过超时没看到进度数据 → 判定卡死
+                        phase = "握手" if not has_received_progress else "下载"
+                        logger.warning(f"[yt-dlp] 超过{STUCK_TIMEOUT}秒无进度更新({phase}阶段)，下载卡死(可能CDN节点异常)，终止进程重试")
                         process.kill()
                         break
 
