@@ -660,7 +660,10 @@ async def get_live_subscriptions(
                     danmu_enabled = extra.get('danmu_enabled', False)
                     if isinstance(danmu_enabled, str):
                         danmu_enabled = danmu_enabled.strip().lower() not in ("false", "0", "no")
-                    
+                    # 显示层兜底：平台不支持弹幕时隐藏标识
+                    if danmu_enabled and not is_danmu_supported(sub.platform):
+                        danmu_enabled = False
+
                     compat_mode = extra.get('compat_mode', False)
                     if isinstance(compat_mode, str):
                         compat_mode = compat_mode.strip().lower() not in ("false", "0", "no")
@@ -1900,6 +1903,8 @@ async def get_records(
             try:
                 extra_data = json.loads(sub.extra_data or "{}")
                 danmu_enabled = bool(extra_data.get("danmu_enabled", False))
+                if danmu_enabled and not is_danmu_supported(sub.platform):
+                    danmu_enabled = False
             except Exception:
                 danmu_enabled = False
 
