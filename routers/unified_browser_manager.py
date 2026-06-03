@@ -248,18 +248,19 @@ class UnifiedBrowserManager:
                 except Exception:
                     pass
 
-        # 清理会话恢复文件，防止SIGKILL损坏的session文件导致启动卡死
+        # 无条件清理会话恢复文件，避免SIGKILL损坏的session文件导致浏览器启动卡死
         default_dir = os.path.join(temp_dir, "Default")
         if os.path.isdir(default_dir):
             session_files = ["Current Session", "Current Tabs", "Last Session", "Last Tabs"]
             for fname in session_files:
                 fpath = os.path.join(default_dir, fname)
-                if os.path.exists(fpath):
-                    try:
-                        os.remove(fpath)
-                        logger.debug(f"已清理会话恢复文件: {fname}")
-                    except Exception:
-                        pass
+                try:
+                    os.remove(fpath)
+                    logger.debug(f"已清理会话恢复文件: {fname}")
+                except FileNotFoundError:
+                    pass
+                except Exception:
+                    logger.warning(f"清理会话恢复文件失败: {fname}")
     
     def _get_browser_args(self) -> list:
         """获取浏览器启动参数"""
