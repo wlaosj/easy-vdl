@@ -237,7 +237,7 @@ class UnifiedBrowserManager:
         return temp_user_data_dir
     
     async def _cleanup_singleton_locks(self, temp_dir: str):
-        """清理Chrome单例锁文件"""
+        """清理Chrome单例锁文件及损坏的会话恢复文件"""
         lock_files = ["SingletonLock", "SingletonSocket", "SingletonCookie", "DevToolsActivePort"]
         for lock_name in lock_files:
             lock_path = os.path.join(temp_dir, lock_name)
@@ -247,6 +247,19 @@ class UnifiedBrowserManager:
                     logger.debug(f"已删除锁文件: {lock_name}")
                 except Exception:
                     pass
+
+        # 清理会话恢复文件，防止SIGKILL损坏的session文件导致启动卡死
+        default_dir = os.path.join(temp_dir, "Default")
+        if os.path.isdir(default_dir):
+            session_files = ["Current Session", "Current Tabs", "Last Session", "Last Tabs"]
+            for fname in session_files:
+                fpath = os.path.join(default_dir, fname)
+                if os.path.exists(fpath):
+                    try:
+                        os.remove(fpath)
+                        logger.debug(f"已清理会话恢复文件: {fname}")
+                    except Exception:
+                        pass
     
     def _get_browser_args(self) -> list:
         """获取浏览器启动参数"""
