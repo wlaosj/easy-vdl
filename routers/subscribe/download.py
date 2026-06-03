@@ -22,6 +22,7 @@ from .utils import (
     _fix_file_permissions,
     _async_add_download
 )
+from routers.websocket import send_progress_update
 
 router = APIRouter()
 
@@ -568,6 +569,17 @@ async def cancel_batch_download(
             task.updated_at = datetime.now()
             cancelled_tasks_count += 1
         
+        # 标记孤儿视频：批次列表中还没创建任务的视频
+        orphan_videos = db.query(SubscriptionVideo).filter(
+            SubscriptionVideo.subscription_id == subscription_id,
+            SubscriptionVideo.downloaded == "false",
+            SubscriptionVideo.download_task_id == None,
+            SubscriptionVideo.error_message == None
+        ).all()
+        for video in orphan_videos:
+            video.error_message = "批量下载已取消"
+            logger.debug(f"标记孤儿视频为已取消: {video.id[:8]}...")
+        
         subscription.batch_download_status = "cancelled"
         subscription.batch_download_progress = None
         subscription.batch_download_total = None
@@ -576,11 +588,35 @@ async def cancel_batch_download(
         subscription.batch_download_start_time = None
         db.commit()
         
-        logger.info(f"已取消批量下载任务: {subscription_id}, 取消了 {cancelled_tasks_count} 个待处理任务")
+        # 发送 WebSocket 通知，让前端立即更新状态
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(send_progress_update(subscription_id, {
+                    "type": "batch_download_progress",
+                    "status": "cancelled",
+                    "progress": 0,
+                    "total": 0,
+                    "completed": 0,
+                    "failed": cancelled_tasks_count,
+                    "subscription": {
+                        "id": subscription.id,
+                        "nickname": subscription.nickname,
+                        "platform": subscription.platform,
+                        "avatar_url": subscription.avatar_url
+                    },
+                    "message": "批量下载已取消"
+                }))
+        except Exception as e:
+            logger.warning(f"发送取消WS通知失败: {e}")
+        
+        logger.info(f"已取消批量下载任务: {subscription_id}, 取消了 {cancelled_tasks_count} 个待处理任务, "
+                    f"标记了 {len(orphan_videos)} 个孤儿视频")
         
         return {
             "message": "批量下载任务已取消",
             "cancelled_tasks": cancelled_tasks_count,
+            "orphan_videos_marked": len(orphan_videos),
             "removed_from_queue": removed_from_queue
         }
         
