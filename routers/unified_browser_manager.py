@@ -253,6 +253,7 @@ class UnifiedBrowserManager:
         return [
             '--no-sandbox',
             '--disable-setuid-sandbox',
+            '--disable-zygote',
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--display=:99',
