@@ -497,6 +497,7 @@ async def _get_kuaishou_via_mobile_page(url: str, proxy_addr: OptionalStr = None
     except Exception as e:
         print(f"[KSMobile] FLV 解析失败: {e}")
 
+    result["source"] = "mobile"
     return result
 
 

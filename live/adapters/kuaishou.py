@@ -66,8 +66,13 @@ class KuaishouAdapter(BaseAdapter):
 
         try:
             result = await _fetch(cookies)
-            # Cookie 触发风控限流时，降级为无 Cookie 重试
-            if cookies and not result["is_live"] and not result.get("raw_data", {}).get("flv_url_list"):
+            # Cookie 触发风控限流时，降级为无 Cookie 重试（仅桌面版）
+            if (
+                cookies
+                and not result["is_live"]
+                and not result.get("raw_data", {}).get("flv_url_list")
+                and result.get("raw_data", {}).get("source") != "mobile"
+            ):
                 logger.warning("[KuaishouAdapter] Cookie 请求被限流，尝试无 Cookie 降级")
                 result = await _fetch(None)
             return result
@@ -126,8 +131,13 @@ class KuaishouAdapter(BaseAdapter):
 
         try:
             result = await _fetch(cookies)
-            # Cookie 触发风控限流时，降级为无 Cookie 重试
-            if cookies and not result.get("is_live") and not result.get("raw_data", {}).get("flv_url_list"):
+            # Cookie 触发风控限流时，降级为无 Cookie 重试（仅桌面版）
+            if (
+                cookies
+                and not result.get("is_live")
+                and not result.get("raw_data", {}).get("flv_url_list")
+                and result.get("raw_data", {}).get("source") != "mobile"
+            ):
                 logger.warning("[KuaishouAdapter] Cookie 限流，get_stream_url 降级无 Cookie 重试")
                 result = await _fetch(None)
             return result
