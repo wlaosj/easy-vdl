@@ -2479,34 +2479,10 @@ def update_dyd_task_progress(task_id: str, status: TaskStatus, progress: float =
                                 video.downloaded = "true"
                                 video.error_message = None
                                 logger.info(f"任务 {task_id} 完成，视频 {video.title} 标记为已下载")
-                                # 检查是否需要更新订阅批量下载状态
-                                try:
-                                    if video.subscription_id:
-                                        sub = db.query(Subscription).filter(Subscription.id == video.subscription_id).first()
-                                        if sub and sub.batch_download_status == "downloading":
-                                            # 检查该订阅是否还有未完成的任务
-                                            remaining = db.query(Task).join(
-                                                SubscriptionVideo, Task.id == SubscriptionVideo.download_task_id
-                                            ).filter(
-                                                SubscriptionVideo.subscription_id == video.subscription_id,
-                                                Task.status.in_([
-                                                    TaskStatus.PENDING.value,
-                                                    TaskStatus.DOWNLOADING.value,
-                                                    TaskStatus.PROCESSING.value
-                                                ])
-                                            ).count()
-                                            if remaining == 0:
-                                                # 检查是否有失败的任务
-                                                failed_count = db.query(Task).join(
-                                                    SubscriptionVideo, Task.id == SubscriptionVideo.download_task_id
-                                                ).filter(
-                                                    SubscriptionVideo.subscription_id == video.subscription_id,
-                                                    Task.status == TaskStatus.ERROR.value
-                                                ).count()
-                                                sub.batch_download_status = "partial_completed" if failed_count > 0 else "completed"
-                                                db.commit()
-                                except Exception as e:
-                                    logger.warning(f"更新订阅批量下载状态失败: {e}")
+                                # 注意：不在此处管理批量下载状态
+                                # 批量下载的进度和完成状态由 subscribe/utils.py 中的 process_download_queue 统一管理，
+                                # 它负责所有批次完成后设置最终状态。单个任务完成后不应触碰 batch_download_status，
+                                # 否则在 batch_size < total_videos 时会提前标记为完成。
                             else:
                                 video.downloaded = "false"
                                 video.error_message = error
