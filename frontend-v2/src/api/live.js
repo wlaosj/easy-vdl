@@ -292,6 +292,7 @@ export default {
         if (config.auto_convert_mp4 !== undefined) params.append('auto_convert_mp4', config.auto_convert_mp4)
         if (config.danmu_enabled !== undefined) params.append('danmu_enabled', config.danmu_enabled)
         if (config.compat_mode !== undefined) params.append('compat_mode', config.compat_mode)
+        if (config.check_interval !== undefined) params.append('check_interval', config.check_interval)
         return client.put(`/live/subscriptions/bulk-config?${params.toString()}`)
     },
 

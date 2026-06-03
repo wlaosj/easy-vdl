@@ -896,6 +896,7 @@ async def bulk_update_subscription_config(
     auto_convert_mp4: Optional[str] = Query(None),
     danmu_enabled: Optional[str] = Query(None),
     compat_mode: Optional[str] = Query(None),
+    check_interval: Optional[int] = Query(None),
     db: Session = Depends(get_session)
 ):
     """批量更新订阅配置"""
@@ -947,6 +948,9 @@ async def bulk_update_subscription_config(
 
         if split_duration is not None:
             sub.split_duration = max(300, min(86400, split_duration))
+
+        if check_interval is not None:
+            sub.check_interval = max(10, min(600, check_interval))
 
         extra = {}
         if sub.extra_data:

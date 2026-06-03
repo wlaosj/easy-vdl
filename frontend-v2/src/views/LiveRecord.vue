@@ -176,6 +176,7 @@
             <button class="btn btn-xs btn-outline" @click="showBulkSubtitleModal = true" :disabled="bulkLoading">字幕开关</button>
             <button class="btn btn-xs btn-outline" @click="showBulkConvertModal = true" :disabled="bulkLoading">转码开关</button>
             <button class="btn btn-xs btn-outline" @click="showBulkSegmentModal = true" :disabled="bulkLoading">分段录制</button>
+            <button class="btn btn-xs btn-outline" @click="showBulkCheckIntervalModal = true" :disabled="bulkLoading">检测间隔</button>
             <button class="btn btn-xs btn-outline" @click="showBulkQualityModal = true" :disabled="bulkLoading">修改画质</button>
             <button class="btn btn-xs btn-danger" @click="confirmBulkDelete" :disabled="bulkLoading">批量删除</button>
           </div>
@@ -1338,6 +1339,26 @@
       </template>
     </Modal>
 
+    <!-- 批量设置检测间隔 -->
+    <Modal v-model:show="showBulkCheckIntervalModal" title="批量设置检测间隔" width="420px">
+      <div class="add-form">
+        <div class="form-group">
+          <label class="form-label">检测间隔（秒）</label>
+          <input type="number" v-model.number="bulkCheckInterval" class="form-input" min="10" max="600" />
+          <p class="form-hint">
+            将对当前筛选出的 {{ filteredSubscriptions.length }} 个订阅生效（范围 10-600 秒）
+          </p>
+        </div>
+      </div>
+      <template #footer>
+        <button class="btn btn-secondary" @click="showBulkCheckIntervalModal = false">取消</button>
+        <button class="btn btn-primary" @click="handleBulkSetCheckInterval" :disabled="bulkLoading">
+          <span v-if="bulkLoading" class="spinner spinner-sm"></span>
+          确定
+        </button>
+      </template>
+    </Modal>
+
     <!-- 批量录制开关二级操作 -->
     <Modal v-model:show="showBulkAutoRecordModal" title="批量录制开关" width="420px">
       <div class="bulk-toggle-content">
@@ -1611,6 +1632,8 @@ const showBulkSubtitleModal = ref(false)
 const showBulkConvertModal = ref(false)
 const showBulkSegmentModal = ref(false)
 const bulkSegmentDuration = ref(3600)
+const showBulkCheckIntervalModal = ref(false)
+const bulkCheckInterval = ref(60)
 const showScrollTop = ref(false)
 const showScrollBottom = ref(true)
 let liveStatsRefreshTimer = null
@@ -3540,6 +3563,44 @@ async function bulkSetSegment(enabled) {
 async function handleBulkSegmentChoice(enabled) {
   await bulkSetSegment(enabled)
   showBulkSegmentModal.value = false
+}
+
+// 批量设置检测间隔
+async function handleBulkSetCheckInterval() {
+  const interval = bulkCheckInterval.value
+  if (!interval || interval < 10 || interval > 600) {
+    dialog.alert({ message: '检测间隔必须在 10-600 秒之间', type: 'warning' })
+    return
+  }
+  showBulkCheckIntervalModal.value = false
+  const targetCount = filteredSubscriptions.value.length
+  const confirmed = await dialog.confirm({
+    title: '批量设置检测间隔',
+    message: `确定要批量设置当前筛选出的 <strong>${targetCount}</strong> 个直播间的检测间隔为 <strong>${interval}</strong> 秒吗？`
+  })
+  if (!confirmed) return
+
+  bulkLoading.value = true
+  try {
+    const ids = filteredSubscriptions.value.map(sub => sub.id)
+    const res = await liveApi.bulkUpdateSubscriptionConfig(ids, {
+      check_interval: interval
+    })
+    if (res.success) {
+      toast.success(`已成功将 ${targetCount} 个直播间的检测间隔设置为 ${interval} 秒`)
+      await loadData()
+    } else {
+      dialog.alert({ message: res.message || '操作失败', type: 'error' })
+    }
+  } catch (error) {
+    dialog.alert({
+      title: '批量操作失败',
+      message: error.response?.data?.detail || error.message,
+      type: 'error'
+    })
+  } finally {
+    bulkLoading.value = false
+  }
 }
 
 // 批量修改画质
