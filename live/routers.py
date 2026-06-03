@@ -722,6 +722,10 @@ async def add_live_subscription(
     else:
         danmu_enabled_bool = is_danmu_supported(platform)
 
+    # 兜底：平台不支持弹幕时强制关闭
+    if danmu_enabled_bool and not is_danmu_supported(platform):
+        danmu_enabled_bool = False
+
     try:
         return await _create_live_subscription(
             room_url=room_url,
@@ -792,6 +796,9 @@ async def batch_add_live_subscriptions(
         monitor_enabled_bool = _parse_bool(item.monitor_enabled, True)
         notification_enabled_bool = _parse_bool(item.notification_enabled, True)
         danmu_enabled_bool = is_danmu_supported(platform) if item.danmu_enabled is None else item.danmu_enabled
+        # 兜底：平台不支持弹幕时强制关闭
+        if danmu_enabled_bool and not is_danmu_supported(platform):
+            danmu_enabled_bool = False
         check_interval = item.check_interval if item.check_interval is not None else 60
 
         db_local = get_session()
@@ -954,6 +961,9 @@ async def bulk_update_subscription_config(
             extra['auto_convert_mp4'] = str(auto_convert_mp4).lower() == "true"
         if danmu_enabled is not None:
             extra['danmu_enabled'] = str(danmu_enabled).lower() == "true"
+            # 兜底：平台不支持弹幕时强制关闭
+            if extra['danmu_enabled'] and not is_danmu_supported(sub.platform):
+                extra['danmu_enabled'] = False
         if compat_mode is not None:
             extra['compat_mode'] = str(compat_mode).lower() == "true"
 
@@ -2652,9 +2662,12 @@ async def update_subscription_config(
         extra['auto_convert_mp4'] = str(auto_convert_mp4).lower() == "true"
     if danmu_enabled is not None:
         extra['danmu_enabled'] = str(danmu_enabled).lower() == "true"
+        # 兜底：平台不支持弹幕时强制关闭
+        if extra['danmu_enabled'] and not is_danmu_supported(sub.platform):
+            extra['danmu_enabled'] = False
     if compat_mode is not None:
         extra['compat_mode'] = str(compat_mode).lower() == "true"
-        
+
     sub.extra_data = json.dumps(extra)
     sub.updated_at = datetime.now()
     db.commit()
