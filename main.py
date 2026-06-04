@@ -232,6 +232,15 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 # --- 启动/关闭事件 ---
+async def _init_license_async():
+    """后台异步初始化授权服务"""
+    try:
+        success = await license.initialize_license_service()
+        if not success:
+            logger.warning("授权服务初始化失败，部分功能可能不可用")
+    except Exception as e:
+        logger.error(f"授权服务初始化异常: {str(e)}")
+
 @app.on_event("startup")
 async def startup_event():
     """应用启动事件"""
@@ -451,11 +460,9 @@ async def startup_event():
     except Exception as e:
         logger.error(f"YTD服务初始化异常: {str(e)}")
 
-    # 初始化授权服务（包含了万能嗅探服务的授权）
+    # 初始化授权服务（非阻塞，后台执行，不阻塞其他服务启动）
     try:
-        success = await license.initialize_license_service()
-        if not success:
-            logger.warning("授权服务初始化失败，部分功能可能不可用")
+        asyncio.create_task(_init_license_async())
     except Exception as e:
         logger.error(f"授权服务初始化异常: {str(e)}")
     
