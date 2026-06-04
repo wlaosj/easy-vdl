@@ -175,6 +175,7 @@ class YoutubeAdapter(BaseAdapter):
                 "this live event has ended",
                 "this live stream recording is not available",
                 "not currently live",
+                "this live event will begin in a few moments",
             )
             permanent_offline_markers = (
                 "video unavailable",
