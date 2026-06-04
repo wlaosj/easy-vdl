@@ -73,7 +73,7 @@ class KuaishouAdapter(BaseAdapter):
                 and not result["is_live"]
                 and not result.get("raw_data", {}).get("flv_url_list")
             ):
-                logger.info("[KuaishouAdapter] 无 Cookie 请求失败，尝试 Cookie 兜底")
+                logger.info("[KuaishouAdapter] 无 Cookie 未获取到直播信息，尝试 Cookie 兜底")
                 result = await _fetch(cookies)
             return result
         except Exception as e:
@@ -139,7 +139,7 @@ class KuaishouAdapter(BaseAdapter):
                 and not result.get("is_live")
                 and not result.get("raw_data", {}).get("flv_url_list")
             ):
-                logger.info("[KuaishouAdapter] 无 Cookie 请求失败，尝试 Cookie 兜底")
+                logger.info("[KuaishouAdapter] 无 Cookie 未获取到直播信息，尝试 Cookie 兜底")
                 result = await _fetch(cookies)
             return result
         except Exception as e:
