@@ -83,7 +83,14 @@
             <p>今日录制</p>
           </div>
         </div>
-        
+
+        <div class="stat-card invalid">
+          <div class="stat-content">
+            <h3 class="text-error">{{ stats.invalid_count || 0 }}</h3>
+            <p>失效</p>
+          </div>
+        </div>
+
         <div class="stat-card storage-card">
           <div class="stat-content">
             <h3 class="storage-size">
@@ -1678,6 +1685,14 @@ watch(searchKeyword, (val) => {
     searchDebounceTimer = null
   }, 180)
 })
+
+// 同步直播统计到全局 store（供 Header 等组件使用）
+watch(stats, (s) => {
+  if (s) {
+    systemStore.live.recording_count = s.recording_count || 0
+    systemStore.live.live_count = s.live_count || 0
+  }
+}, { deep: true, immediate: true })
 
 const filteredSubscriptions = computed(() => {
   const filtered = subscriptions.value.filter(sub => {
@@ -5234,9 +5249,9 @@ function getStatusText(status) {
 }
 
 .stats-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
   margin-bottom: 24px;
 }
 
@@ -5253,14 +5268,14 @@ function getStatusText(status) {
 }
 
 .stat-card {
-  min-width: 120px;
+  min-width: 100px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .stat-card.recording {
@@ -5271,6 +5286,11 @@ function getStatusText(status) {
 .stat-card.live {
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(22, 163, 74, 0.04));
   border-color: rgba(34, 197, 94, 0.28);
+}
+
+.stat-card.invalid {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(220, 38, 38, 0.03));
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .stat-icon {
@@ -5410,10 +5430,16 @@ function getStatusText(status) {
   text-align: right;
 }
 
+.stat-content {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .stat-content p {
   font-size: 13px;
   color: var(--color-text-secondary);
-  margin: 4px 0 0 0;
+  margin: 0;
 }
 
 /* 操作栏 */
@@ -5442,7 +5468,7 @@ function getStatusText(status) {
   height: 36px;
   line-height: 36px;
   font-size: 13px;
-  min-width: 110px;
+  min-width: 120px;
   border-radius: var(--radius-md);
   border-color: var(--color-border);
   background-color: var(--color-bg-secondary);
@@ -7204,20 +7230,17 @@ function getStatusText(status) {
   }
 
   .stats-grid {
-    display: flex;
-    flex: 0 1 auto;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 0;
-    min-width: min(100%, 520px);
+    min-width: min(100%, 380px);
     padding-right: 10px;
     border-right: 1px solid var(--color-border);
-    align-content: stretch;
   }
 
   .stat-card {
-    flex: 0 0 104px;
-    min-width: 104px;
+    min-width: 0;
     padding: 10px 8px;
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
@@ -7226,14 +7249,20 @@ function getStatusText(status) {
     align-items: center;
     justify-content: center;
     text-align: center;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .stat-content {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
   }
 
   .stat-content h3 {
     font-size: 18px;
     line-height: 1.2;
-    margin-bottom: 2px;
+    margin: 0;
   }
 
   .stat-content p {
@@ -7371,8 +7400,8 @@ function getStatusText(status) {
   }
 
   .form-select.filter-select {
-    min-width: 88px;
-    width: 95px;
+    min-width: 98px;
+    width: 108px;
   }
 
   .filter-divider {
@@ -7414,7 +7443,7 @@ function getStatusText(status) {
       border-right: none;
       padding-right: 0;
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
     }
 
@@ -7442,7 +7471,7 @@ function getStatusText(status) {
     
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       margin-bottom: 0;
     }
@@ -7450,11 +7479,17 @@ function getStatusText(status) {
     .stat-card {
       padding: 8px 4px;
       min-width: 0;
-      gap: 2px;
+      gap: 4px;
       border-radius: var(--radius-md);
       text-align: center;
-      flex-direction: column;
+      flex-direction: row;
       justify-content: center;
+    }
+
+    .stat-content {
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
     }
 
     .stat-content h3 {
@@ -7462,12 +7497,11 @@ function getStatusText(status) {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 100%;
     }
 
     .stat-content p {
       font-size: 11px;
-      margin-top: 1px;
+      margin: 0;
       white-space: nowrap;
     }
 

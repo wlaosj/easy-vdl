@@ -60,11 +60,11 @@
           <div class="group-items">
             <button class="btn btn-primary btn-xs" @click="confirmOpenAddModal">
               <Icon name="plus" :size="12" />
-              添加视频订阅
+              添加
             </button>
             <button class="btn btn-outline btn-xs" @click="goToBatchDownloadTasks" title="查看订阅系统批量下载任务">
               <Icon name="download" :size="12" />
-              订阅任务
+              任务
             </button>
           </div>
         </div>
@@ -231,6 +231,39 @@
                   <div class="dropdown-item" @click="selectStatus('no_auto_download')">
                     <span :class="{ 'text-primary font-bold': statusFilter === 'no_auto_download' }">未开自下</span>
                     <Icon name="check" :size="14" v-if="statusFilter === 'no_auto_download'" class="text-primary ml-auto" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- 排序筛选器 -->
+            <div class="custom-multiselect compact-select" v-click-outside="() => showSortDropdown = false">
+              <div class="multiselect-header" @click="showSortDropdown = !showSortDropdown">
+                <span class="selected-text" :title="getSortText(sortBy)">
+                  {{ getSortText(sortBy) }}
+                </span>
+                <Icon name="chevron-down" :size="12" :class="{ 'rotate': showSortDropdown }" />
+              </div>
+
+              <!-- 全屏模糊遮罩层 -->
+              <div class="platform-dropdown-overlay" v-if="showSortDropdown" @click.stop="showSortDropdown = false"></div>
+
+              <div v-show="showSortDropdown" class="multiselect-dropdown">
+                <div class="scroll-area">
+                  <div class="dropdown-item" @click="selectSort('default')">
+                    <span :class="{ 'text-primary font-bold': sortBy === 'default' }">默认排序</span>
+                    <Icon name="check" :size="14" v-if="sortBy === 'default'" class="text-primary ml-auto" />
+                  </div>
+                  <div class="dropdown-item" @click="selectSort('newest')">
+                    <span :class="{ 'text-primary font-bold': sortBy === 'newest' }">最新添加</span>
+                    <Icon name="check" :size="14" v-if="sortBy === 'newest'" class="text-primary ml-auto" />
+                  </div>
+                  <div class="dropdown-item" @click="selectSort('oldest')">
+                    <span :class="{ 'text-primary font-bold': sortBy === 'oldest' }">最早添加</span>
+                    <Icon name="check" :size="14" v-if="sortBy === 'oldest'" class="text-primary ml-auto" />
+                  </div>
+                  <div class="dropdown-item" @click="selectSort('name')">
+                    <span :class="{ 'text-primary font-bold': sortBy === 'name' }">名称排序</span>
+                    <Icon name="check" :size="14" v-if="sortBy === 'name'" class="text-primary ml-auto" />
                   </div>
                 </div>
               </div>
@@ -794,10 +827,10 @@
     <div class="empty-state" v-if="hasLoadedOnce && !loading && (subscriptions.length === 0)">
       <div class="empty-icon">📭</div>
       <h3 class="empty-title">暂无视频订阅</h3>
-      <p class="empty-desc">先点击账号登录工具栏登录对应的平台，再点击右上角"添加视频订阅"按钮开始订阅您喜欢的博主</p>
+      <p class="empty-desc">先点击账号登录工具栏登录对应的平台，再点击右上角"添加"按钮开始订阅您喜欢的博主</p>
       <button class="btn btn-primary" @click="confirmOpenAddModal">
         <Icon name="plus" :size="16" />
-        添加视频订阅
+        添加
       </button>
     </div>
 
@@ -814,13 +847,13 @@
   </Transition>
 </div>
 
-    <!-- 添加订阅模态框 -->
-    <Modal v-model:show="showAddModal" title="添加视频订阅" width="600px">
+    <!-- 添加模态框 -->
+    <Modal v-model:show="showAddModal" title="添加" width="600px">
       <div class="add-subscription-form">
         <!-- 静态提示 -->
         <div class="static-hint-card">
           <Icon name="info" :size="16" class="hint-icon" />
-          <span class="hint-text">添加订阅前，请确保已在工具栏 <span class="highlight">"账号登录"</span>（含网易云/TK Cookie）中完成对应平台的登录或cookie配置，否则可能无法获取数据。</span>
+          <span class="hint-text">添加前，请确保已在工具栏 <span class="highlight">"账号登录"</span>（含网易云/TK Cookie）中完成对应平台的登录或cookie配置，否则可能无法获取数据。</span>
         </div>
         <div class="static-hint-card warning">
           <Icon name="alert-triangle" :size="16" class="hint-icon" />
@@ -1729,6 +1762,8 @@ const selectedPlatforms = ref([]) // 实际选中的平台列表
 const showPlatformDropdown = ref(false)
 const statusFilter = ref('')
 const showStatusDropdown = ref(false)
+const sortBy = ref(localStorage.getItem('subscription_sort_by') || 'default')
+const showSortDropdown = ref(false)
 
 function getStatusText(status) {
   const map = {
@@ -1740,6 +1775,22 @@ function getStatusText(status) {
     'no_auto_download': '未开自下'
   }
   return map[status] || '全部状态'
+}
+
+function getSortText(sort) {
+  const map = {
+    'default': '默认排序',
+    'newest': '最新添加',
+    'oldest': '最早添加',
+    'name': '名称排序'
+  }
+  return map[sort] || '默认排序'
+}
+
+function selectSort(value) {
+  sortBy.value = value
+  showSortDropdown.value = false
+  filterSubscriptions()
 }
 
 function getSubscriptionErrorDetail(sub) {
@@ -1819,7 +1870,7 @@ const newSubscription = ref({
 })
 const skipXhsWarningOnce = ref(false)
 
-// 添加订阅加载状态
+// 添加加载状态
 const addingSubscription = ref(false)
 
 // 文件上传
@@ -1903,7 +1954,7 @@ async function loadSubscriptions() {
   }
 }
 
-// 打开添加订阅前的风险确认
+// 打开添加前的风险确认
 async function confirmOpenAddModal() {
   const confirmed = await customConfirm(
     '风险提示',
@@ -1912,7 +1963,7 @@ async function confirmOpenAddModal() {
         <p><strong>⚠️ 订阅功能可能触发平台风控/封禁风险</strong></p>
         <p>频繁检测、自动化访问等行为可能导致账号被限制或封禁。</p>
         <p style="color: var(--color-warning);"><strong>建议使用小号登录。</strong></p>
-        <p style="margin-top: 8px;">是否继续添加订阅？</p>
+        <p style="margin-top: 8px;">是否继续添加？</p>
       </div>
     `
   )
@@ -2374,12 +2425,27 @@ function filterSubscriptions() {
 
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(sub => 
-      sub.nickname?.toLowerCase().includes(query) || 
+    result = result.filter(sub =>
+      sub.nickname?.toLowerCase().includes(query) ||
       sub.signature?.toLowerCase().includes(query)
     )
   }
 
+  // 排序
+  if (sortBy.value !== 'default') {
+    result = [...result].sort((a, b) => {
+      if (sortBy.value === 'newest') {
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      }
+      if (sortBy.value === 'oldest') {
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0)
+      }
+      if (sortBy.value === 'name') {
+        return (a.nickname || '').localeCompare(b.nickname || '', 'zh-CN')
+      }
+      return 0
+    })
+  }
 
   filteredSubscriptions.value = result
 }
@@ -2388,14 +2454,16 @@ function resetFilters() {
   selectedPlatforms.value = []
   statusFilter.value = ''
   searchQuery.value = ''
+  sortBy.value = 'default'
   filterSubscriptions()
 }
 
 // 监听筛选条件变化，保存到 localStorage
-watch([selectedPlatforms, statusFilter, searchQuery], ([newPlatforms, newStatus, newSearchQuery]) => {
+watch([selectedPlatforms, statusFilter, searchQuery, sortBy], ([newPlatforms, newStatus, newSearchQuery, newSortBy]) => {
   localStorage.setItem('subscription_platform_filter', newPlatforms.join(','))
   localStorage.setItem('subscription_status_filter', newStatus)
   localStorage.setItem('subscription_search_query', newSearchQuery || '')
+  localStorage.setItem('subscription_sort_by', newSortBy || 'default')
 }, { deep: true });
 
 const platformNamesMap = {
@@ -2515,7 +2583,7 @@ watch(subscriptionsWithProgress, () => {
   filterSubscriptions()
 })
 
-// 添加订阅
+// 添加
 async function addSubscription() {
   if (addingSubscription.value) return // 防止重复提交
   
@@ -2530,7 +2598,7 @@ async function addSubscription() {
     } else {
       // 验证必填字段
       if (!newSubscription.value.profile_url || !newSubscription.value.profile_url.trim()) {
-        customAlert('添加订阅失败', '请输入主页链接', 'error')
+        customAlert('添加失败', '请输入主页链接', 'error')
         addingSubscription.value = false
         return
       }
@@ -2580,7 +2648,7 @@ async function addSubscription() {
         }
         
         if (!playlistId) {
-          customAlert('添加订阅失败', '无法识别播放列表ID，请使用：1) 播放列表链接（如：https://www.youtube.com/playlist?list=PLxxxxx）2) 播放列表ID（如：PLxxxxx）', 'error')
+          customAlert('添加失败', '无法识别播放列表ID，请使用：1) 播放列表链接（如：https://www.youtube.com/playlist?list=PLxxxxx）2) 播放列表ID（如：PLxxxxx）', 'error')
           addingSubscription.value = false
           return
         }
@@ -2625,8 +2693,8 @@ async function addSubscription() {
     // 刷新订阅列表
     await loadSubscriptions()
   } catch (error) {
-    console.error('添加订阅失败:', error)
-    customAlert('添加订阅失败', error.response?.data?.detail || '添加订阅失败', 'error')
+    console.error('添加失败:', error)
+    customAlert('添加失败', error.response?.data?.detail || '添加失败', 'error')
   } finally {
     addingSubscription.value = false
   }
@@ -3890,7 +3958,8 @@ function applyFiltersFromStorage() {
   const savedPlatform = localStorage.getItem('subscription_platform_filter')
   const savedStatus = localStorage.getItem('subscription_status_filter')
   const savedSearchQuery = localStorage.getItem('subscription_search_query')
-  
+  const savedSortBy = localStorage.getItem('subscription_sort_by')
+
   if (savedPlatform) {
     selectedPlatforms.value = savedPlatform.split(',').filter(p => p !== '')
     // 如果只有一个值，也同步给 platformFilter 以保持兼容
@@ -3904,9 +3973,12 @@ function applyFiltersFromStorage() {
   if (savedSearchQuery) {
     searchQuery.value = savedSearchQuery
   }
-  
+  if (savedSortBy) {
+    sortBy.value = savedSortBy
+  }
+
   // 应用筛选后需要触发筛选函数
-  if (savedPlatform || savedStatus || savedSearchQuery) {
+  if (savedPlatform || savedStatus || savedSearchQuery || savedSortBy) {
     filterSubscriptions()
   }
 }
@@ -4460,13 +4532,13 @@ onUnmounted(() => {
 }
 
 .compact-select {
-  width: 99px;
+  width: 72px;
 }
 
 /* 自定义多选下拉框 */
 .custom-multiselect {
   position: relative;
-  width: 122px;
+  width: 90px;
   user-select: none;
 }
 
@@ -6441,7 +6513,7 @@ input:checked + .slider-modern:before { transform: translateX(18px); }
   box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
 }
 
-/* 添加订阅表单样式 */
+/* 添加表单样式 */
 .add-subscription-form {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { systemApi } from '@/api/system'
 import { licenseApi } from '@/api/license'
+import liveApi from '@/api/live'
 import { buildAuthedWsUrl } from '@/utils/wsAuth'
 
 export const useSystemStore = defineStore('system', {
@@ -20,6 +21,10 @@ export const useSystemStore = defineStore('system', {
                 message: ''
             },
             timestamp: null
+        },
+        live: {
+            recording_count: 0,
+            live_count: 0,
         },
         storage: {
             total_bytes: 0,
@@ -77,6 +82,18 @@ export const useSystemStore = defineStore('system', {
         updateMetrics(newMetrics) {
             this.metrics = { ...this.metrics, ...newMetrics }
             this.metrics.timestamp = new Date().toISOString()
+        },
+
+        async fetchLiveStats() {
+            try {
+                const res = await liveApi.getLiveStats()
+                if (res.success && res.data) {
+                    this.live.recording_count = res.data.recording_count || 0
+                    this.live.live_count = res.data.live_count || 0
+                }
+            } catch (e) {
+                // 静默失败
+            }
         },
 
         /**

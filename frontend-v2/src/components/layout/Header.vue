@@ -61,6 +61,32 @@
       </button>
     </div>
 
+    <!-- 中间实时监控 (桌面端) -->
+    <div class="header-center desktop-only">
+      <div class="monitor-item">
+        <span class="monitor-dot" :class="{ downloading: metrics.downloads.downloading > 0 }"></span>
+        <span class="monitor-label">下载中</span>
+        <span class="monitor-value" style="min-width: 16px">{{ metrics.downloads.downloading || 0 }}</span>
+      </div>
+      <div class="monitor-item">
+        <span class="monitor-dot" :class="{ recording: systemStore.live.recording_count > 0 }"></span>
+        <span class="monitor-label">录制中</span>
+        <span class="monitor-value" style="min-width: 16px">{{ systemStore.live.recording_count || 0 }}</span>
+      </div>
+      <div class="monitor-item">
+        <span class="monitor-label">↓</span>
+        <span class="monitor-value" style="min-width: 58px">{{ metrics.net.rx_bps > 0 ? formatBps(metrics.net.rx_bps) : '0 B/s' }}</span>
+      </div>
+      <div class="monitor-item">
+        <span class="monitor-label">CPU</span>
+        <span class="monitor-value" style="min-width: 36px">{{ metrics.cpu_percent || 0 }}%</span>
+      </div>
+      <div class="monitor-item">
+        <span class="monitor-label">内存</span>
+        <span class="monitor-value" style="min-width: 48px">{{ metrics.memory_mb > 0 ? formatMemory(metrics.memory_mb) : '0 MB' }}</span>
+      </div>
+    </div>
+
     <!-- 右侧操作区 -->
     <div class="header-right">
       <!-- 移动端主题切换 -->
@@ -144,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSystemStore } from '@/stores/system'
@@ -160,14 +186,36 @@ const toast = useToast()
 
 const showUserMenu = ref(false)
 
+let liveStatsTimer = null
+
 onMounted(() => {
     if (authStore.isAuthenticated && !authStore.user) {
         authStore.fetchUserInfo()
     }
+    systemStore.fetchLiveStats()
+    liveStatsTimer = setInterval(() => {
+        systemStore.fetchLiveStats()
+    }, 30000)
+})
+
+onUnmounted(() => {
+    if (liveStatsTimer) clearInterval(liveStatsTimer)
 })
 
 const userName = computed(() => authStore.user?.username || 'Admin')
 const pageTitle = computed(() => route.meta.title || 'Easy-VDL')
+const metrics = computed(() => systemStore.metrics)
+
+function formatBps(bps) {
+  if (bps >= 1048576) return (bps / 1048576).toFixed(1) + ' MB/s'
+  if (bps >= 1024) return (bps / 1024).toFixed(0) + ' KB/s'
+  return bps + ' B/s'
+}
+
+function formatMemory(mb) {
+  if (mb >= 1024) return (mb / 1024).toFixed(1) + ' GB'
+  return mb + ' MB'
+}
 
 function handleShowDisclaimer() {
   if (typeof window.showDisclaimer === 'function') {
@@ -307,6 +355,81 @@ function handleLogout() {
   }
 }
 
+
+/* Center - Monitor */
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+.monitor-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.monitor-value {
+  display: inline-block;
+  min-width: 36px;
+  text-align: right;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.monitor-item + .monitor-item::before {
+  content: '·';
+  margin-right: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.monitor-label {
+  color: #ffffff;
+}
+
+.monitor-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.monitor-dot.downloading {
+  background: rgba(74, 222, 128, 0.8);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.monitor-dot.recording {
+  background: rgba(74, 222, 128, 0.8);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+[data-theme="dark"] .monitor-item {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="dark"] .monitor-item + .monitor-item::before {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .monitor-label {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+[data-theme="dark"] .monitor-value {
+  color: #ffffff;
+}
 
 /* Right */
 .header-right {
