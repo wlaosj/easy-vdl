@@ -1680,6 +1680,65 @@ async def _collect_metrics_snapshot() -> dict:
         except Exception:
             pass  # 如果检测失败，使用缓存数据
 
+    # 12.1) Xvfb 显示服务检测 (带缓存，10秒刷新一次)
+    global _XVFB_CACHE, _XVFB_LAST_TS
+    try:
+        _XVFB_CACHE
+    except NameError:
+        _XVFB_CACHE = {"status": "checking", "latency_ms": 0}
+        _XVFB_LAST_TS = 0
+
+    xvfb_data = _XVFB_CACHE
+    if _XVFB_LAST_TS == 0 or time.time() - _XVFB_LAST_TS > 10:
+        try:
+            import socket as _socket
+            start_time = time.time()
+            display_num = os.environ.get('DISPLAY', ':99').split(':')[-1].split('.')[0]
+            socket_path = f"/tmp/.X11-unix/X{display_num}"
+            socket_ok = False
+            fluxbox_ok = False
+            message = ""
+
+            # 检查 Xvfb socket
+            if os.path.exists(socket_path):
+                try:
+                    sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+                    sock.settimeout(1.0)
+                    sock.connect(socket_path)
+                    sock.close()
+                    socket_ok = True
+                except Exception as e:
+                    message = f"Socket连接失败: {e}"
+            else:
+                message = f"Socket不存在: {socket_path}"
+
+            # 检查 fluxbox 进程
+            if socket_ok:
+                try:
+                    result = subprocess.run(
+                        ["pgrep", "-x", "fluxbox"],
+                        capture_output=True, timeout=3
+                    )
+                    fluxbox_ok = result.returncode == 0
+                    if not fluxbox_ok:
+                        message = "fluxbox未运行"
+                except Exception:
+                    message = "fluxbox检测异常"
+
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            if socket_ok and fluxbox_ok:
+                xvfb_data = {"status": "ok", "latency_ms": latency_ms}
+            elif socket_ok:
+                xvfb_data = {"status": "warning", "latency_ms": latency_ms, "message": message}
+            else:
+                xvfb_data = {"status": "failed", "latency_ms": latency_ms, "message": message}
+
+            _XVFB_CACHE = xvfb_data
+            _XVFB_LAST_TS = time.time()
+        except Exception:
+            pass
+
     # 13) 最近活动（使用 routers.system 预热好的缓存）
     try:
         from routers.system import _recent_activity_cache as system_recent_activity
@@ -1799,6 +1858,7 @@ async def _collect_metrics_snapshot() -> dict:
         "storage": storage_data,
         "license": license_data,
         "network": network_data,
+        "xvfb": xvfb_data,
         "recent_activity": recent_activity_data,
         "announcement": announcement_data,
         "gpu_stats": gpu_data

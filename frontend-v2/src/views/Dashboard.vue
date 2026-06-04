@@ -1091,7 +1091,8 @@ const hasServiceError = computed(() => {
 // 网络连通性检测
 const networkStatus = ref([
   { name: 'youtube', label: 'YouTube', icon: '🌍', status: 'checking', latency_ms: 0 },
-  { name: 'bilibili', label: 'Bilibili', icon: '🇨🇳', status: 'checking', latency_ms: 0 }
+  { name: 'bilibili', label: 'Bilibili', icon: '🇨🇳', status: 'checking', latency_ms: 0 },
+  { name: 'xvfb', label: 'Xvfb', icon: '🖥️', status: 'checking', latency_ms: 0 }
 ])
 
 async function checkNetworkConnectivity() {
@@ -1227,6 +1228,11 @@ onMounted(() => {
           const bilibiliIndex = networkStatus.value.findIndex(s => s.name === 'bilibili')
           if (bilibiliIndex >= 0) networkStatus.value[bilibiliIndex] = { name: 'bilibili', label: 'Bilibili', icon: '🇨🇳', ...payload.network.bilibili }
         }
+      }
+      // 更新 Xvfb 显示服务状态 (带10s缓存)
+      if (payload.xvfb) {
+        const xvfbIndex = networkStatus.value.findIndex(s => s.name === 'xvfb')
+        if (xvfbIndex >= 0) networkStatus.value[xvfbIndex] = { name: 'xvfb', label: 'Xvfb', icon: '🖥️', ...payload.xvfb }
       }
       
       // 更新最近活动列表 (带10s缓存)

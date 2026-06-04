@@ -59,6 +59,7 @@ function getNetworkClass(site) {
     if (site.latency_ms < 1000) return 'network-slow'
     return 'network-very-slow'
   }
+  if (site.status === 'warning') return 'network-warning'
   if (site.status === 'checking') return 'network-checking'
   if (site.status === 'timeout') return 'network-timeout'
   return 'network-failed'
@@ -69,7 +70,8 @@ function getNetworkStatusText(status) {
     'checking': '检测中',
     'timeout': '超时',
     'failed': '失败',
-    'error': '错误'
+    'error': '错误',
+    'warning': '异常'
   }
   return map[status] || status
 }
@@ -254,6 +256,15 @@ function getNetworkTooltip(site) {
 
 .network-chip.network-failed .network-status-text {
   color: #e74c3c;
+}
+
+.network-chip.network-warning {
+  background: rgba(243, 156, 18, 0.1);
+  border-color: rgba(243, 156, 18, 0.3);
+}
+
+.network-chip.network-warning .network-status-text {
+  color: #f39c12;
 }
 
 .network-chip.network-checking {
