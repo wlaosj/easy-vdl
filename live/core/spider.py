@@ -317,11 +317,6 @@ async def get_tiktok_stream_data(url: str, proxy_addr: OptionalStr = None, cooki
 
 @trace_error_decorator
 async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, cookies: OptionalStr = None) -> dict:
-    # 优先使用手机版网页（风控远低于桌面版）
-    mobile_result = await _get_kuaishou_via_mobile_page(url, proxy_addr)
-    if mobile_result:
-        return mobile_result
-
     # 随机 Chrome UA，模拟无痕模式下的全新设备指纹
     KUAISHOU_UAS = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -352,7 +347,12 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
     try:
         html_str = await async_req(url=url, proxy_addr=proxy_addr, headers=headers, http2=random.choice([True, False]))
     except Exception as e:
-        print(f"Failed to fetch data from {url}.{e}")
+        print(f"[Kuaishou] 请求失败: {url} - {e}")
+        return {"type": 1, "is_live": False}
+
+    # 检测风控响应（快手返回 JSON 错误而非 HTML）
+    if html_str and len(html_str) < 500 and '"code":400010' in html_str:
+        print(f"[Kuaishou] 触发频率限制: {html_str.strip()}")
         return {"type": 1, "is_live": False}
 
     try:
@@ -403,101 +403,6 @@ async def get_kuaishou_stream_data(url: str, proxy_addr: OptionalStr = None, coo
             play_url_list = play_list['liveStream']['playUrls'][0]['adaptationSet']['representation']
         result.update({"flv_url_list": play_url_list, "is_live": True})
 
-    return result
-
-
-@trace_error_decorator
-async def get_kuaishou_stream_data2(url: str, proxy_addr: OptionalStr = None, cookies: OptionalStr = None) -> dict | None:
-    # 手机版网页逻辑已内置到 get_kuaishou_stream_data 优先执行
-    return await get_kuaishou_stream_data(url, cookies=cookies, proxy_addr=proxy_addr)
-
-
-async def _get_kuaishou_via_mobile_page(url: str, proxy_addr: OptionalStr = None) -> dict | None:
-    """通过手机版网页获取快手直播信息（风控更宽松）"""
-    import secrets as _secrets
-
-    # 解析短链，获取完整手机版 URL
-    ua_mobile = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36'
-    did = f"web_{_secrets.token_hex(16)}"
-    headers = {
-        'User-Agent': ua_mobile,
-        'Cookie': f'did={did}; didv={str(int(time.time() * 1000))}',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Referer': 'https://m.kuaishou.com/',
-    }
-
-    try:
-        redirected = await async_req(url, proxy_addr=proxy_addr, headers=headers, redirect_url=True)
-        live_url = redirected or url
-        html = await async_req(url=live_url, proxy_addr=proxy_addr, headers=headers)
-    except Exception as e:
-        print(f"[KSMobile] 页面请求失败: {e}")
-        return None
-
-    if not html or len(html) < 5000:
-        print(f"[KSMobile] 页面过小，疑似被拦截: {len(html) if html else 0} bytes")
-        return None
-
-    # 在页面中提取直播状态
-    is_live = '"living":true' in html
-
-    # 提取主播名
-    anchor_match = re.search(r'"user_name"\s*:\s*"([^"]+)"', html)
-    if not anchor_match:
-        print("[KSMobile] 未找到主播名")
-        return None
-    anchor_name = anchor_match.group(1)
-
-    # 提取头像 URL
-    avatar_url = ""
-    # 尝试从 headurls 中提取第一个头像地址
-    headurls_match = re.search(r'"headurls"\s*:\s*\[.*?"url"\s*:\s*"([^"]+)"', html)
-    if headurls_match:
-        avatar_url = headurls_match.group(1)
-
-    result = {
-        "type": 2,
-        "anchor_name": anchor_name,
-        "avatar_url": avatar_url,
-        "is_live": False,
-    }
-
-    if not is_live:
-        print(f"[KSMobile] 主播未直播: {anchor_name}")
-        return result
-
-    result["is_live"] = True
-
-    # 提取 M3U8 流地址
-    try:
-        m3u8_cont = re.search(r'"multiResolutionHlsPlayUrls"\s*:\s*\[(.*?)\]', html)
-        if m3u8_cont:
-            # 从第一个元素提取 urls 数组
-            m3u8_urls_text = re.search(r'"urls"\s*:\s*(\[.*?\])\s*[,}]', m3u8_cont.group(0))
-            if m3u8_urls_text:
-                m3u8_list = json.loads(m3u8_urls_text.group(1))
-                if m3u8_list:
-                    result['m3u8_url_list'] = m3u8_list
-                    result['backup'] = result.get('backup', {})
-                    result['backup']['m3u8_url'] = m3u8_list[0].get('url', m3u8_list[0] if isinstance(m3u8_list[0], str) else '')
-    except Exception as e:
-        print(f"[KSMobile] M3U8 解析失败: {e}")
-
-    # 提取 FLV 流地址
-    try:
-        # 从 liveStream 块中提取 playUrls
-        play_urls_cont = re.search(r'"playUrls"\s*:\s*(\[.*?\])\s*[,}]', html)
-        if play_urls_cont:
-            url_list = json.loads(play_urls_cont.group(1))
-            if url_list:
-                result['flv_url_list'] = url_list
-                result['backup'] = result.get('backup', {})
-                result['backup']['flv_url'] = url_list[0].get('url', '')
-    except Exception as e:
-        print(f"[KSMobile] FLV 解析失败: {e}")
-
-    result["source"] = "mobile"
     return result
 
 

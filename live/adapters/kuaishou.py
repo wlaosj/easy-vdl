@@ -65,24 +65,20 @@ class KuaishouAdapter(BaseAdapter):
             }
 
         try:
-            # 优先使用无 Cookie 模式（快手 Cookie 请求 100% 被限流）
-            result = await _fetch(None)
-            # 无 Cookie 失败且有 Cookie 时，尝试 Cookie 兜底
-            if (
-                cookies
-                and not result["is_live"]
-                and not result.get("raw_data", {}).get("flv_url_list")
-            ):
-                logger.info("[KuaishouAdapter] 无 Cookie 未获取到直播信息，尝试 Cookie 兜底")
+            # Cookie 优先（无 Cookie 容易被限流，Cookie 请求成功率更高）
+            if cookies:
                 result = await _fetch(cookies)
+                return result
+            # 无 Cookie 时直接请求
+            result = await _fetch(None)
             return result
         except Exception as e:
             logger.error(f"[KuaishouAdapter] 获取直播间信息失败: {e}")
-            # 异常时尝试 Cookie 兜底
+            # 异常时尝试无 Cookie 兜底
             if cookies:
                 try:
-                    logger.info("[KuaishouAdapter] 无 Cookie 请求异常，尝试 Cookie 兜底")
-                    return await _fetch(cookies)
+                    logger.info("[KuaishouAdapter] Cookie 请求异常，尝试无 Cookie 兜底")
+                    return await _fetch(None)
                 except:
                     pass
             return {
@@ -131,24 +127,23 @@ class KuaishouAdapter(BaseAdapter):
             }
 
         try:
-            # 优先使用无 Cookie 模式（快手 Cookie 请求 100% 被限流）
-            result = await _fetch(None)
-            # 无 Cookie 失败且有 Cookie 时，尝试 Cookie 兜底
-            if (
-                cookies
-                and not result.get("is_live")
-                and not result.get("raw_data", {}).get("flv_url_list")
-            ):
-                logger.info("[KuaishouAdapter] 无 Cookie 未获取到直播信息，尝试 Cookie 兜底")
+            # Cookie 优先（无 Cookie 容易被限流，Cookie 请求成功率更高）
+            if cookies:
                 result = await _fetch(cookies)
+            else:
+                result = await _fetch(None)
+            # Cookie 请求失败时，尝试无 Cookie 兜底
+            if not result.get("is_live") and cookies:
+                logger.info("[KuaishouAdapter] Cookie 请求未获取到流地址，尝试无 Cookie 兜底")
+                result = await _fetch(None)
             return result
         except Exception as e:
             logger.error(f"[KuaishouAdapter] 获取流地址失败: {e}")
-            # 异常时尝试 Cookie 兜底
+            # 异常时尝试无 Cookie 兜底
             if cookies:
                 try:
-                    logger.info("[KuaishouAdapter] 无 Cookie 请求异常，尝试 Cookie 兜底")
-                    result = await _fetch(cookies)
+                    logger.info("[KuaishouAdapter] Cookie 请求异常，尝试无 Cookie 兜底")
+                    result = await _fetch(None)
                     if result.get("is_live"):
                         return result
                 except:
