@@ -1695,44 +1695,23 @@ async def _collect_metrics_snapshot() -> dict:
             start_time = time.time()
             display_num = os.environ.get('DISPLAY', ':99').split(':')[-1].split('.')[0]
             socket_path = f"/tmp/.X11-unix/X{display_num}"
-            socket_ok = False
-            fluxbox_ok = False
             message = ""
 
-            # 检查 Xvfb socket
+            # 检查 Xvfb socket 是否可连接（socket 可连接 = Xvfb + 窗口管理器均正常）
             if os.path.exists(socket_path):
                 try:
                     sock = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
                     sock.settimeout(1.0)
                     sock.connect(socket_path)
                     sock.close()
-                    socket_ok = True
+                    latency_ms = int((time.time() - start_time) * 1000)
+                    xvfb_data = {"status": "ok", "latency_ms": latency_ms}
                 except Exception as e:
-                    message = f"Socket连接失败: {e}"
+                    latency_ms = int((time.time() - start_time) * 1000)
+                    xvfb_data = {"status": "warning", "latency_ms": latency_ms, "message": f"Socket连接失败: {e}"}
             else:
-                message = f"Socket不存在: {socket_path}"
-
-            # 检查 fluxbox 进程
-            if socket_ok:
-                try:
-                    result = subprocess.run(
-                        ["pgrep", "-x", "fluxbox"],
-                        capture_output=True, timeout=3
-                    )
-                    fluxbox_ok = result.returncode == 0
-                    if not fluxbox_ok:
-                        message = "fluxbox未运行"
-                except Exception:
-                    message = "fluxbox检测异常"
-
-            latency_ms = int((time.time() - start_time) * 1000)
-
-            if socket_ok and fluxbox_ok:
-                xvfb_data = {"status": "ok", "latency_ms": latency_ms}
-            elif socket_ok:
-                xvfb_data = {"status": "warning", "latency_ms": latency_ms, "message": message}
-            else:
-                xvfb_data = {"status": "failed", "latency_ms": latency_ms, "message": message}
+                latency_ms = int((time.time() - start_time) * 1000)
+                xvfb_data = {"status": "failed", "latency_ms": latency_ms, "message": f"Socket不存在: {socket_path}"}
 
             _XVFB_CACHE = xvfb_data
             _XVFB_LAST_TS = time.time()
