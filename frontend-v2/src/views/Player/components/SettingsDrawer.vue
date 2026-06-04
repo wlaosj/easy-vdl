@@ -60,6 +60,15 @@
               </option>
             </select>
           </div>
+          <!-- 字幕位置 -->
+          <div class="setting-item flex-between" v-if="selectedSubtitleId !== 'off'">
+            <div class="label">字幕位置</div>
+            <div class="subtitle-offset-group">
+              <button class="offset-btn" @click="$emit('adjust-subtitle-offset', -5)">↑</button>
+              <span class="offset-value">{{ subtitleOffset > 0 ? '+' : '' }}{{ subtitleOffset }}%</span>
+              <button class="offset-btn" @click="$emit('adjust-subtitle-offset', 5)">↓</button>
+            </div>
+          </div>
 
           <!-- 播放模式 -->
           <div class="setting-item flex-between">
@@ -158,6 +167,10 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  subtitleOffset: {
+    type: Number,
+    default: 0
+  },
   isAudio: {
     type: Boolean,
     default: false
@@ -209,6 +222,7 @@ defineEmits([
   'update:playbackSpeed',
   'update:currentQuality',
   'update:selectedSubtitleId',
+  'adjust-subtitle-offset',
   'update:playbackMode',
   'update:autoPlayNext',
   'update:enableBackgroundPlay',
@@ -438,5 +452,42 @@ input:checked + .switch-slider:before {
 
 .player-gpu-mobile {
   width: 100%;
+}
+
+.subtitle-offset-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.offset-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  line-height: 1;
+}
+
+.offset-btn:active {
+  transform: scale(0.9);
+  background: var(--color-bg-hover);
+}
+
+.offset-value {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  min-width: 36px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 </style>

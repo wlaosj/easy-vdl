@@ -509,6 +509,8 @@
             :qualityOptions="qualityOptions"
             v-model:selectedSubtitleId="selectedSubtitleId"
             :subtitleOptions="subtitleOptions"
+            :subtitleOffset="subtitleOffset"
+            @adjust-subtitle-offset="adjustSubtitleOffset"
             :isAudio="isAudio"
             :isGallery="isGallery"
             :playbackModeIcon="playbackModeIcon"
@@ -602,6 +604,8 @@
         v-model:playbackSpeed="playbackSpeed"
         v-model:currentQuality="currentQuality"
         v-model:selectedSubtitleId="selectedSubtitleId"
+        :subtitleOffset="subtitleOffset"
+        @adjust-subtitle-offset="adjustSubtitleOffset"
         v-model:playbackMode="playbackMode"
         v-model:autoPlayNext="autoPlayNext"
         v-model:enableBackgroundPlay="enableBackgroundPlay"
@@ -898,7 +902,7 @@ const {
   galleryItems, galleryCurrentIndex, galleryBgm,
   autoRotateTimer, galleryLoading, galleryInterval,
   analyserRef,
-  subtitleOptions, selectedSubtitleId,
+  subtitleOptions, selectedSubtitleId, subtitleOffset,
   isControlHovered, isControlTouched, isForceLandscape,
   effectiveDuration, playlistContainerHeightStyle, videoContainerStyle,
   showTripleScreen, showCenterPlayButton, tripleScreenSliderStyle,
@@ -915,7 +919,7 @@ const {
   fetchGalleryFiles, startAutoRotate, stopAutoRotate,
   nextGalleryItem, prevGalleryItem, handleGalleryMediaClick,
   stopAudioVisualization, initAudioAnalyzer, cleanupAudioAnalyzer, resetAudioAnalyzer, ensureAudioAnalyzer,
-  fetchCurrentVideoSubtitles, applySubtitleSelection,
+  fetchCurrentVideoSubtitles, applySubtitleSelection, adjustSubtitleOffset,
   syncTripleMirrors, startTripleScreenLoop, stopTripleScreenLoop,
   fetchCurrentVideoMetadata,
   startTranscodedSeek, cleanupVideoConnection,

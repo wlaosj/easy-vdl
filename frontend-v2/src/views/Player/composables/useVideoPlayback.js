@@ -93,7 +93,9 @@ export function useVideoPlayback({
   // Subtitle
   const subtitleOptions = ref([])
   const selectedSubtitleId = ref("off")
+  const subtitleOffset = ref(Number(localStorage.getItem("subtitle_offset") || 0))
   let subtitleFetchToken = 0
+  let subtitleCueHandler = null
 
   // Control bar visibility timer
   const isControlHovered = ref(false)
@@ -574,6 +576,53 @@ export function useVideoPlayback({
       const shouldShow = targetId !== "off" && meta && String(meta.id) === String(targetId)
       textTrack.mode = shouldShow ? "showing" : "disabled"
     }
+    bindCuePositionHandler()
+  }
+
+  function bindCuePositionHandler() {
+    // 移除旧监听
+    if (subtitleCueHandler && videoRef.value) {
+      videoRef.value.textTracks?.removeEventListener("cuechange", subtitleCueHandler)
+      subtitleCueHandler = null
+    }
+    if (!videoRef.value || selectedSubtitleId.value === "off") return
+    const tracks = videoRef.value.textTracks
+    if (!tracks) return
+    // 找到当前激活的 track
+    for (let i = 0; i < tracks.length; i++) {
+      if (tracks[i].mode === "showing") {
+        subtitleCueHandler = () => applyCueOffset(tracks[i])
+        tracks[i].addEventListener("cuechange", subtitleCueHandler)
+        // 立即应用一次
+        applyCueOffset(tracks[i])
+        break
+      }
+    }
+  }
+
+  function applyCueOffset(textTrack) {
+    const offset = subtitleOffset.value
+    const baseLine = 82 + offset
+    const cues = textTrack.activeCues
+    if (!cues) return
+    for (let i = 0; i < cues.length; i++) {
+      cues[i].line = baseLine
+    }
+  }
+
+  function adjustSubtitleOffset(delta) {
+    const next = Math.max(-32, Math.min(13, subtitleOffset.value + delta))
+    subtitleOffset.value = next
+    localStorage.setItem("subtitle_offset", String(next))
+    // 立即应用到当前活跃的 cue
+    if (!videoRef.value || !videoRef.value.textTracks) return
+    const tracks = videoRef.value.textTracks
+    for (let i = 0; i < tracks.length; i++) {
+      if (tracks[i].mode === "showing") {
+        applyCueOffset(tracks[i])
+        break
+      }
+    }
   }
 
   async function fetchCurrentVideoSubtitles() {
@@ -982,7 +1031,7 @@ export function useVideoPlayback({
     galleryItems, galleryCurrentIndex, galleryBgm, galleryAudioRef,
     autoRotateTimer, galleryLoading, galleryInterval,
     analyserRef,
-    subtitleOptions, selectedSubtitleId,
+    subtitleOptions, selectedSubtitleId, subtitleOffset,
     isControlHovered, isControlTouched,
     isForceLandscape,
     primaryContentHeight,
@@ -1008,7 +1057,7 @@ export function useVideoPlayback({
     startAudioVisualization, stopAudioVisualization,
     cleanupAudioAnalyzer, initAudioAnalyzer, resetAudioAnalyzer, ensureAudioAnalyzer,
     // Methods — subtitle
-    fetchCurrentVideoSubtitles, applySubtitleSelection,
+    fetchCurrentVideoSubtitles, applySubtitleSelection, adjustSubtitleOffset,
     // Methods — triple screen
     syncTripleMirrors, startTripleScreenLoop, stopTripleScreenLoop,
     // Methods — metadata

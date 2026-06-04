@@ -97,7 +97,19 @@
           </select>
         </div>
         <div class="control-group">
-          <label>字幕</label>
+          <div class="subtitle-label-row">
+            <span
+              class="subtitle-label-text"
+              :class="{ 'resettable': subtitleOffset !== 0 }"
+              @click="subtitleOffset !== 0 && $emit('adjust-subtitle-offset', -subtitleOffset)"
+              :title="subtitleOffset !== 0 ? '点击重置字幕位置' : ''"
+            >字幕</span>
+            <span class="subtitle-offset-group" v-if="selectedSubtitleId !== 'off'">
+              <button class="offset-btn" @click.stop="$emit('adjust-subtitle-offset', -5)" title="字幕上移">↑</button>
+              <span class="offset-value">{{ subtitleOffset > 0 ? '+' : '' }}{{ subtitleOffset }}%</span>
+              <button class="offset-btn" @click.stop="$emit('adjust-subtitle-offset', 5)" title="字幕下移">↓</button>
+            </span>
+          </div>
           <select
             :value="selectedSubtitleId"
             @change="$emit('update:selectedSubtitleId', $event.target.value)"
@@ -211,6 +223,7 @@ const props = defineProps({
   qualityOptions: Array,
   selectedSubtitleId: String,
   subtitleOptions: Array,
+  subtitleOffset: Number,
   isAudio: Boolean,
   isGallery: Boolean,
   playbackModeIcon: String,
@@ -242,6 +255,7 @@ defineEmits([
   'update:playbackSpeed',
   'update:currentQuality',
   'update:selectedSubtitleId',
+  'adjust-subtitle-offset',
   'cycle-playback-mode',
   'update:autoPlayNext',
   'update:enableBackgroundPlay',
@@ -252,5 +266,71 @@ defineEmits([
   'seekEnd'
 ]);
 </script>
+
+<style scoped>
+.subtitle-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtitle-label-text {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.subtitle-label-text.resettable {
+  cursor: pointer;
+}
+
+.subtitle-label-text.resettable:hover {
+  color: var(--color-primary);
+}
+
+.subtitle-offset-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+}
+
+.offset-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  line-height: 1;
+}
+
+.offset-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.offset-btn:active {
+  transform: scale(0.9);
+}
+
+.offset-value {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+</style>
 
 
