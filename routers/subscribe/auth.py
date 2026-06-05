@@ -29,10 +29,12 @@ class BrowserHeartbeatRequest(BaseModel):
 async def init_douyin_login():
     """初始化抖音登录"""
     try:
+        # 🔧 登录需要VNC交互，切换到有头模式
+        await unified_browser.switch_to_headed()
         return await douyin_api.login()
     except Exception as e:
         logger.error(f"初始化登录失败: {str(e)}")
-        raise HTTPException(status_code=500, detail="初始化登录失败") 
+        raise HTTPException(status_code=500, detail="初始化登录失败")
 
 
 @router.post("/youtube/login")
@@ -40,11 +42,13 @@ async def init_douyin_login():
 async def init_youtube_login():
     """初始化YouTube登录"""
     try:
+        # 🔧 登录需要VNC交互，切换到有头模式
+        await unified_browser.switch_to_headed()
         # 调用youtube_api的login方法，它会处理浏览器的初始化和页面创建
         result = await youtube_api.login()
-        
+
         return {"message": "已打开YouTube登录页面"}
-            
+
     except Exception as e:
         logger.error(f"初始化YouTube登录失败: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -83,6 +87,23 @@ async def browser_heartbeat(payload: BrowserHeartbeatRequest):
     except Exception as e:
         logger.error(f"浏览器心跳失败: {str(e)}")
         raise HTTPException(status_code=500, detail="浏览器心跳失败")
+
+
+@router.get("/browser/status")
+@require_license_api
+async def browser_status():
+    """获取浏览器状态（用于前端判断是否有活跃任务）"""
+    try:
+        status = unified_browser.get_status()
+        return {
+            "initialized": status.get("initialized", False),
+            "active_tasks": status.get("active_tasks", 0),
+            "headless": status.get("headless", True),
+            "login_mode": status.get("login_mode", False),
+        }
+    except Exception as e:
+        logger.error(f"获取浏览器状态失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="获取浏览器状态失败")
 
 
 @router.post("/reset-browser")

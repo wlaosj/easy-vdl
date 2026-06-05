@@ -756,6 +756,8 @@ xhs_api = XiaohongshuAPI()
 @require_license_api
 async def login():
     """初始化登录"""
+    # 🔧 登录需要VNC交互，切换到有头模式
+    await unified_browser.switch_to_headed()
     return await xhs_api.login()
 
 @router.post("/close")

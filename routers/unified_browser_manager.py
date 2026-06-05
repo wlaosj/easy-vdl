@@ -50,7 +50,7 @@ class UnifiedBrowserManager:
         self._temp_user_data_dir = None
         
         # 空闲超时管理
-        self._idle_timeout = 120  # 2分钟空闲超时（与更短的平台清理冷却配合）
+        self._idle_timeout = 1200  # 20分钟空闲超时（覆盖大多数订阅检测间隔，减少冷启动）
         self._force_cleanup_timeout = 1800  # 30分钟强制回收（处理任务计数卡死）
         self._last_activity = None  # 懒加载模式：初始为None，首次使用时才设置
         self._activity_lock = asyncio.Lock()
@@ -65,6 +65,10 @@ class UnifiedBrowserManager:
         self._browser_lock = asyncio.Lock()
         self._is_initializing = False
         self._init_event: Optional[asyncio.Event] = None  # 初始化完成事件（替代轮询）
+
+        # 🔧 无头模式管理（默认无头，登录时切有头）
+        self._headless = True  # 默认无头模式
+        self._login_mode = False  # 是否处于登录模式（有头）
         
         logger.info("统一浏览器管理器已创建（标签页上限: %d）", self._max_total_pages)
     
@@ -120,7 +124,12 @@ class UnifiedBrowserManager:
                 if self._active_tasks > 0:
                     logger.debug(f"仍有 {self._active_tasks} 个活跃任务，跳过立即关闭")
                     return
-            
+
+            # 🔧 登录模式下不立即关闭，等待空闲超时后自动切回无头
+            if self._login_mode:
+                logger.debug("登录模式下跳过任务结束立即清理")
+                return
+
             # 检查空闲时间
             async with self._activity_lock:
                 if self._last_activity:
@@ -264,13 +273,12 @@ class UnifiedBrowserManager:
     
     def _get_browser_args(self) -> list:
         """获取浏览器启动参数"""
-        return [
+        args = [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-zygote',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--display=:99',
             '--start-maximized',
             '--disable-blink-features=AutomationControlled',
             '--disable-process-singleton',
@@ -315,9 +323,21 @@ class UnifiedBrowserManager:
             '--disable-low-res-tiling',      # 禁用低分辨率平铺（减少GPU内存）
             '--disable-software-rasterizer', # 禁用软件光栅化（如果GPU可用）
         ]
+        # 有头模式下需要指定Xvfb显示
+        if not self._headless:
+            args.append('--display=:99')
+        return args
     
-    async def init_browser(self) -> bool:
-        """初始化浏览器（全局只初始化一次）"""
+    async def init_browser(self, headless: Optional[bool] = None) -> bool:
+        """
+        初始化浏览器（全局只初始化一次）
+
+        Args:
+            headless: 是否无头模式。None则使用self._headless的值。
+        """
+        # 更新无头模式设置
+        if headless is not None:
+            self._headless = headless
         # 防并发初始化
         if self.context:
             return True
@@ -332,8 +352,8 @@ class UnifiedBrowserManager:
                 self._init_event = asyncio.Event()
             
             try:
-                # 使用事件等待，最多等待60秒（与浏览器启动超时一致）
-                await asyncio.wait_for(self._init_event.wait(), timeout=60.0)
+                # 使用事件等待，最多等待120秒（与浏览器启动超时一致）
+                await asyncio.wait_for(self._init_event.wait(), timeout=120.0)
                 # 初始化完成，检查结果
                 if self.context:
                     logger.info(f"等待初始化完成成功，耗时{time.time() - wait_start:.2f}秒")
@@ -343,7 +363,7 @@ class UnifiedBrowserManager:
                     return False
             except asyncio.TimeoutError:
                 # 等待超时，记录详细信息
-                logger.error(f"❌ 等待浏览器初始化超时（60秒），_is_initializing={self._is_initializing}, context={self.context is not None}")
+                logger.error(f"❌ 等待浏览器初始化超时（120秒），_is_initializing={self._is_initializing}, context={self.context is not None}")
                 # 🔧 关键修复：强制重置初始化标志，防止永久死锁
                 if self._is_initializing and not self.context:
                     logger.warning("强制重置 _is_initializing 标志，允许其他协程尝试初始化")
@@ -407,41 +427,44 @@ class UnifiedBrowserManager:
                         logger.warning(f"X Server检查时发生忽略的异常: {str(e)}")
                         return True
 
-                # 🚀 启动前检查 X Server 状态（快速失败机制）
-                if not await _check_display_server():
-                    logger.critical("🛑 检测到显示服务(Xvfb)异常，终止浏览器启动。")
-                    init_success = False
-                    return False
+                # 🚀 启动前检查 X Server 状态（仅有头模式需要）
+                if not self._headless:
+                    if not await _check_display_server():
+                        logger.critical("🛑 检测到显示服务(Xvfb)异常，终止浏览器启动。")
+                        init_success = False
+                        return False
                 
                 # 启动Playwright（带超时保护）
                 if not self._playwright:
                     try:
                         self._playwright = await asyncio.wait_for(
                             async_playwright().start(),
-                            timeout=30.0
+                            timeout=60.0
                         )
                         logger.info("Playwright已启动")
                     except asyncio.TimeoutError:
-                        logger.error("❌ Playwright 启动超时（30秒）")
+                        logger.error("❌ Playwright 启动超时（60秒）")
                         init_success = False
                         return False
                 
                 # 启动浏览器（持久化Context，带超时保护）
+                mode_str = "无头" if self._headless else "有头"
+                logger.info(f"正在启动浏览器（{mode_str}模式）...")
                 try:
                     self.context = await asyncio.wait_for(
                         self._playwright.chromium.launch_persistent_context(
                             user_data_dir=temp_user_data_dir,
-                            headless=False,
+                            headless=self._headless,
                             channel="chrome",
                             viewport={"width": 1280, "height": 720},
                             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
                             args=self._get_browser_args(),
                             ignore_https_errors=True,
                         ),
-                        timeout=60.0
+                        timeout=120.0
                     )
                 except asyncio.TimeoutError:
-                    logger.error("❌ 浏览器启动超时（60秒）")
+                    logger.error("❌ 浏览器启动超时（120秒）")
                     # 清理已启动的 Playwright
                     if self._playwright:
                         try:
@@ -658,7 +681,73 @@ class UnifiedBrowserManager:
             if self._init_event:
                 self._init_event.set()
             self._is_initializing = False
-    
+
+    async def switch_to_headed(self) -> bool:
+        """
+        切换到有头模式（用于VNC登录交互）
+
+        关闭当前无头浏览器，以有头模式重新启动。
+        Cookie通过持久化目录保留，不会丢失。
+
+        Returns:
+            bool: 是否切换成功
+        """
+        if not self._headless:
+            logger.debug("浏览器已是有头模式，无需切换")
+            return True
+
+        logger.info("🔄 正在从无头模式切换到有头模式（VNC登录）...")
+
+        # 关闭当前无头浏览器
+        await self.close_browser()
+
+        # 以有头模式重新初始化
+        success = await self.init_browser(headless=False)
+        if success:
+            self._login_mode = True
+            logger.info("✅ 已切换到有头模式，VNC可见")
+        else:
+            logger.error("❌ 切换到有头模式失败")
+        return success
+
+    async def switch_to_headless(self) -> bool:
+        """
+        切换回无头模式（登录完成后）
+
+        关闭当前有头浏览器，以无头模式重新启动。
+        Cookie通过持久化目录保留，不会丢失。
+
+        Returns:
+            bool: 是否切换成功
+        """
+        if self._headless:
+            logger.debug("浏览器已是无头模式，无需切换")
+            return True
+
+        logger.info("🔄 正在从有头模式切换回无头模式...")
+
+        # 关闭当前有头浏览器
+        await self.close_browser()
+
+        # 以无头模式重新初始化
+        success = await self.init_browser(headless=True)
+        if success:
+            self._login_mode = False
+            logger.info("✅ 已切换回无头模式")
+        else:
+            logger.error("❌ 切换回无头模式失败")
+        return success
+
+    @property
+    def is_headless(self) -> bool:
+        """当前是否无头模式"""
+        return self._headless
+
+    @property
+    def is_login_mode(self) -> bool:
+        """当前是否登录模式（有头）"""
+        return self._login_mode
+
     async def get_page(self, page_key: str, auto_create: bool = True) -> Optional[Page]:
         """
         获取或创建页面（支持平台和频道页面）
@@ -943,10 +1032,16 @@ class UnifiedBrowserManager:
                 # 再检查空闲时间
                 async with self._activity_lock:
                     if self._last_activity and (time.time() - self._last_activity) > self._idle_timeout:
-                        logger.debug(f"浏览器空闲超过{self._idle_timeout}秒，准备关闭")
-                        await self.close_browser()
-                        self._last_activity = None
-                        logger.info(f"浏览器空闲回收已执行：空闲超过{self._idle_timeout}秒，浏览器已关闭")
+                        # 🔧 登录模式下空闲超时：切回无头模式而非关闭
+                        if self._login_mode:
+                            logger.info(f"登录模式空闲超过{self._idle_timeout}秒，切回无头模式")
+                            await self.switch_to_headless()
+                            self._last_activity = None
+                        else:
+                            logger.debug(f"浏览器空闲超过{self._idle_timeout}秒，准备关闭")
+                            await self.close_browser()
+                            self._last_activity = None
+                            logger.info(f"浏览器空闲回收已执行：空闲超过{self._idle_timeout}秒，浏览器已关闭")
             except Exception as e:
                 logger.error(f"自动清理任务出错: {str(e)}")
     
@@ -954,6 +1049,8 @@ class UnifiedBrowserManager:
         """获取浏览器状态（用于调试和监控）"""
         return {
             "initialized": self.context is not None,
+            "headless": self._headless,
+            "login_mode": self._login_mode,
             "active_pages": list(self._pages.keys()),
             "page_count": len(self._pages),  # 管理的页面数
             "active_tasks": self._active_tasks,  # 活跃任务数

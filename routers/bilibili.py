@@ -3501,6 +3501,9 @@ async def init_login(current_user: User = Depends(get_current_user)):
     """启动B站登录流程"""
     logger.info("B站登录流程启动")
     try:
+        # 🔧 登录需要VNC交互，切换到有头模式
+        from routers.unified_browser_manager import unified_browser
+        await unified_browser.switch_to_headed()
         result = await bilibili_api.login()
         # 检查是否是用户取消登录
         if result.get("cancelled"):

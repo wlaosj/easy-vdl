@@ -3606,16 +3606,39 @@ async function handleClearCache() {
   }
 }
 
+// 🔧 检查是否有活跃任务，提示用户
+async function checkActiveTasksBeforeLogin(platform) {
+  try {
+    const status = await subscriptionsApi.getBrowserStatus()
+    if (status && status.active_tasks > 0) {
+      const confirmed = await customConfirm(
+        '同步任务运行中',
+        `当前有 <strong>${status.active_tasks}</strong> 个同步任务运行中，切换登录可能会中断任务。<br><br>是否继续？`
+      )
+      if (!confirmed) {
+        return false
+      }
+    }
+  } catch (error) {
+    // 状态查询失败不影响登录流程
+    console.warn('查询浏览器状态失败:', error)
+  }
+  return true
+}
+
 // 抖音登录
 async function handleDouyinLogin() {
   try {
+    // 检查是否有活跃任务
+    if (!await checkActiveTasksBeforeLogin('douyin')) return
+
     // 立即显示VNC模态框
     vncPlatform.value = 'douyin'
     showVncModal.value = true
-    
+
     // 异步启动浏览器
     const response = await subscriptionsApi.douyinLogin()
-    
+
     if (!response || response.error) {
       // 如果启动失败，关闭VNC模态框
       showVncModal.value = false
@@ -3631,13 +3654,16 @@ async function handleDouyinLogin() {
 // YouTube登录
 async function handleYoutubeLogin() {
   try {
+    // 检查是否有活跃任务
+    if (!await checkActiveTasksBeforeLogin('youtube')) return
+
     // 立即显示VNC模态框
     vncPlatform.value = 'youtube'
     showVncModal.value = true
-    
+
     // 异步启动浏览器
     const response = await subscriptionsApi.youtubeLogin()
-    
+
     if (!response || response.error) {
       showVncModal.value = false
       throw new Error(response?.error || '启动浏览器失败')
@@ -3652,13 +3678,16 @@ async function handleYoutubeLogin() {
 // B站登录
 async function handleBilibiliLogin() {
   try {
+    // 检查是否有活跃任务
+    if (!await checkActiveTasksBeforeLogin('bilibili')) return
+
     // 立即显示VNC模态框
     vncPlatform.value = 'bilibili'
     showVncModal.value = true
-    
+
     // 异步启动浏览器
     const response = await subscriptionsApi.bilibiliLogin()
-    
+
     if (!response || response.error) {
       showVncModal.value = false
       throw new Error(response?.error || '启动浏览器失败')
@@ -3673,13 +3702,16 @@ async function handleBilibiliLogin() {
 // 小红书登录
 async function handleXiaohongshuLogin() {
   try {
+    // 检查是否有活跃任务
+    if (!await checkActiveTasksBeforeLogin('xiaohongshu')) return
+
     // 立即显示VNC模态框
     vncPlatform.value = 'xiaohongshu'
     showVncModal.value = true
-    
+
     // 异步启动浏览器
     const response = await subscriptionsApi.xiaohongshuLogin()
-    
+
     if (!response || response.error) {
       showVncModal.value = false
       throw new Error(response?.error || '启动浏览器失败')

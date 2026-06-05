@@ -188,6 +188,11 @@ export const subscriptionsApi = {
         return await client.post('/subscribe/browser/heartbeat', { platform, source })
     },
 
+    // 获取浏览器状态（用于判断是否有活跃任务）
+    async getBrowserStatus() {
+        return await client.get('/subscribe/browser/status')
+    },
+
     // 获取YouTube播放列表
     async getYoutubePlaylists(channelId) {
         return await client.get(`/subscribe/youtube/playlists?channel_id=${channelId}`)
