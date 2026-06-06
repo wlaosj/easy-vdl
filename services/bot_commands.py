@@ -559,6 +559,7 @@ async def add_subscription(url: str) -> Dict[str, Any]:
             return {"success": True, "name": name, "platform": str(platform) if platform else "自动识别", "type": sub_type}
         return {"success": False, "error": "添加失败"}
     except Exception as e:
+        logger.error(f"添加订阅异常 (url={url[:50]}): {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 
@@ -922,6 +923,7 @@ async def handle_url(url: str, context_text: str = "") -> Dict[str, Any]:
     # 先解析短链（仅用于分类判断，传给业务函数时用原始 URL 避免丢失参）
     resolved = await resolve_url(url)
     url_type = classify_url(resolved, context_text)
+    logger.debug(f"handle_url: url={url[:60]}, resolved={resolved[:60]}, type={url_type}")
     if url_type == "live":
         return await add_live_subscription(url)
     elif url_type == "subscription":
