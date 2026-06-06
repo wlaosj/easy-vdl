@@ -548,7 +548,11 @@ async def add_subscription(url: str) -> Dict[str, Any]:
             subscription_type=subscription_type,
             youtube_tab_type=youtube_tab_type,
         )
-        result = await _add_sub(sub_create)
+        try:
+            result = await _add_sub(sub_create)
+        except Exception as e:
+            logger.error(f"添加订阅失败 (url={url[:50]}): {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
         if result:
             name = getattr(result, 'nickname', None) or getattr(result, 'profile_url', url[:40])
             sub_type = detect_subscription_type(url) or subscription_type
