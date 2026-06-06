@@ -146,7 +146,6 @@
           <div class="setting-label">
             <span class="title">API 代理地址（可选）</span>
             <p class="desc">企业微信 API 出口代理，解决本地 IP 不在白名单的问题</p>
-            <p class="desc">格式：http://VPS_IP:端口</p>
           </div>
           <div class="setting-control vertical">
             <input
@@ -155,7 +154,11 @@
               placeholder="http://your-vps-ip:1080"
               class="form-input"
             />
-            <p class="field-hint">不填则直连企业微信API（需要本地IP在白名单）。填写后所有API请求通过代理出口。</p>
+            <div class="callback-help">
+              <p class="field-hint"><strong>有公网 IP：</strong>不填，直接把公网 IP 加到企业微信可信 IP 白名单即可。</p>
+              <p class="field-hint"><strong>无公网 IP：</strong>在 VPS 上开一个 HTTP 代理（如 tiny-proxy），填 <code>http://VPS_IP:代理端口</code>，然后把 VPS IP 加到白名单。</p>
+              <p class="field-hint">不填则 EDL 直连企业微信 API，需要 EDL 出口 IP 在白名单中。</p>
+            </div>
           </div>
         </div>
 
