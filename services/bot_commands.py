@@ -549,7 +549,12 @@ async def add_subscription(url: str) -> Dict[str, Any]:
             youtube_tab_type=youtube_tab_type,
         )
         try:
-            result = await _add_sub(sub_create)
+            from sql.database_postgresql import get_session
+            db_session = get_session()
+            try:
+                result = await _add_sub(sub_create, db_session)
+            finally:
+                db_session.close()
         except Exception as e:
             logger.error(f"添加订阅失败 (url={url[:50]}): {e}", exc_info=True)
             return {"success": False, "error": str(e)}
