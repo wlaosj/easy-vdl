@@ -125,16 +125,20 @@
           <div class="setting-label">
             <span class="title">回调 URL</span>
             <p class="desc">填入企业微信后台「接收消息」的 URL</p>
-            <p class="desc">格式：http(s)://你的域名或IP:端口/api/wecom/callback</p>
+            <p class="desc">EDL 回调端口默认为 <code>8001</code></p>
           </div>
           <div class="setting-control vertical">
             <input
               type="text"
               v-model="settingsStore.notificationSettings.wecomCallbackUrl"
-              placeholder="http://your-domain:8000/api/wecom/callback"
+              placeholder="http://你的公网IP:8001/api/wecom/callback"
               class="form-input"
             />
-            <p class="field-hint">如使用 frp 内网穿透，填写穿透后的公网地址。保存后需在企业微信后台点击「保存」验证回调。</p>
+            <div class="callback-help">
+              <p class="field-hint"><strong>有公网 IP：</strong><code>http://你的公网IP:8001/api/wecom/callback</code></p>
+              <p class="field-hint"><strong>无公网 IP（frp 穿透）：</strong><code>http://VPS的IP或域名:8001/api/wecom/callback</code></p>
+              <p class="field-hint">填写后到企业微信后台「接收消息」→ 填入此 URL → 点击保存验证。</p>
+            </div>
           </div>
         </div>
 
@@ -334,6 +338,26 @@ onMounted(() => {
   font-size: 0.82rem;
   color: var(--color-text-tertiary);
   line-height: 1.4;
+}
+
+.field-hint code {
+  background: var(--color-bg-tertiary, rgba(128,128,128,0.15));
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.callback-help {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--color-bg-tertiary, rgba(128,128,128,0.08));
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.callback-help .field-hint {
+  margin: 4px 0;
 }
 
 .setting-control {
