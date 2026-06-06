@@ -105,9 +105,9 @@ class LicenseManager:
         self.cache_duration = 43200
         # 后台主动复验节奏：每4小时触发一次远端校验（与请求路径缓存放行并行）
         self.verify_interval = 14400
-        self.max_retries = 3                  # 最大重试次数
-        self.retry_delay = 5                  # 重试间隔（秒）
-        self.request_timeout = 10             # 请求超时时间（秒）
+        self.max_retries = 3
+        self.retry_delay = 2
+        self.request_timeout = 3
         self.last_success_time = 0             # 最后一次成功时间
         self.last_verify_time = 0              # 最后一次验证时间
         self.last_error = None                 # 最后一次错误信息
