@@ -606,12 +606,10 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
             if existing:
                 return {"success": False, "error": f"该直播间已存在: {existing.anchor_name}"}
 
-            # 清洗 URL 去除追踪参数，避免超 DB 字段长限 VARCHAR(500)
-            clean_room_url = clean_url(url)
             new_sub = LiveSubscription(
                 id=str(uuid.uuid4()),
                 platform=platform_name,
-                room_url=clean_room_url,
+                room_url=url,
                 room_id=str(room_id) if room_id else "",
                 anchor_name=anchor_name,
                 avatar_url=avatar_url,
@@ -817,15 +815,15 @@ def classify_url(url: str, context_text: str = "") -> str:
 
 async def handle_url(url: str, context_text: str = "") -> Dict[str, Any]:
     """智能处理 URL（含短链解析 + 文本上下文辅助判断）"""
-    # 先解析短链
+    # 先解析短链（仅用于分类判断，传给业务函数时用原始 URL 避免丢失参）
     resolved = await resolve_url(url)
     url_type = classify_url(resolved, context_text)
     if url_type == "live":
-        return await add_live_subscription(resolved)
+        return await add_live_subscription(url)
     elif url_type == "subscription":
-        return await add_subscription(resolved)
+        return await add_subscription(url)
     else:
-        return await download_url(resolved)
+        return await download_url(url)
 
 
 # ==================== 内部工具 ====================
