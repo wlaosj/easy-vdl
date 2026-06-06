@@ -486,7 +486,10 @@ async def add_subscription(url: str) -> Dict[str, Any]:
 
         # 直播链接检测：如果是直播链接，转给直播订阅
         url_lower = url.lower()
-        if any(x in url_lower for x in ["live.douyin.com", "live.bilibili.com", "youtube.com/live/"]):
+        if any(x in url_lower for x in [
+            "live.douyin.com", "live.bilibili.com", "youtube.com/live/",
+            "webcast.amemv.com", "amemv.com",
+        ]):
             return await add_live_subscription(url)
 
         # 输入校验：拒绝无效链接
@@ -790,12 +793,21 @@ def classify_url(url: str, context_text: str = "") -> str:
     支持传入 context_text 辅助判断（短链未解析时，原文含"正在直播"等提示词直接命中直播）
     """
     url_lower = url.lower()
-    if any(x in url_lower for x in ["live.douyin", "live.bilibili", "huya.com", "kuaishou.com/live", "douyu.com", "twitch.tv"]):
+    if any(x in url_lower for x in [
+        "live.douyin", "live.bilibili", "huya.com", "kuaishou.com/live",
+        "douyu.com", "twitch.tv",
+        "webcast.amemv.com", "amemv.com",  # 抖音直播 webcast 域名
+    ]):
         return "live"
     # 抖音短链 v.douyin.com — 可能指向直播间（配合文本上下文判断）
     if "v.douyin.com" in url and "/note/" not in url and "/video/" not in url:
         if contains_live_context(context_text):
             return "live"
+    # 上下文明确含直播提示词，且 URL 来自直播平台，判为直播
+    if contains_live_context(context_text) and any(
+        d in url_lower for d in ["douyin.com", "iesdouyin.com", "amemv.com"]
+    ):
+        return "live"
     if detect_subscription_type(url):
         return "subscription"
     return "download"
