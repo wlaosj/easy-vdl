@@ -1467,6 +1467,8 @@ async def stop_recording(
     
     subscription.is_recording = "false"
     subscription.auto_record = "false"
+    # 清除调度器配置缓存，避免 120 秒 TTL 内用旧值 auto_record=true 又自动开录
+    live_scheduler.invalidate_config_cache(sub_id)
     # 仅停止当前录制，不影响周期检测任务。
     # 直播间状态刷新是否继续，统一由 monitor_enabled 控制。
     
