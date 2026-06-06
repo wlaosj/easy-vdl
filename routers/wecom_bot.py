@@ -435,7 +435,7 @@ class WecomBotService:
         for l in r["items"]:
             icon = "🔴" if l["is_recording"] else "⚪"
             auto = "📹开" if l.get("auto_record") == "true" else "📹关"
-            lines.append(f"• {icon} {l['anchor_name']} {auto}")
+            lines.append(f"• {icon} {l['anchor_name']} {auto}\n  ID: {l['id']}")
         lines.append("\n发送「停录 ID」「开录 ID」「删直 ID」管理")
         return "\n".join(lines)
 
