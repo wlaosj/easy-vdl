@@ -3933,7 +3933,7 @@ class TelegramBotService:
             adapter = adapters.get_adapter(url)
             if not adapter:
                 # 增强识别逻辑：处理短链和特殊域名
-                if 'douyin.com' in url or 'iesdouyin.com' in url:
+                if 'douyin.com' in url or 'iesdouyin.com' in url or 'amemv.com' in url:
                     adapter = adapters.get_adapter_by_platform('douyin')
                 elif 'bilibili.com' in url or 'b23.tv' in url:
                     adapter = adapters.get_adapter_by_platform('bilibili')
