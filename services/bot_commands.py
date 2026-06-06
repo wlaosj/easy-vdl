@@ -351,16 +351,18 @@ async def check_status() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-async def check_subscriptions() -> Dict[str, Any]:
-    """查订阅"""
+async def check_subscriptions(page: int = 1, page_size: int = 10) -> Dict[str, Any]:
+    """查订阅（支持翻页，默认每页 10 条）"""
     try:
         from sql.database_postgresql import get_session
         from sql.models import Subscription
         db = get_session()
         try:
-            subs = db.query(Subscription).order_by(Subscription.created_at.desc()).all()
+            total = db.query(Subscription).count()
+            offset = (page - 1) * page_size
+            subs = db.query(Subscription).order_by(Subscription.created_at.desc()).offset(offset).limit(page_size).all()
             items = []
-            for sub in subs[:20]:
+            for sub in subs:
                 items.append({
                     "id": sub.id[:8],
                     "full_id": sub.id,
@@ -369,27 +371,30 @@ async def check_subscriptions() -> Dict[str, Any]:
                     "url": sub.profile_url or "",
                     "platform": sub.platform,
                 })
-            return {"success": True, "total": len(subs), "items": items}
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            return {"success": True, "total": total, "items": items, "page": page, "total_pages": total_pages}
         finally:
             db.close()
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-async def check_live_subscriptions() -> Dict[str, Any]:
-    """查直播订阅"""
+async def check_live_subscriptions(page: int = 1, page_size: int = 10) -> Dict[str, Any]:
+    """查直播订阅（支持翻页，默认每页 10 条）"""
     try:
         from sql.database_postgresql import get_session
         from sql.models import LiveSubscription
         db = get_session()
         try:
+            total = db.query(LiveSubscription).count()
+            offset = (page - 1) * page_size
             lives = db.query(LiveSubscription).order_by(
                 LiveSubscription.is_live.desc(),
                 LiveSubscription.is_recording.desc(),
                 LiveSubscription.created_at.desc(),
-            ).all()
+            ).offset(offset).limit(page_size).all()
             items = []
-            for live in lives[:20]:
+            for live in lives:
                 items.append({
                     "id": live.id[:8],
                     "full_id": live.id,
@@ -400,7 +405,8 @@ async def check_live_subscriptions() -> Dict[str, Any]:
                     "platform": live.platform,
                     "room_url": live.room_url,
                 })
-            return {"success": True, "total": len(lives), "items": items}
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            return {"success": True, "total": total, "items": items, "page": page, "total_pages": total_pages}
         finally:
             db.close()
     except Exception as e:

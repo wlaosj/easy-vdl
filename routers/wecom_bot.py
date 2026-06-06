@@ -263,7 +263,14 @@ class WecomBotService:
             return self._fmt_status(await cmd.check_status())
         elif cl in ("查订阅", "订阅"):
             return self._fmt_subscriptions(await cmd.check_subscriptions())
-        elif cl in ("查直播", "直播") and not cl.startswith("直播 "):
+        elif cl.startswith("查直播 ") or cl.startswith("直播 "):
+            # "查直播 2" → 翻页, "直播 URL" → 添加直播录制
+            arg = content.split(" ", 1)[1].strip()
+            if arg.isdigit():
+                return self._fmt_live(await cmd.check_live_subscriptions(page=int(arg)))
+            url = cmd.extract_url(content)
+            return self._fmt_op(await cmd.add_live_subscription(url), "直播录制已添加") if url else "格式: 直播 URL"
+        elif cl in ("查直播", "直播"):
             return self._fmt_live(await cmd.check_live_subscriptions())
         elif cl in ("失败任务", "失败"):
             return self._fmt_failed(await cmd.check_failed_tasks())
@@ -431,12 +438,16 @@ class WecomBotService:
             return f"查询直播失败: {r.get('error')}"
         if not r["items"]:
             return "【直播订阅】暂无订阅"
-        lines = [f"【直播订阅】共 {r['total']} 个\n"]
+        page = r.get("page", 1)
+        total_pages = r.get("total_pages", 1)
+        header = f"【直播订阅】共 {r['total']} 个 (第 {page}/{total_pages} 页)\n"
+        lines = [header]
         for l in r["items"]:
             icon = "🔴" if l["is_recording"] else "⚪"
             auto = "📹开" if l.get("auto_record") == "true" else "📹关"
             lines.append(f"• {icon} {l['anchor_name']} {auto}\n  ID: {l['id']}")
-        lines.append("\n发送「停录 ID」「开录 ID」「删直 ID」管理")
+        lines.append(f"\n发送「查直播 N」翻页，N 为页码")
+        lines.append("发送「停录 ID」「开录 ID」「删直 ID」管理")
         return "\n".join(lines)
 
     def _fmt_failed(self, r: dict) -> str:
