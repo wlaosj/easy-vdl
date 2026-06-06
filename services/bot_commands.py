@@ -729,6 +729,9 @@ async def delete_task(task_id: str) -> Dict[str, Any]:
 async def pause_subscription(sub_id: str) -> Dict[str, Any]:
     """暂停订阅"""
     try:
+        from routers.license import license_manager
+        if not await license_manager.is_active_for("bot.subscribe"):
+            return {"success": False, "error": "订阅管理是高级功能，授权无效或已过期。"}
         from sql.database_postgresql import get_session
         from sql.models import Subscription
         db = get_session()
@@ -748,6 +751,9 @@ async def pause_subscription(sub_id: str) -> Dict[str, Any]:
 async def resume_subscription(sub_id: str) -> Dict[str, Any]:
     """恢复订阅"""
     try:
+        from routers.license import license_manager
+        if not await license_manager.is_active_for("bot.subscribe"):
+            return {"success": False, "error": "订阅管理是高级功能，授权无效或已过期。"}
         from sql.database_postgresql import get_session
         from sql.models import Subscription
         db = get_session()
@@ -789,6 +795,9 @@ async def delete_subscription(sub_id: str) -> Dict[str, Any]:
 async def pause_live_subscription(sub_id: str) -> Dict[str, Any]:
     """暂停直播订阅：停止当前录制 + 关闭自动录制"""
     try:
+        from routers.license import license_manager
+        if not await license_manager.is_active_for("bot.add_live_subscription"):
+            return {"success": False, "error": "直播管理是高级功能，授权无效或已过期。"}
         from sql.database_postgresql import get_session
         from sql.models import LiveSubscription
         from live.scheduler import live_scheduler
@@ -830,6 +839,9 @@ async def pause_live_subscription(sub_id: str) -> Dict[str, Any]:
 async def resume_live_subscription(sub_id: str) -> Dict[str, Any]:
     """恢复直播订阅（开启自动录制）"""
     try:
+        from routers.license import license_manager
+        if not await license_manager.is_active_for("bot.add_live_subscription"):
+            return {"success": False, "error": "直播管理是高级功能，授权无效或已过期。"}
         from sql.database_postgresql import get_session
         from sql.models import LiveSubscription
         from live.scheduler import live_scheduler
