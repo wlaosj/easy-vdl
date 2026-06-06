@@ -3998,7 +3998,7 @@ class TelegramBotService:
                 new_sub = LiveSubscription(
                     id=str(uuid.uuid4()),  # 手动生成UUID
                     platform=platform_name,
-                    room_url=url,
+                    room_url=cmd.clean_url(url),
                     room_id=str(room_id) if room_id else "",
                     anchor_name=anchor_name,
                     avatar_url=avatar_url,

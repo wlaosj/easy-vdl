@@ -606,10 +606,12 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
             if existing:
                 return {"success": False, "error": f"该直播间已存在: {existing.anchor_name}"}
 
+            # 清洗 URL 去除追踪参数，避免超 DB 字段长限 VARCHAR(500)
+            clean_room_url = clean_url(url)
             new_sub = LiveSubscription(
                 id=str(uuid.uuid4()),
                 platform=platform_name,
-                room_url=url,
+                room_url=clean_room_url,
                 room_id=str(room_id) if room_id else "",
                 anchor_name=anchor_name,
                 avatar_url=avatar_url,
