@@ -764,6 +764,72 @@ async def delete_subscription(sub_id: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
+# ==================== 直播订阅管理 ====================
+
+
+async def pause_live_subscription(sub_id: str) -> Dict[str, Any]:
+    """暂停直播订阅（关闭自动录制）"""
+    try:
+        from sql.database_postgresql import get_session
+        from sql.models import LiveSubscription
+        from live.scheduler import live_scheduler
+        db = get_session()
+        try:
+            sub = db.query(LiveSubscription).filter(LiveSubscription.id.startswith(sub_id)).first()
+            if not sub:
+                return {"success": False, "error": f"未找到直播订阅: {sub_id}"}
+            sub.auto_record = "false"
+            db.commit()
+            live_scheduler.invalidate_config_cache(sub.id)
+            return {"success": True, "name": sub.anchor_name or sub.room_url[:30]}
+        finally:
+            db.close()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def resume_live_subscription(sub_id: str) -> Dict[str, Any]:
+    """恢复直播订阅（开启自动录制）"""
+    try:
+        from sql.database_postgresql import get_session
+        from sql.models import LiveSubscription
+        from live.scheduler import live_scheduler
+        db = get_session()
+        try:
+            sub = db.query(LiveSubscription).filter(LiveSubscription.id.startswith(sub_id)).first()
+            if not sub:
+                return {"success": False, "error": f"未找到直播订阅: {sub_id}"}
+            sub.auto_record = "true"
+            db.commit()
+            live_scheduler.invalidate_config_cache(sub.id)
+            return {"success": True, "name": sub.anchor_name or sub.room_url[:30]}
+        finally:
+            db.close()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def delete_live_subscription(sub_id: str) -> Dict[str, Any]:
+    """删除直播订阅"""
+    try:
+        from sql.database_postgresql import get_session
+        from sql.models import LiveSubscription
+        from live.scheduler import live_scheduler
+        db = get_session()
+        try:
+            sub = db.query(LiveSubscription).filter(LiveSubscription.id.startswith(sub_id)).first()
+            if not sub:
+                return {"success": False, "error": f"未找到直播订阅: {sub_id}"}
+            await live_scheduler.remove_monitor(sub.id, stop_recording=False)
+            db.delete(sub)
+            db.commit()
+            return {"success": True, "name": sub.anchor_name or sub.room_url[:30]}
+        finally:
+            db.close()
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ==================== URL 识别 ====================
 
 # 直播上下文提示词（用于短链未解析时兜底检测）

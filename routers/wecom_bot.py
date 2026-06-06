@@ -282,6 +282,15 @@ class WecomBotService:
         elif cl.startswith("删订 "):
             sid = content.split(" ", 1)[1].strip()
             return self._fmt_op(await cmd.delete_subscription(sid), "订阅已删除")
+        elif cl.startswith("停录 "):
+            sid = content.split(" ", 1)[1].strip()
+            return self._fmt_op(await cmd.pause_live_subscription(sid), "直播录制已暂停")
+        elif cl.startswith("开录 "):
+            sid = content.split(" ", 1)[1].strip()
+            return self._fmt_op(await cmd.resume_live_subscription(sid), "直播录制已开启")
+        elif cl.startswith("删直 "):
+            sid = content.split(" ", 1)[1].strip()
+            return self._fmt_op(await cmd.delete_live_subscription(sid), "直播订阅已删除")
         elif cl.startswith("下载 ") or cl.startswith("dl "):
             url = cmd.extract_url(content)
             return self._fmt_op(await cmd.download_url(url), "已加入下载队列") if url else "格式: 下载 URL"
@@ -425,7 +434,9 @@ class WecomBotService:
         lines = [f"【直播订阅】共 {r['total']} 个\n"]
         for l in r["items"]:
             icon = "🔴" if l["is_recording"] else "⚪"
-            lines.append(f"• {icon} {l['anchor_name']}")
+            auto = "📹开" if l.get("auto_record") == "true" else "📹关"
+            lines.append(f"• {icon} {l['anchor_name']} {auto}")
+        lines.append("\n发送「停录 ID」「开录 ID」「删直 ID」管理")
         return "\n".join(lines)
 
     def _fmt_failed(self, r: dict) -> str:
@@ -450,7 +461,8 @@ class WecomBotService:
 
 📊 查询: 查状态 | 查任务 | 查授权 | 查订阅 | 查直播 | 失败任务
 🎬 操作: 下载 URL | 订阅 URL | 直播 URL | 直接发链接
-🔧 管理: 重试 ID | 删除 ID | 暂停 ID | 恢复 ID | 删订 ID
+📋 订阅管理: 暂停 ID | 恢复 ID | 删订 ID
+📺 直播管理: 停录 ID | 开录 ID | 删直 ID
 ⚡ 其他: 重启 | 帮助"""
 
     async def _delayed_restart(self):
