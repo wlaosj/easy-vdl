@@ -16,11 +16,11 @@ from urllib.parse import quote
 
 from sql.database_postgresql import get_db, get_session
 from sql.models import (
-    Notification, NotificationSetting, NotificationType, NotificationStatus, 
+    Notification, NotificationSetting, NotificationType, NotificationStatus,
     NotificationChannel, User, NotificationCreate, NotificationUpdate,
     NotificationSettingCreate, NotificationSettingUpdate, WechatBotTestRequest,
     ServerChan3TestRequest, TelegramBotTestRequest, BarkTestRequest, NotificationResponse, NotificationSettingResponse,
-    Task
+    Task, WecomBotTestRequest
 )
 from routers.auth import get_current_user
 
@@ -283,6 +283,24 @@ class NotificationService:
             logger.error(f"微信机器人消息发送异常: {str(e)}")
             return False
     
+    @staticmethod
+    async def send_wecom_bot_message(corp_id: str, agent_id: str, secret: str, user_id: str, message: str, msg_type: str = "text", proxy: str = "") -> bool:
+        """发送企业微信应用消息"""
+        try:
+            from services.wecom_api import WecomApiClient
+            client = WecomApiClient(corp_id=corp_id, agent_id=agent_id, secret=secret, proxy=proxy)
+            tagged_message = f"[easy-vdl]\n{message}" if not message.startswith("[easy-vdl]") else message
+            result = await client.send_message(user_id, tagged_message, msg_type)
+            if result.get("errcode") == 0:
+                logger.debug(f"企业微信应用消息发送成功: {message[:50]}...")
+                return True
+            else:
+                logger.error(f"企业微信应用消息发送失败: {result}")
+                return False
+        except Exception as e:
+            logger.error(f"企业微信应用消息发送异常: {str(e)}")
+            return False
+
     @staticmethod
     async def send_serverchan3_message(uid: str, sendkey: str, title: str, content: str = "", avatar_url: str = None) -> bool:
         """发送Server酱³消息（使用Markdown格式，支持图片和头像）"""
@@ -650,7 +668,23 @@ class NotificationService:
                     )
                     channels_sent.append("wechat")
                     logger.debug(f"用户 {notification.user_id} 微信机器人通知已加入发送队列")
-                
+
+                # 1.5 发送到企业微信应用Bot（如果启用）
+                if getattr(setting, 'wecom_bot_enabled', "false") == "true" and getattr(setting, 'wecom_corp_id', None) and getattr(setting, 'wecom_secret', None) and getattr(setting, 'wecom_agent_id', None):
+                    wecom_message = f"🔔 {notification.title}\n\n{notification.content}"
+                    background_tasks.add_task(
+                        NotificationService.send_wecom_bot_message,
+                        setting.wecom_corp_id,
+                        setting.wecom_agent_id,
+                        setting.wecom_secret,
+                        "@all",
+                        wecom_message,
+                        "text",
+                        getattr(setting, 'wecom_api_proxy', '') or ""
+                    )
+                    channels_sent.append("wecom")
+                    logger.debug(f"用户 {notification.user_id} 企业微信应用通知已加入发送队列")
+
                 # 2. 发送到Server酱³（如果启用）
                 if setting.serverchan3_enabled == "true" and setting.serverchan3_uid and setting.serverchan3_sendkey:
                     # 获取头像URL
@@ -1064,6 +1098,16 @@ async def get_notification_settings(
             telegram_media_max_concurrent=getattr(setting, 'telegram_media_max_concurrent', 5) or 5,
             telegram_media_use_date_subdir=getattr(setting, 'telegram_media_use_date_subdir', "true"),
 
+            # 企业微信应用Bot
+            wecom_bot_enabled=getattr(setting, 'wecom_bot_enabled', "false"),
+            wecom_corp_id=getattr(setting, 'wecom_corp_id', None),
+            wecom_agent_id=getattr(setting, 'wecom_agent_id', None),
+            wecom_secret=getattr(setting, 'wecom_secret', None),
+            wecom_callback_token=getattr(setting, 'wecom_callback_token', None),
+            wecom_callback_aes_key=getattr(setting, 'wecom_callback_aes_key', None),
+            wecom_callback_url=getattr(setting, 'wecom_callback_url', None),
+            wecom_api_proxy=getattr(setting, 'wecom_api_proxy', None),
+
             # Bark
             bark_enabled=getattr(setting, 'bark_enabled', "false"),
             bark_server_url=getattr(setting, 'bark_server_url', None),
@@ -1077,7 +1121,7 @@ async def get_notification_settings(
             created_at=setting.created_at,
             updated_at=setting.updated_at
         )
-        
+
     except Exception as e:
         logger.error(f"获取通知设置异常: {str(e)}")
         raise HTTPException(status_code=500, detail=f"获取通知设置失败: {str(e)}")
@@ -1147,6 +1191,15 @@ async def update_notification_settings(
                 logger.info("已触发 Telegram Bot 配置重载")
             except Exception as e:
                 logger.error(f"重载 Telegram Bot 失败: {e}")
+
+        # 如果更新了相关配置，重载企业微信Bot
+        if any(k in update_data for k in ['wecom_bot_enabled', 'wecom_corp_id', 'wecom_agent_id', 'wecom_secret', 'wecom_callback_token', 'wecom_callback_aes_key']):
+            try:
+                from routers.wecom_bot import wecom_bot
+                asyncio.create_task(wecom_bot.reload())
+                logger.info("已触发企业微信Bot配置重载")
+            except Exception as e:
+                logger.error(f"重载企业微信Bot 失败: {e}")
         
         return NotificationSettingResponse(
             id=setting.id,
@@ -1183,6 +1236,16 @@ async def update_notification_settings(
             telegram_media_max_concurrent=getattr(setting, 'telegram_media_max_concurrent', 5) or 5,
             telegram_media_use_date_subdir=getattr(setting, 'telegram_media_use_date_subdir', "true"),
 
+            # 企业微信应用Bot
+            wecom_bot_enabled=getattr(setting, 'wecom_bot_enabled', "false"),
+            wecom_corp_id=getattr(setting, 'wecom_corp_id', None),
+            wecom_agent_id=getattr(setting, 'wecom_agent_id', None),
+            wecom_secret=getattr(setting, 'wecom_secret', None),
+            wecom_callback_token=getattr(setting, 'wecom_callback_token', None),
+            wecom_callback_aes_key=getattr(setting, 'wecom_callback_aes_key', None),
+            wecom_callback_url=getattr(setting, 'wecom_callback_url', None),
+            wecom_api_proxy=getattr(setting, 'wecom_api_proxy', None),
+
             # Bark
             bark_enabled=getattr(setting, 'bark_enabled', "false"),
             bark_server_url=getattr(setting, 'bark_server_url', None),
@@ -1196,7 +1259,7 @@ async def update_notification_settings(
             created_at=setting.created_at,
             updated_at=setting.updated_at
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1234,6 +1297,33 @@ async def test_wechat_bot(
     except Exception as e:
         logger.error(f"测试微信机器人异常: {str(e)}")
         raise HTTPException(status_code=500, detail=f"测试微信机器人失败: {str(e)}")
+
+# 企业微信应用Bot测试接口
+@router.post("/test/wecom-bot")
+async def test_wecom_bot(
+    test_request: WecomBotTestRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)
+):
+    """测试企业微信应用Bot配置"""
+    try:
+        background_tasks.add_task(
+            NotificationService.send_wecom_bot_message,
+            test_request.corp_id,
+            test_request.agent_id,
+            test_request.secret,
+            "@all",
+            test_request.message,
+            "text",
+            test_request.proxy or ""
+        )
+        return {
+            "success": True,
+            "message": "测试消息已发送，请检查企业微信是否收到消息"
+        }
+    except Exception as e:
+        logger.error(f"测试企业微信Bot异常: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"测试企业微信Bot失败: {str(e)}")
 
 # Server酱³测试接口
 @router.post("/test/serverchan3")

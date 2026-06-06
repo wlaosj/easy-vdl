@@ -564,6 +564,7 @@ class NotificationChannel(str, enum.Enum):
     WEBSOCKET = "websocket"        # WebSocket实时推送
     TELEGRAM_BOT = "telegram_bot"  # Telegram机器人
     BARK = "bark"                  # Bark (iOS)
+    WECOM_BOT = "wecom_bot"        # 企业微信应用机器人
 
 class Notification(Base):
     """通知表"""
@@ -626,6 +627,15 @@ class NotificationSetting(Base):
     telegram_proxy = Column(String, nullable=True)
     telegram_media_max_concurrent = Column(Integer, default=5)
     telegram_media_use_date_subdir = Column(String, default="true")
+    # 企业微信应用Bot配置
+    wecom_bot_enabled = Column(String, default="false")
+    wecom_corp_id = Column(String, nullable=True)
+    wecom_agent_id = Column(String, nullable=True)
+    wecom_secret = Column(String, nullable=True)
+    wecom_callback_token = Column(String, nullable=True)
+    wecom_callback_aes_key = Column(String, nullable=True)
+    wecom_callback_url = Column(String, nullable=True)
+    wecom_api_proxy = Column(String, nullable=True)  # API代理地址
     # Bark (iOS 推送) 配置
     bark_enabled = Column(String, default="false")
     bark_server_url = Column(String, nullable=True)
@@ -691,6 +701,15 @@ class NotificationSettingCreate(BaseModel):
     telegram_proxy: Optional[str] = None
     telegram_media_max_concurrent: int = Field(default=5, ge=1, le=10)
     telegram_media_use_date_subdir: str = "true"
+    # 企业微信应用Bot
+    wecom_bot_enabled: str = "false"
+    wecom_corp_id: Optional[str] = None
+    wecom_agent_id: Optional[str] = None
+    wecom_secret: Optional[str] = None
+    wecom_callback_token: Optional[str] = None
+    wecom_callback_aes_key: Optional[str] = None
+    wecom_callback_url: Optional[str] = None
+    wecom_api_proxy: Optional[str] = None
     # Bark
     bark_enabled: str = "false"
     bark_server_url: Optional[str] = None
@@ -736,6 +755,15 @@ class NotificationSettingUpdate(BaseModel):
     telegram_proxy: Optional[str] = None
     telegram_media_max_concurrent: Optional[int] = Field(default=None, ge=1, le=10)
     telegram_media_use_date_subdir: Optional[str] = None
+    # 企业微信应用Bot
+    wecom_bot_enabled: Optional[str] = None
+    wecom_corp_id: Optional[str] = None
+    wecom_agent_id: Optional[str] = None
+    wecom_secret: Optional[str] = None
+    wecom_callback_token: Optional[str] = None
+    wecom_callback_aes_key: Optional[str] = None
+    wecom_callback_url: Optional[str] = None
+    wecom_api_proxy: Optional[str] = None
     # Bark
     bark_enabled: Optional[str] = None
     bark_server_url: Optional[str] = None
@@ -745,6 +773,14 @@ class NotificationSettingUpdate(BaseModel):
     bark_icon: Optional[str] = None
     bark_url: Optional[str] = None
     bark_automatically_copy: Optional[str] = None
+
+class WecomBotTestRequest(BaseModel):
+    """企业微信应用Bot测试请求模型"""
+    corp_id: str
+    agent_id: str
+    secret: str
+    proxy: Optional[str] = ""
+    message: str = "这是一条测试消息，用于验证企业微信应用Bot配置是否正确。"
 
 class WechatBotTestRequest(BaseModel):
     """微信机器人测试请求模型"""
@@ -828,6 +864,15 @@ class NotificationSettingResponse(BaseModel):
     telegram_proxy: Optional[str] = None
     telegram_media_max_concurrent: int = 5
     telegram_media_use_date_subdir: str = "true"
+    # 企业微信应用Bot
+    wecom_bot_enabled: str = "false"
+    wecom_corp_id: Optional[str] = None
+    wecom_agent_id: Optional[str] = None
+    wecom_secret: Optional[str] = None
+    wecom_callback_token: Optional[str] = None
+    wecom_callback_aes_key: Optional[str] = None
+    wecom_callback_url: Optional[str] = None
+    wecom_api_proxy: Optional[str] = None
     # Bark
     bark_enabled: str = "false"
     bark_server_url: Optional[str] = None

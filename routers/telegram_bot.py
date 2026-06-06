@@ -16,6 +16,7 @@ from sqlalchemy import and_, or_, desc
 
 from sql.database_postgresql import get_session
 from sql import models
+from services import bot_commands as cmd
 # 延迟导入以避免循环依赖
 # from routers.downloader import download_manager 
 
@@ -651,74 +652,6 @@ class TelegramBotService:
         for k in expired_keys:
             self.pending_confirmations.pop(k, None)
 
-    async def _async_resolve_url(self, url: str) -> str:
-        """异步还原短链接获取真实重定向 URL"""
-        if not url:
-            return url
-        
-        # 1. 抖音短链
-        if 'v.douyin.com' in url and '/note/' not in url and '/video/' not in url:
-            try:
-                import httpx
-                async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
-                    response = await client.head(url)
-                    resolved = str(response.url)
-                    logger.debug(f"[TG Bot] 抖音短链接重定向: {url} -> {resolved}")
-                    return resolved
-            except Exception as e:
-                logger.warning(f"[TG Bot] 解析抖音短链接失败: {e}，使用原URL")
-                
-        # 2. 小红书短链
-        elif 'xhslink.com' in url:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                        url,
-                        allow_redirects=True,
-                        timeout=aiohttp.ClientTimeout(total=8)
-                    ) as resp:
-                        resolved = str(resp.url)
-                        logger.debug(f"[TG Bot] 小红书短链接重定向: {url} -> {resolved}")
-                        return resolved
-            except Exception as e:
-                logger.warning(f"[TG Bot] 解析小红书短链接失败: {e}，使用原URL")
-                
-        # 3. 快手短链
-        elif 'v.kuaishou.com' in url:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    }
-                    async with session.get(
-                        url,
-                        headers=headers,
-                        allow_redirects=True,
-                        timeout=aiohttp.ClientTimeout(total=8)
-                    ) as resp:
-                        resolved = str(resp.url)
-                        logger.debug(f"[TG Bot] 快手短链接重定向: {url} -> {resolved}")
-                        return resolved
-            except Exception as e:
-                logger.warning(f"[TG Bot] 解析快手短链接失败: {e}，使用原URL")
-                
-        # 4. B站短链接
-        elif 'b23.tv' in url:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                        url,
-                        allow_redirects=True,
-                        timeout=aiohttp.ClientTimeout(total=8)
-                    ) as resp:
-                        resolved = str(resp.url)
-                        logger.debug(f"[TG Bot] B站短链接重定向: {url} -> {resolved}")
-                        return resolved
-            except Exception as e:
-                logger.warning(f"[TG Bot] 解析B站短链接失败: {e}，使用原URL")
-                
-        return url
-
     async def _async_analyze_and_confirm_url(self, chat_id: str, text: str):
         """异步还原、分析 URL，并向用户展示确认卡片"""
         try:
@@ -743,7 +676,7 @@ class TelegramBotService:
                 return
                 
             # 3. 异步短链解析还原
-            resolved_url = await self._async_resolve_url(original_url)
+            resolved_url = await cmd.resolve_url(original_url)
             
             # 4. 链接判定分流
             category = 'dl'
@@ -776,7 +709,7 @@ class TelegramBotService:
             # 4.2 订阅链接识别（如非直播链接）
             if category != 'live':
                 # 预判明显的订阅类型链接
-                hint = self._detect_subscription_link(resolved_url)
+                hint = cmd.detect_subscription_type(resolved_url)
                 
                 # 对抖音链接深入判定合集或博主主页
                 if not hint and 'douyin.com' in resolved_url and not any(p in resolved_url for p in ['/video/', '/note/']):
@@ -809,7 +742,7 @@ class TelegramBotService:
                     category = 'sub'
             
             # 5. 清洗 URL 用于展示与处理
-            clean_url = self._clean_url(resolved_url)
+            clean_url = cmd.clean_url(resolved_url)
             
             # 6. 生成挂起缓存会话
             self._clean_expired_confirmations()
@@ -819,7 +752,7 @@ class TelegramBotService:
                 temp_id = str(uuid.uuid4())[:8]
                 
             self.pending_confirmations[temp_id] = {
-                "url": resolved_url,
+                "url": original_url,
                 "original_url": original_url,
                 "type": category,
                 "hint": hint,
@@ -878,266 +811,50 @@ class TelegramBotService:
         except Exception as ex:
             logger.error(f"处理异步 URL 识别失败: {ex}\n{traceback.format_exc()}")
 
-    def _clean_url(self, url: str) -> str:
-        """清洗 URL，剔除冗余的追踪参数"""
-        if not url:
-            return url
-        try:
-            from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
-            u = urlparse(url)
-
-            # 小红书链接目前强依赖 query 参数中的 xsec_token 等做鉴权/反爬
-            # 如果清洗掉这些参数，yt-dlp 很容易出现 "No video formats found"。
-            # 因此对 xiaohongshu 相关域名直接返回原始 URL，不做任何裁剪。
-            host = (u.netloc or '').lower()
-            if 'xiaohongshu.com' in host or 'xhslink.com' in host:
-                return url
-
-            # 其他平台：只保留必要的关键参数，避免追踪参数过长导致存库/日志问题
-            keep_params = ['v', 'id', 'room_id', 'p']  # 视频ID，直播间ID，分P等
-
-            # 如果是抖音直播间或者 Webcast 链接，保留 room_id
-            if 'douyin.com' in u.netloc or 'amemv.com' in u.netloc:
-                keep_params.append('room_id')
-
-            # B站部分页面（如 festival）依赖 query 中的 bvid/aid/cid 才能定位具体视频
-            # 若清洗时丢失这些参数，yt-dlp 会报 Unsupported URL。
-            if 'bilibili.com' in host or 'b23.tv' in host:
-                keep_params.extend(['bvid', 'aid', 'cid', 'sid', 'ep_id', 'season_id'])
-                
-            query_params = parse_qsl(u.query)
-            clean_params = [(k, v) for k, v in query_params if k in keep_params]
-            
-            # 如果清洗后没有参数了，直接返回不带问号的路径
-            if not clean_params:
-                return urlunparse((u.scheme, u.netloc, u.path, '', '', ''))
-            
-            return urlunparse((u.scheme, u.netloc, u.path, '', urlencode(clean_params), ''))
-        except:
-            return url
-
     async def _check_if_douyin_collection(self, url: str) -> bool:
         """检查抖音链接是否为合集"""
         from routers.subscribe.utils import _is_douyin_collection_url
         return await _is_douyin_collection_url(url)
 
-    def _detect_subscription_link(self, url: str) -> Optional[str]:
-        """检测是否为订阅类链接，并返回描述名称"""
-        if not url: return None
-        
-        # 抖音相关
-        if 'douyin.com/collection/' in url or '/collection/' in url:
-            return "抖音合集"
-        if 'douyin.com/user/' in url or '/user/' in url or '/share/user/' in url:
-            return "抖音博主主页"
-            
-        # YouTube 播放列表
-        if ('youtube.com' in url or 'youtu.be' in url) and 'list=' in url:
-            return "YouTube播放列表"
-            
-        # YouTube 频道
-        if ('youtube.com/@' in url or 'youtube.com/c/' in url or 'youtube.com/channel/' in url) and 'list=' not in url and '/watch' not in url:
-            return "YouTube频道主页"
-            
-        # B站相关
-        if 'bilibili.com' in url:
-            if 'favlist' in url or 'fid=' in url:
-                return "B站收藏夹"
-            if 'space.bilibili.com' in url or '/space/' in url:
-                return "B站UP主主页"
-                
-        # TikTok
-        if 'tiktok.com/@' in url and '/video/' not in url:
-            return "TikTok博主主页"
-            
-        # 小红书相关
-        if 'xiaohongshu.com/user/profile/' in url or 'xhslink.com' in url:
-            # 排除笔记链接（/explore/）和直播链接
-            if '/explore/' not in url and '/livestream' not in url:
-                return "小红书博主主页"
-
-        # Instagram
-        if 'instagram.com' in url and '/p/' not in url and '/reel/' not in url and '/stories/' not in url:
-            return "Instagram博主主页"
-
-        # 网易云歌单
-        if 'music.163.com' in url and ('playlist' in url or 'id=' in url):
-            return "网易云歌单"
-            
-        return None
-
-    @staticmethod
-    def _get_dir_size_bytes(path: str) -> int:
-        """获取目录大小（字节），用于在线程池执行，避免阻塞事件循环。"""
-        if not path or not os.path.exists(path):
-            return 0
-        try:
-            import subprocess
-            res = subprocess.run(['du', '-sb', path], capture_output=True, text=True, timeout=3)
-            if res.returncode == 0 and res.stdout:
-                return int(res.stdout.split()[0])
-        except Exception:
-            pass
-        try:
-            import subprocess
-            res = subprocess.run(['du', '-sk', path], capture_output=True, text=True, timeout=3)
-            if res.returncode == 0 and res.stdout:
-                return int(res.stdout.split()[0]) * 1024
-        except Exception:
-            pass
-        return 0
-
-    def _collect_status_snapshot(self, task_ids: List[str]) -> Dict[str, Any]:
-        """同步采集 /status 所需指标（在线程池执行）。"""
-        import psutil
-        import shutil
-        from datetime import date
-        DIVISOR = 1000 ** 3
-
-        snapshot: Dict[str, Any] = {
-            "cpu_percent": 0.0,
-            "mem_used_gb": 0.0,
-            "mem_total_gb": 0.0,
-            "disk_used_gb": 0.0,
-            "disk_total_gb": 0.0,
-            "disk_percent": 0.0,
-            "completed_tasks": 0,
-            "failed_tasks": 0,
-            "active_subscriptions": 0,
-            "total_subscriptions": 0,
-            "paused_subscriptions": 0,
-            "error_subscriptions": 0,
-            "subscription_videos": 0,
-            "total_live_subs": 0,
-            "active_live_subs": 0,
-            "live_count": 0,
-            "recording_count": 0,
-            "today_records": 0,
-            "active_downloads": [],
-            "queued_tasks": 0,
-            "subscription_storage_gb": 0.0,
-            "live_storage_gb": 0.0,
+    async def _collect_status_snapshot(self) -> Dict[str, Any]:
+        """采集 /status 所需指标，委托共享层 bot_commands.check_status()。"""
+        r = await cmd.check_status()
+        return {
+            "cpu_percent": r.get("cpu", 0),
+            "mem_used_gb": r.get("mem_used_gb", 0),
+            "mem_total_gb": r.get("mem_total_gb", 0),
+            "disk_used_gb": r.get("disk_used_gb", 0),
+            "disk_total_gb": r.get("disk_total_gb", 0),
+            "disk_percent": r.get("disk_percent", 0),
+            "completed_tasks": r.get("completed", 0),
+            "failed_tasks": r.get("failed", 0),
+            "active_subscriptions": r.get("active_subs", 0),
+            "total_subscriptions": r.get("total_subs", 0),
+            "paused_subscriptions": r.get("paused_subs", 0),
+            "error_subscriptions": r.get("error_subs", 0),
+            "subscription_videos": r.get("sub_videos", 0),
+            "total_live_subs": r.get("total_lives", 0),
+            "active_live_subs": r.get("auto_record", 0),
+            "live_count": r.get("live_count", 0),
+            "recording_count": r.get("recording", 0),
+            "today_records": r.get("today_records", 0),
+            "active_downloads": r.get("active_downloads", []),
+            "queued_tasks": r.get("pending", 0),
+            "subscription_storage_gb": r.get("sub_storage_gb", 0),
+            "live_storage_gb": r.get("live_storage_gb", 0),
         }
-
-        try:
-            cpu_percent = psutil.cpu_percent()
-            mem = psutil.virtual_memory()
-            snapshot["cpu_percent"] = cpu_percent
-            snapshot["mem_used_gb"] = mem.used / (1024**3)
-            snapshot["mem_total_gb"] = mem.total / (1024**3)
-        except Exception:
-            pass
-
-        try:
-            disk = shutil.disk_usage('/app/downloads')
-            snapshot["disk_used_gb"] = disk.used / DIVISOR
-            snapshot["disk_total_gb"] = disk.total / DIVISOR
-            snapshot["disk_percent"] = (disk.used / disk.total) * 100
-        except Exception:
-            pass
-
-        try:
-            with self._db_session() as db:
-                snapshot["completed_tasks"] = db.query(models.Task).filter(
-                    models.Task.status == models.TaskStatus.COMPLETED.value
-                ).count()
-                snapshot["failed_tasks"] = db.query(models.Task).filter(
-                    models.Task.status == models.TaskStatus.ERROR.value
-                ).count()
-                all_subscriptions = db.query(models.Subscription).all()
-                snapshot["total_subscriptions"] = len(all_subscriptions)
-                active_subscriptions = 0
-                paused_subscriptions = 0
-                error_subscriptions = 0
-                for sub in all_subscriptions:
-                    status = str(getattr(sub, "status", "") or "").lower()
-                    if status == "error":
-                        error_subscriptions += 1
-                        continue
-                    interval = getattr(sub, "check_interval", None)
-                    if interval is None:
-                        interval = getattr(sub, "update_interval", 0)
-                    try:
-                        interval_enabled = float(interval or 0) > 0
-                    except Exception:
-                        interval_enabled = False
-                    auto_download = getattr(sub, "auto_download", False)
-                    auto_download_enabled = (auto_download is True) or (str(auto_download).lower() == "true")
-                    if status == "active" and interval_enabled and auto_download_enabled:
-                        active_subscriptions += 1
-                    else:
-                        paused_subscriptions += 1
-                snapshot["active_subscriptions"] = active_subscriptions
-                snapshot["paused_subscriptions"] = paused_subscriptions
-                snapshot["error_subscriptions"] = error_subscriptions
-                snapshot["subscription_videos"] = db.query(models.SubscriptionVideo).count()
-                snapshot["total_live_subs"] = db.query(models.LiveSubscription).count()
-                snapshot["active_live_subs"] = db.query(models.LiveSubscription).filter(
-                    models.LiveSubscription.auto_record == "true"
-                ).count()
-                snapshot["live_count"] = db.query(models.LiveSubscription).filter(
-                    models.LiveSubscription.is_live == "true"
-                ).count()
-                snapshot["recording_count"] = db.query(models.LiveSubscription).filter(
-                    models.LiveSubscription.is_recording == "true"
-                ).count()
-                today_start = datetime.combine(date.today(), datetime.min.time())
-                snapshot["today_records"] = db.query(models.LiveRecord).filter(
-                    models.LiveRecord.start_time >= today_start
-                ).count()
-
-                if task_ids:
-                    tasks = db.query(models.Task).filter(models.Task.id.in_(task_ids)).all()
-                    snapshot["active_downloads"] = [
-                        {
-                            "title": t.title,
-                            "progress": t.progress,
-                            "speed": "",
-                            "total_size": ""
-                        } for t in tasks
-                    ]
-                snapshot["queued_tasks"] = db.query(models.Task).filter(
-                    models.Task.status == models.TaskStatus.PENDING.value
-                ).count()
-        except Exception:
-            pass
-
-        try:
-            from live.recorder import live_recorder
-            snapshot["recording_count"] = len(live_recorder.get_all_recording_ids())
-        except Exception:
-            pass
-
-        try:
-            size_bytes = self._get_dir_size_bytes("/app/downloads/subscriptions")
-            if size_bytes > 0:
-                snapshot["subscription_storage_gb"] = size_bytes / DIVISOR
-        except Exception:
-            pass
-
-        try:
-            from live.routers import _stats_data
-            if _stats_data and _stats_data.get('total_size', 0) > 0:
-                snapshot["live_storage_gb"] = _stats_data['total_size'] / DIVISOR
-        except Exception:
-            pass
-
-        return snapshot
 
 
     async def _handle_status_command(self, chat_id: str):
         """处理 /status 命令"""
         try:
-            from routers.downloader import download_manager
-            query_ids = list(download_manager.tasks.keys())[:10] if download_manager.tasks else []
-
             # 获取授权信息
             from routers.license import license_manager, LicenseStatus
             from routers.version import get_build_version
             from routers.system import _get_core_version_with_cache
 
             snapshot, is_licensed, build_info, core_info = await asyncio.gather(
-                asyncio.to_thread(self._collect_status_snapshot, query_ids),
+                self._collect_status_snapshot(),
                 license_manager.verify(),
                 get_build_version(),
                 asyncio.to_thread(_get_core_version_with_cache)
@@ -1581,51 +1298,18 @@ class TelegramBotService:
             await self.send_message(chat_id, "❌ 获取失败任务详情失败")
 
     async def _retry_failed_task_by_id(self, task_id: str) -> str:
-        """重试指定失败任务，复用下载中心重试逻辑。"""
-        try:
-            from routers.file_manager import retry_task_internal
-
-            def _enqueue_task(func, *args):
-                result = func(*args)
-                if asyncio.iscoroutine(result):
-                    asyncio.create_task(result)
-
-            with self._db_session() as db_session:
-                res = retry_task_internal(task_id, db_session, _enqueue_task)
-                return res.get("message", "任务已开始重试")
-        except Exception as e:
-            detail = getattr(e, "detail", None)
-            raise RuntimeError(str(detail or e))
+        """重试指定失败任务，使用共享层。"""
+        res = await cmd.retry_task(task_id)
+        if res.get("success"):
+            return res.get("message", "任务已开始重试")
+        raise RuntimeError(res.get("error", "重试失败"))
 
     async def _delete_failed_task_by_id(self, task_id: str) -> str:
-        """删除失败任务并清理关联文件/临时残留。"""
-        try:
-            from routers.file_manager import cleanup_task_before_delete
-
-            with self._db_session() as db_session:
-                task = db_session.query(models.Task).filter(models.Task.id == task_id).first()
-                if not task:
-                    raise RuntimeError("任务不存在")
-
-                cleanup_res = cleanup_task_before_delete(task, delete_output=True, delete_temp=True)
-                related_videos = db_session.query(models.SubscriptionVideo).filter(
-                    models.SubscriptionVideo.download_task_id == task_id
-                ).all()
-                for video in related_videos:
-                    video.downloaded = "false"
-                    video.download_task_id = None
-                    video.error_message = None
-
-                db_session.delete(task)
-                db_session.commit()
-
-                deleted_count = len(cleanup_res.get("output", [])) + len(cleanup_res.get("temp", []))
-                if deleted_count > 0:
-                    return f"任务已删除，并清理 {deleted_count} 个文件"
-                return "任务已删除"
-        except Exception as e:
-            detail = getattr(e, "detail", None)
-            raise RuntimeError(str(detail or e))
+        """删除失败任务并清理关联文件，使用共享层。"""
+        res = await cmd.delete_task(task_id)
+        if res.get("success"):
+            return res.get("message", "任务已删除")
+        raise RuntimeError(res.get("error", "删除失败"))
 
     async def _handle_callback_query(self, callback_query: Dict):
         """处理内联按钮点击回调"""
@@ -2850,10 +2534,10 @@ class TelegramBotService:
                         "💡 **检测到小红书直播分享链接**\n\n"
                         "将自动按“直播订阅”方式处理（解决短链直播误入下载队列导致失败的问题）。"
                     )
-                    await self._handle_add_live_subscription(chat_id, url)
+                    await self._handle_add_live_subscription(chat_id, original_input_url)
                     return
 
-                # 0.1 快手直播短链/分享文案：不要走“视频下载”，直接转为“直播订阅”
+                # 0.1 快手直播短链/分享文案：不要走”视频下载”，直接转为”直播订阅”
                 if (
                     ('v.kuaishou.com' in original_input_url or 'live.kuaishou.com' in url)
                     and ('直播' in text or 'live.kuaishou.com' in url)
@@ -2863,11 +2547,11 @@ class TelegramBotService:
                         "💡 **检测到快手直播分享链接**\n\n"
                         "将自动按“直播订阅”方式处理（解决短链直播误入下载队列导致失败的问题）。"
                     )
-                    await self._handle_add_live_subscription(chat_id, url)
+                    await self._handle_add_live_subscription(chat_id, original_input_url)
                     return
-            
+
             # 1. 快速预判明显的订阅类型链接
-            subscription_hint = self._detect_subscription_link(url)
+            subscription_hint = cmd.detect_subscription_type(url)
             
             # 如果是明显的订阅链接，直接提示
             if subscription_hint and not force_download:
@@ -3025,7 +2709,7 @@ class TelegramBotService:
                             return
                             
                         # 再次检测是否为博主主页/合集
-                        sub_hint = self._detect_subscription_link(final_url)
+                        sub_hint = cmd.detect_subscription_type(final_url)
                         if sub_hint and not force_download:
                             await self.send_message(
                                 chat_id,
@@ -3040,8 +2724,8 @@ class TelegramBotService:
                     final_url = url
             
             # 清洗 URL，防止追踪参数过长导致数据库报错
-            final_url = self._clean_url(final_url)
-            original_url_clean = self._clean_url(original_input_url)
+            final_url = cmd.clean_url(final_url)
+            original_url_clean = cmd.clean_url(original_input_url)
             
             # 创建任务记录
             with self._db_session() as db:
@@ -4249,7 +3933,7 @@ class TelegramBotService:
             adapter = adapters.get_adapter(url)
             if not adapter:
                 # 增强识别逻辑：处理短链和特殊域名
-                if 'douyin.com' in url or 'iesdouyin.com' in url:
+                if 'douyin.com' in url or 'iesdouyin.com' in url or 'amemv.com' in url:
                     adapter = adapters.get_adapter_by_platform('douyin')
                 elif 'bilibili.com' in url or 'b23.tv' in url:
                     adapter = adapters.get_adapter_by_platform('bilibili')
@@ -4438,46 +4122,21 @@ class TelegramBotService:
     async def _handle_live_manual_control(self, chat_id: str, sub_id: str, action: str, message_id: int, return_page: int = 1):
         """处理直播手动开始/停止"""
         try:
-            with self._db_session() as db:
-                from sql.models import LiveSubscription
-                from live.scheduler import live_scheduler
-                
-                sub = db.query(LiveSubscription).filter(LiveSubscription.id == sub_id).first()
-                if not sub:
-                    return
-
-                if action == 'start':
-                    # 开始录制 = 开启自动录制 + 触发监控
-                    sub.auto_record = "true"
-                    db.commit()
-                    
-                    await live_scheduler.add_monitor(
-                        subscription_id=sub.id,
-                        room_url=sub.room_url,
-                        platform=sub.platform,
-                        check_interval=sub.check_interval or 60
-                    )
+            if action == 'start':
+                res = await cmd.resume_live_subscription(sub_id)
+                if res.get("success"):
                     await self.send_message(chat_id, f"✅ 已开启自动录制，正在尝试启动任务...\n(如果主播在线，录制将在几秒内开始)")
-
-                elif action == 'stop':
-                    # 停止录制 = 关闭自动录制 + 强制停止
-                    sub.auto_record = "false"
-                    db.commit()
-                    
-                    # 强制停止当前录制 (并转码)
-                    await live_scheduler.stop_recording_for_subscription(sub.id, convert_to_mp4=True)
-                    
-                    # 同时移除监控，防止立刻又被拉起（虽然 auto_record已关，但根据逻辑最好还是 remove 再 add 或者保持 remove）
-                    # 实际上如果 auto_record 关了，keepalive check 就会忽略它。
-                    # 但为了保险，我们刷新一下状态。
-                    
+                else:
+                    await self.send_message(chat_id, f"❌ {res.get('error', '操作失败')}")
+            elif action == 'stop':
+                res = await cmd.pause_live_subscription(sub_id)
+                if res.get("success"):
                     await self.send_message(chat_id, f"⏹️ 已停止录制，并关闭了该直播间的自动录制。")
-
-                # 刷新详情页状态
-                # 稍微延迟一下等待状态更新
-                import asyncio
-                await asyncio.sleep(1)
-                await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
+                else:
+                    await self.send_message(chat_id, f"❌ {res.get('error', '操作失败')}")
+            # 刷新详情页状态
+            await asyncio.sleep(1)
+            await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
         except Exception as e:
             logger.error(f"手动控制失败: {e}")
             await self.send_message(chat_id, f"❌ 操作失败: {e}")
@@ -4485,32 +4144,13 @@ class TelegramBotService:
     async def _handle_live_toggle_auto_record(self, chat_id: str, sub_id: str, action: str, message_id: int, return_page: int = 1):
         """切换直播自动录制状态"""
         try:
-            with self._db_session() as db:
-                from sql.models import LiveSubscription
-                from live.scheduler import live_scheduler # 动态导入
-                
-                sub = db.query(LiveSubscription).filter(LiveSubscription.id == sub_id).first()
-                if not sub:
-                    return
-
-                # 更新数据库
-                new_state = "true" if action == "on" else "false"
-                sub.auto_record = new_state
-                db.commit()
-                
-                # 同步 Scheduler
-                if new_state == "true":
-                    await live_scheduler.add_monitor(
-                        subscription_id=sub.id,
-                        room_url=sub.room_url,
-                        platform=sub.platform,
-                        check_interval=sub.check_interval or 60
-                    )
-                else:
-                    await live_scheduler.remove_monitor(sub.id)
-                
-                # 刷新详情页
-                await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
+            if action == "on":
+                res = await cmd.resume_live_subscription(sub_id)
+            else:
+                res = await cmd.pause_live_subscription(sub_id)
+            if not res.get("success"):
+                await self.send_message(chat_id, f"❌ {res.get('error', '操作失败')}")
+            await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
         except Exception as e:
             logger.error(f"切换自动录制失败: {e}")
             await self.send_message(chat_id, "❌ 操作失败")

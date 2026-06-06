@@ -125,6 +125,15 @@ export const useSettingsStore = defineStore('settings', () => {
         telegramChatId: '',
         telegramProxy: '',
         telegramMediaMaxConcurrent: 5,
+        // 企业微信应用Bot
+        wecomBotEnabled: false,
+        wecomCorpId: '',
+        wecomAgentId: '',
+        wecomSecret: '',
+        wecomCallbackToken: '',
+        wecomCallbackAesKey: '',
+        wecomCallbackUrl: '',
+        wecomApiProxy: '',
         telegramMediaUseDateSubdir: true
     });
 
@@ -578,6 +587,15 @@ export const useSettingsStore = defineStore('settings', () => {
                     )
                 ),
                 telegramMediaUseDateSubdir: toBool(data.telegram_media_use_date_subdir ?? 'true'),
+                // 企业微信应用Bot
+                wecomBotEnabled: toBool(data.wecom_bot_enabled),
+                wecomCorpId: data.wecom_corp_id || '',
+                wecomAgentId: data.wecom_agent_id || '',
+                wecomSecret: data.wecom_secret || '',
+                wecomCallbackToken: data.wecom_callback_token || '',
+                wecomCallbackAesKey: data.wecom_callback_aes_key || '',
+                wecomCallbackUrl: data.wecom_callback_url || '',
+                wecomApiProxy: data.wecom_api_proxy || '',
                 // Bark
                 barkEnabled: toBool(data.bark_enabled),
                 barkServerUrl: data.bark_server_url || 'https://api.day.app',
@@ -609,6 +627,19 @@ export const useSettingsStore = defineStore('settings', () => {
                     return { success: false, error: '启用 Telegram Bot 失败：请先配置 Chat ID 白名单（可向 Bot 发送 /id 获取）' }
                 }
             }
+            const wecomEnabled = toStr(notificationSettings.wecomBotEnabled) === 'true'
+            if (wecomEnabled) {
+                if (!String(notificationSettings.wecomCorpId || '').trim()) {
+                    return { success: false, error: '启用企业微信Bot失败：请先配置企业ID' }
+                }
+                if (!String(notificationSettings.wecomAgentId || '').trim()) {
+                    return { success: false, error: '启用企业微信Bot失败：请先配置AgentId' }
+                }
+                if (!String(notificationSettings.wecomSecret || '').trim()) {
+                    return { success: false, error: '启用企业微信Bot失败：请先配置Secret' }
+                }
+            }
+
             const barkEnabled = toStr(notificationSettings.barkEnabled) === 'true'
             const barkDeviceKey = String(notificationSettings.barkDeviceKey || '').trim()
             if (barkEnabled && !barkDeviceKey) {
@@ -660,7 +691,16 @@ export const useSettingsStore = defineStore('settings', () => {
                 telegram_chat_id: telegramChatId,
                 telegram_proxy: notificationSettings.telegramProxy,
                 telegram_media_max_concurrent: telegramMediaMaxConcurrent,
-                telegram_media_use_date_subdir: toStr(notificationSettings.telegramMediaUseDateSubdir)
+                telegram_media_use_date_subdir: toStr(notificationSettings.telegramMediaUseDateSubdir),
+                // 企业微信应用Bot
+                wecom_bot_enabled: toStr(notificationSettings.wecomBotEnabled),
+                wecom_corp_id: notificationSettings.wecomCorpId,
+                wecom_agent_id: notificationSettings.wecomAgentId,
+                wecom_secret: notificationSettings.wecomSecret,
+                wecom_callback_token: notificationSettings.wecomCallbackToken,
+                wecom_callback_aes_key: notificationSettings.wecomCallbackAesKey,
+                wecom_callback_url: notificationSettings.wecomCallbackUrl,
+                wecom_api_proxy: notificationSettings.wecomApiProxy
             });
             return { success: true };
         } catch (err) {

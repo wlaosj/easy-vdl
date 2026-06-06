@@ -98,6 +98,16 @@ const routes = [
     meta: { title: 'Telegram 机器人', requiresAuth: true }
   },
   {
+    path: '/settings/notifications/wecom',
+    component: () => import('@/views/notifications/NotificationWecom.vue'),
+    meta: { title: '企业微信应用Bot', requiresAuth: true }
+  },
+  {
+    path: '/settings/notifications/wecom/tutorial',
+    component: () => import('@/views/notifications/NotificationWecomTutorial.vue'),
+    meta: { title: 'VPS 中继搭建', requiresAuth: true }
+  },
+  {
     path: '/feedback-progress',
     component: () => import('@/views/FeedbackProgress.vue'),
     meta: { title: '开发进度', requiresAuth: true }

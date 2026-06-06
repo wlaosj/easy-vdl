@@ -13,6 +13,7 @@ from fastapi.exceptions import RequestValidationError
 
 # 导入各个模块的APIRouter
 from routers import dyd, ytd, file_manager, ai_config, wnxt, version, subscribe, license, auth, setup, system, cookie_manager, notifications, backup, xiaohongshu, cache, telegram_media
+from routers.wecom_bot import router as wecom_bot_router
 from sql.database_postgresql import get_db  # 导入PostgreSQL数据库模块
 from fastapi.staticfiles import StaticFiles
 import time
@@ -26,6 +27,9 @@ from routers.websocket import router as websocket_router  # 添加websocket导�
 
 # 全局变量 (wnxt service)
 wnxt.captured_media = {}  # 确保在主应用中是全局的
+
+# 企业微信回调专用服务器
+_wecom_callback_server = None
 
 # 导入数据库和模型
 from sql.database_postgresql import get_db
@@ -460,9 +464,9 @@ async def startup_event():
     except Exception as e:
         logger.error(f"YTD服务初始化异常: {str(e)}")
 
-    # 初始化授权服务（非阻塞，后台执行，不阻塞其他服务启动）
+    # 初始化授权服务（阻塞等待完成，避免调度器启动时误判授权失效）
     try:
-        asyncio.create_task(_init_license_async())
+        await _init_license_async()
     except Exception as e:
         logger.error(f"授权服务初始化异常: {str(e)}")
     
@@ -574,7 +578,24 @@ async def startup_event():
         await telegram_bot.start()
     except Exception as e:
         logger.error(f"Telegram 机器人启动失败: {e}")
-    
+
+    # 启动企业微信应用Bot
+    try:
+        from routers.wecom_bot import wecom_bot
+        await wecom_bot.start()
+        # 启动企业微信回调专用端口
+        wecom_callback_port = int(os.environ.get("WECOM_CALLBACK_PORT", "8001"))
+        if wecom_bot.enabled:
+            import uvicorn as _uvicorn
+            from fastapi import FastAPI as _FastAPI
+            wecom_app = _FastAPI()
+            wecom_app.include_router(wecom_bot_router)
+            _wecom_callback_server = _uvicorn.Server(_uvicorn.Config(wecom_app, host="0.0.0.0", port=wecom_callback_port, log_level="warning"))
+            asyncio.create_task(_wecom_callback_server.serve())
+            logger.info(f"企业微信回调专用端口已启动: {wecom_callback_port}")
+    except Exception as e:
+        logger.error(f"企业微信Bot启动失败: {e}")
+
     # 启动直播录制调度器
     try:
         from live.scheduler import live_scheduler
@@ -655,6 +676,17 @@ async def shutdown_event():
         await telegram_bot.stop()
     except Exception as e:
         logger.error(f"关闭 Telegram 机器人失败: {e}")
+
+    # 关闭企业微信应用Bot
+    try:
+        from routers.wecom_bot import wecom_bot
+        await wecom_bot.stop()
+        # 关闭企业微信回调专用端口
+        if _wecom_callback_server is not None:
+            _wecom_callback_server.should_exit = True
+            logger.info("企业微信回调专用端口已停止")
+    except Exception as e:
+        logger.error(f"关闭企业微信Bot失败: {e}")
     
     # 清理数据库连接池
     try:
@@ -726,6 +758,7 @@ app.include_router(license.router)  # 添加授权路由
 app.include_router(cookie_manager.router)  # 添加cookie管理路由
 app.include_router(notifications.router)  # 添加通知系统路由
 app.include_router(telegram_media.router)  # Telegram 媒体入站独立路由
+app.include_router(wecom_bot_router)  # 企业微信应用Bot回调路由
 app.include_router(backup.router)  # 添加数据备份路由
 app.include_router(cache.router)  # 添加缓存管理路由
 
