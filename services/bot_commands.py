@@ -311,8 +311,8 @@ async def check_subscriptions() -> Dict[str, Any]:
                     "id": sub.id[:8],
                     "full_id": sub.id,
                     "status": sub.status,
-                    "name": sub.nickname or sub.url[:30] if hasattr(sub, 'nickname') else sub.url[:30],
-                    "url": sub.url,
+                    "name": sub.nickname or (sub.profile_url or "")[:30],
+                    "url": sub.profile_url or "",
                     "platform": sub.platform,
                 })
             return {"success": True, "total": len(subs), "items": items}
@@ -651,7 +651,7 @@ async def pause_subscription(sub_id: str) -> Dict[str, Any]:
                 return {"success": False, "error": f"未找到订阅: {sub_id}"}
             sub.status = "paused"
             db.commit()
-            return {"success": True, "name": sub.nickname or sub.url[:30]}
+            return {"success": True, "name": sub.nickname or (sub.profile_url or "")[:30]}
         finally:
             db.close()
     except Exception as e:
@@ -670,7 +670,7 @@ async def resume_subscription(sub_id: str) -> Dict[str, Any]:
                 return {"success": False, "error": f"未找到订阅: {sub_id}"}
             sub.status = "active"
             db.commit()
-            return {"success": True, "name": sub.nickname or sub.url[:30]}
+            return {"success": True, "name": sub.nickname or (sub.profile_url or "")[:30]}
         finally:
             db.close()
     except Exception as e:
@@ -689,7 +689,7 @@ async def delete_subscription(sub_id: str) -> Dict[str, Any]:
                 return {"success": False, "error": f"未找到订阅: {sub_id}"}
             db.delete(sub)
             db.commit()
-            return {"success": True, "name": sub.nickname or sub.url[:30]}
+            return {"success": True, "name": sub.nickname or (sub.profile_url or "")[:30]}
         finally:
             db.close()
     except Exception as e:
