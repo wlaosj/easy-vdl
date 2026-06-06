@@ -40,6 +40,7 @@ services:
     container_name: easy-vdl
     ports:
       - "888:80"                      # 888 为外部访问端口，可按需修改
+      - "8001:8001"                   # 企业微信 Bot 回调端口（可选）
     mem_limit: 4g                     # 推荐 4G，小规模订阅可降为 2G
     mem_limit_swap: 4g
     # 【x86硬件加速，ARM设备请删除 devices/cap_add 块】
@@ -65,7 +66,7 @@ services:
 
 ```bash
 # x86_64（支持 Intel/AMD 硬件加速与 GPU 监控）
-docker run -d --name easy-vdl -p 888:80 \
+docker run -d --name easy-vdl -p 888:80 -p 8001:8001 \
   --memory=4g --memory-swap=4g \
   --device=/dev/dri:/dev/dri \
   --cap-add PERFMON \
@@ -78,7 +79,7 @@ docker run -d --name easy-vdl -p 888:80 \
   qq918652593/easy-vdl:latest
 
 # ARM64 设备（如群晖 ARM 架构、Mac M1/M2 系列）
-docker run -d --name easy-vdl -p 888:80 \
+docker run -d --name easy-vdl -p 888:80 -p 8001:8001 \
   --memory=4g --memory-swap=4g \
   -v $(pwd)/downloads:/app/downloads \
   -v $(pwd)/logs:/app/logs \
