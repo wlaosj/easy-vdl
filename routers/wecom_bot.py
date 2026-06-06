@@ -261,6 +261,9 @@ class WecomBotService:
             return self._fmt_tasks(await cmd.check_tasks())
         elif cl in ("查状态", "状态", "status"):
             return self._fmt_status(await cmd.check_status())
+        elif cl.startswith("查订阅 "):
+            arg = content.split(" ", 1)[1].strip()
+            return self._fmt_subscriptions(await cmd.check_subscriptions(page=int(arg))) if arg.isdigit() else self._fmt_subscriptions(await cmd.check_subscriptions())
         elif cl in ("查订阅", "订阅"):
             return self._fmt_subscriptions(await cmd.check_subscriptions())
         elif cl.startswith("查直播 ") or cl.startswith("直播 "):
@@ -426,11 +429,15 @@ class WecomBotService:
             return f"查询订阅失败: {r.get('error')}"
         if not r["items"]:
             return "【视频订阅】暂无订阅"
-        lines = [f"【视频订阅】共 {r['total']} 个\n"]
+        page = r.get("page", 1)
+        total_pages = r.get("total_pages", 1)
+        header = f"【视频订阅】共 {r['total']} 个 (第 {page}/{total_pages} 页)\n"
+        lines = [header]
         for s in r["items"]:
             icon = "✅" if s["status"] == "active" else "⏸" if s["status"] == "paused" else "❌"
             lines.append(f"• {icon} {s['name']}\n  ID: {s['id']}")
-        lines.append("\n发送「暂停 ID」「恢复 ID」「删订 ID」管理")
+        lines.append(f"\n发送「查订阅 N」翻页，N 为页码")
+        lines.append("发送「暂停 ID」「恢复 ID」「删订 ID」管理")
         return "\n".join(lines)
 
     def _fmt_live(self, r: dict) -> str:
