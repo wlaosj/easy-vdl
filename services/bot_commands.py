@@ -4,12 +4,137 @@
 """
 import asyncio
 import logging
+import os
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
+
+
+# ==================== 短链解析 ====================
+
+async def resolve_url(url: str) -> str:
+    """解析短链接，返回真实 URL"""
+    if not url:
+        return url
+
+    try:
+        import aiohttp
+
+        # 抖音短链
+        if "v.douyin.com" in url and "/note/" not in url and "/video/" not in url:
+            try:
+                import httpx
+                async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+                    response = await client.head(url)
+                    resolved = str(response.url)
+                    logger.debug(f"抖音短链解析: {url} -> {resolved}")
+                    return resolved
+            except Exception as e:
+                logger.warning(f"解析抖音短链失败: {e}")
+
+        # 小红书短链
+        elif "xhslink.com" in url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                        resolved = str(resp.url)
+                        logger.debug(f"小红书短链解析: {url} -> {resolved}")
+                        return resolved
+            except Exception as e:
+                logger.warning(f"解析小红书短链失败: {e}")
+
+        # 快手短链
+        elif "v.kuaishou.com" in url:
+            try:
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=headers, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                        resolved = str(resp.url)
+                        logger.debug(f"快手短链解析: {url} -> {resolved}")
+                        return resolved
+            except Exception as e:
+                logger.warning(f"解析快手短链失败: {e}")
+
+        # B站短链
+        elif "b23.tv" in url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                        resolved = str(resp.url)
+                        logger.debug(f"B站短链解析: {url} -> {resolved}")
+                        return resolved
+            except Exception as e:
+                logger.warning(f"解析B站短链失败: {e}")
+
+    except ImportError:
+        pass
+
+    return url
+
+
+# ==================== URL 清洗 ====================
+
+def clean_url(url: str) -> str:
+    """清洗 URL，去除追踪参数"""
+    if not url:
+        return url
+    # 小红书保留原始 URL（需要 auth 参数）
+    if "xiaohongshu.com" in url:
+        return url
+    # 保留必要参数，去除追踪参数
+    from urllib.parse import urlparse, parse_qs, urlencode
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    # 保留的参数
+    keep_params = {"v", "id", "room_id", "p", "bvid", "aid", "cid", "list", "type"}
+    filtered = {k: v for k, v in params.items() if k in keep_params}
+    new_query = urlencode(filtered, doseq=True) if filtered else ""
+    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}" + (f"?{new_query}" if new_query else "")
+
+
+# ==================== 订阅类型检测 ====================
+
+def detect_subscription_type(url: str) -> Optional[str]:
+    """检测是否为订阅类链接，返回描述名称"""
+    if not url:
+        return None
+
+    # 抖音合集
+    if "douyin.com/collection/" in url or "/collection/" in url:
+        return "抖音合集"
+    # 抖音博主主页
+    if "douyin.com/user/" in url or "/user/" in url or "/share/user/" in url:
+        return "抖音博主主页"
+    # YouTube 播放列表
+    if ("youtube.com" in url or "youtu.be" in url) and "list=" in url:
+        return "YouTube播放列表"
+    # YouTube 频道
+    if ("youtube.com/@" in url or "youtube.com/c/" in url or "youtube.com/channel/" in url) and "list=" not in url and "/watch" not in url:
+        return "YouTube频道主页"
+    # B站收藏夹
+    if "bilibili.com" in url and ("favlist" in url or "fid=" in url):
+        return "B站收藏夹"
+    # B站UP主主页
+    if "space.bilibili.com" in url or "/space/" in url:
+        return "B站UP主主页"
+    # TikTok
+    if "tiktok.com/@" in url and "/video/" not in url:
+        return "TikTok博主主页"
+    # 小红书
+    if "xiaohongshu.com/user/profile/" in url or "xhslink.com" in url:
+        if "/explore/" not in url and "/livestream" not in url:
+            return "小红书博主主页"
+    # Instagram
+    if "instagram.com" in url and "/p/" not in url and "/reel/" not in url and "/stories/" not in url:
+        return "Instagram博主主页"
+    # 网易云歌单
+    if "music.163.com" in url and ("playlist" in url or "id=" in url):
+        return "网易云歌单"
+
+    return None
 
 
 # ==================== 查询类命令 ====================
@@ -50,12 +175,8 @@ async def check_tasks() -> Dict[str, Any]:
             completed = db.query(Task).filter(Task.status == TaskStatus.COMPLETED.value).count()
             failed = db.query(Task).filter(Task.status == TaskStatus.ERROR.value).count()
             return {
-                "success": True,
-                "total": total,
-                "downloading": downloading,
-                "pending": pending,
-                "completed": completed,
-                "failed": failed,
+                "success": True, "total": total, "downloading": downloading,
+                "pending": pending, "completed": completed, "failed": failed,
             }
         finally:
             db.close()
@@ -63,12 +184,26 @@ async def check_tasks() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
+def _get_dir_size(path: str) -> float:
+    """获取目录大小 (GB)"""
+    try:
+        total = 0
+        for dirpath, dirnames, filenames in os.walk(path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if os.path.exists(fp):
+                    total += os.path.getsize(fp)
+        return total / (1024 ** 3)
+    except Exception:
+        return 0.0
+
+
 async def check_status() -> Dict[str, Any]:
-    """查系统状态"""
+    """查系统状态（对标 TG Bot 详细版）"""
     try:
         import psutil
         from sql.database_postgresql import get_session
-        from sql.models import Task, TaskStatus, Subscription, LiveSubscription
+        from sql.models import Task, TaskStatus, Subscription, LiveSubscription, SubscriptionVideo, LiveRecord
 
         cpu = psutil.cpu_percent(interval=1)
         mem = psutil.virtual_memory()
@@ -76,14 +211,49 @@ async def check_status() -> Dict[str, Any]:
 
         db = get_session()
         try:
+            # 任务统计
             downloading = db.query(Task).filter(Task.status == TaskStatus.DOWNLOADING.value).count()
             pending = db.query(Task).filter(Task.status == TaskStatus.PENDING.value).count()
-            total_tasks = db.query(Task).count()
-            subs = db.query(Subscription).filter(Subscription.status == "active").count()
-            lives = db.query(LiveSubscription).count()
+            completed = db.query(Task).filter(Task.status == TaskStatus.COMPLETED.value).count()
+            failed = db.query(Task).filter(Task.status == TaskStatus.ERROR.value).count()
+
+            # 订阅统计
+            all_subs = db.query(Subscription).all()
+            total_subs = len(all_subs)
+            active_subs = 0
+            paused_subs = 0
+            error_subs = 0
+            for sub in all_subs:
+                s = str(getattr(sub, "status", "") or "").lower()
+                if s == "error":
+                    error_subs += 1
+                    continue
+                interval = getattr(sub, "check_interval", None) or getattr(sub, "update_interval", 0)
+                try:
+                    interval_ok = float(interval or 0) > 0
+                except Exception:
+                    interval_ok = False
+                auto_dl = getattr(sub, "auto_download", False)
+                auto_ok = auto_dl is True or str(auto_dl).lower() == "true"
+                if s == "active" and interval_ok and auto_ok:
+                    active_subs += 1
+                else:
+                    paused_subs += 1
+
+            sub_videos = db.query(SubscriptionVideo).count()
+
+            # 直播统计
+            total_lives = db.query(LiveSubscription).count()
+            auto_record = db.query(LiveSubscription).filter(LiveSubscription.auto_record == "true").count()
+            live_count = db.query(LiveSubscription).filter(LiveSubscription.is_live == "true").count()
             recording = db.query(LiveSubscription).filter(LiveSubscription.is_recording == "true").count()
+            today_start = datetime.combine(date.today(), datetime.min.time())
+            today_records = db.query(LiveRecord).filter(LiveRecord.start_time >= today_start).count()
         finally:
             db.close()
+
+        # 存储大小
+        sub_storage = _get_dir_size("/app/downloads/subscriptions")
 
         from routers.license import license_manager, LicenseStatus
         lic_valid = license_manager.status == LicenseStatus.VALID
@@ -94,17 +264,26 @@ async def check_status() -> Dict[str, Any]:
             "success": True,
             "cpu": cpu,
             "mem_percent": mem.percent,
-            "mem_used_gb": mem.used // (1024 ** 3),
-            "mem_total_gb": mem.total // (1024 ** 3),
+            "mem_used_gb": round(mem.used / (1024 ** 3), 1),
+            "mem_total_gb": round(mem.total / (1024 ** 3), 1),
             "disk_percent": disk.percent,
-            "disk_used_gb": disk.used // (1024 ** 3),
-            "disk_total_gb": disk.total // (1024 ** 3),
+            "disk_used_gb": round(disk.used / (1024 ** 3), 1),
+            "disk_total_gb": round(disk.total / (1024 ** 3), 1),
             "downloading": downloading,
             "pending": pending,
-            "total_tasks": total_tasks,
-            "subs": subs,
-            "lives": lives,
+            "completed": completed,
+            "failed": failed,
+            "total_subs": total_subs,
+            "active_subs": active_subs,
+            "paused_subs": paused_subs,
+            "error_subs": error_subs,
+            "sub_videos": sub_videos,
+            "total_lives": total_lives,
+            "auto_record": auto_record,
+            "live_count": live_count,
             "recording": recording,
+            "today_records": today_records,
+            "sub_storage_gb": round(sub_storage, 2),
             "license_valid": lic_valid,
             "license_lifetime": lic_lifetime,
             "license_remaining": lic_remaining,
@@ -120,14 +299,16 @@ async def check_subscriptions() -> Dict[str, Any]:
         from sql.models import Subscription
         db = get_session()
         try:
-            subs = db.query(Subscription).all()
+            subs = db.query(Subscription).order_by(Subscription.created_at.desc()).all()
             items = []
             for sub in subs[:20]:
                 items.append({
                     "id": sub.id[:8],
+                    "full_id": sub.id,
                     "status": sub.status,
                     "name": sub.nickname or sub.url[:30] if hasattr(sub, 'nickname') else sub.url[:30],
                     "url": sub.url,
+                    "platform": sub.platform,
                 })
             return {"success": True, "total": len(subs), "items": items}
         finally:
@@ -143,14 +324,22 @@ async def check_live_subscriptions() -> Dict[str, Any]:
         from sql.models import LiveSubscription
         db = get_session()
         try:
-            lives = db.query(LiveSubscription).all()
+            lives = db.query(LiveSubscription).order_by(
+                LiveSubscription.is_live.desc(),
+                LiveSubscription.is_recording.desc(),
+                LiveSubscription.created_at.desc(),
+            ).all()
             items = []
             for live in lives[:20]:
                 items.append({
                     "id": live.id[:8],
+                    "full_id": live.id,
                     "is_recording": live.is_recording == "true",
+                    "is_live": live.is_live == "true",
+                    "auto_record": live.auto_record == "true",
                     "anchor_name": live.anchor_name or live.room_url[:30],
                     "platform": live.platform,
+                    "room_url": live.room_url,
                 })
             return {"success": True, "total": len(lives), "items": items}
         finally:
@@ -168,13 +357,16 @@ async def check_failed_tasks() -> Dict[str, Any]:
         try:
             failed_tasks = db.query(Task).filter(
                 Task.status == TaskStatus.ERROR.value
-            ).order_by(Task.created_at.desc()).limit(10).all()
+            ).order_by(Task.updated_at.desc(), Task.created_at.desc()).limit(10).all()
             items = []
             for t in failed_tasks:
                 items.append({
                     "id": t.id[:8],
+                    "full_id": t.id,
                     "title": t.title or t.url[:30] if hasattr(t, 'title') and t.title else (t.url[:30] if t.url else "未知"),
                     "error": t.error_message[:50] if t.error_message else "未知错误",
+                    "source": t.source or "未知",
+                    "url": t.url,
                 })
             return {"success": True, "total": len(failed_tasks), "items": items}
         finally:
@@ -186,27 +378,19 @@ async def check_failed_tasks() -> Dict[str, Any]:
 # ==================== 操作类命令 ====================
 
 async def download_url(url: str) -> Dict[str, Any]:
-    """下载单个视频"""
+    """下载单个视频（含短链解析）"""
     try:
         from sql.database_postgresql import get_session
         from sql.models import Task, TaskStatus
         from routers.downloader import download_manager
 
+        # 短链解析
+        url = await resolve_url(url)
         # 清洗 URL
-        url = url.split("?")[0] if "?" in url and len(url) > 200 else url
+        url = clean_url(url)
 
         # 识别来源
-        source = "others"
-        if "douyin.com" in url or "tiktok.com" in url:
-            source = "douyin"
-        elif "bilibili.com" in url or "b23.tv" in url:
-            source = "bilibili"
-        elif "youtube.com" in url or "youtu.be" in url:
-            source = "youtube"
-        elif "xiaohongshu.com" in url or "xhslink.com" in url:
-            source = "xiaohongshu"
-        elif "kuaishou.com" in url:
-            source = "kuaishou"
+        source = _detect_source(url)
 
         task_id = str(uuid.uuid4())
         db = get_session()
@@ -232,36 +416,26 @@ async def download_url(url: str) -> Dict[str, Any]:
 
 
 async def add_subscription(url: str) -> Dict[str, Any]:
-    """添加订阅"""
+    """添加订阅（含短链解析+精确平台检测）"""
     try:
         from routers.license import license_manager
         if not await license_manager.is_active_for("bot.subscribe"):
             return {"success": False, "error": "订阅功能是高级功能，授权无效或已过期。"}
 
+        # 短链解析
+        url = await resolve_url(url)
+
         from routers.subscribe.subscription import add_subscription as _add_sub
         from sql.models import SubscriptionCreate, Platform
 
-        platform = None
-        if "douyin.com" in url or "v.douyin.com" in url:
-            platform = Platform.douyin
-        elif "bilibili.com" in url or "b23.tv" in url:
-            platform = Platform.bilibili
-        elif "youtube.com" in url or "youtu.be" in url:
-            platform = Platform.youtube
-        elif "xiaohongshu.com" in url or "xhslink.com" in url:
-            platform = Platform.xiaohongshu
-        elif "tiktok.com" in url:
-            platform = Platform.tiktok
-        elif "instagram.com" in url:
-            platform = Platform.instagram
-        elif "music.163.com" in url:
-            platform = Platform.netease
+        platform = _detect_platform(url)
 
         sub_create = SubscriptionCreate(url=url, platform=platform, auto_download=True)
         result = await _add_sub(sub_create)
         if result:
             name = getattr(result, 'nickname', None) or getattr(result, 'url', url[:40])
-            return {"success": True, "name": name, "platform": str(platform) if platform else "自动识别"}
+            sub_type = detect_subscription_type(url) or "订阅"
+            return {"success": True, "name": name, "platform": str(platform) if platform else "自动识别", "type": sub_type}
         return {"success": False, "error": "添加失败"}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -372,18 +546,40 @@ async def retry_task(task_id: str) -> Dict[str, Any]:
 
 
 async def delete_task(task_id: str) -> Dict[str, Any]:
-    """删除任务"""
+    """删除任务（含文件清理+关联视频重置）"""
     try:
         from sql.database_postgresql import get_session
-        from sql.models import Task
+        from sql.models import Task, SubscriptionVideo
         db = get_session()
         try:
             task = db.query(Task).filter(Task.id.startswith(task_id)).first()
             if not task:
                 return {"success": False, "error": f"未找到任务: {task_id}"}
+
+            # 文件清理
+            cleaned = 0
+            try:
+                from routers.file_manager import cleanup_task_before_delete
+                cleanup_res = cleanup_task_before_delete(task, delete_output=True, delete_temp=True)
+                cleaned = len(cleanup_res.get("output", [])) + len(cleanup_res.get("temp", []))
+            except Exception as e:
+                logger.warning(f"文件清理失败: {e}")
+
+            # 重置关联的 SubscriptionVideo
+            related_videos = db.query(SubscriptionVideo).filter(
+                SubscriptionVideo.download_task_id == task.id
+            ).all()
+            for video in related_videos:
+                video.downloaded = "false"
+                video.download_task_id = None
+                video.error_message = None
+
             db.delete(task)
             db.commit()
-            return {"success": True, "task_id": task.id[:8]}
+            msg = f"任务已删除"
+            if cleaned > 0:
+                msg += f"，清理 {cleaned} 个文件"
+            return {"success": True, "task_id": task.id[:8], "message": msg}
         finally:
             db.close()
     except Exception as e:
@@ -458,17 +654,17 @@ def extract_url(text: str) -> Optional[str]:
 def classify_url(url: str) -> str:
     """识别 URL 类型: live / subscription / download"""
     url_lower = url.lower()
-    # 直播 URL
     if any(x in url_lower for x in ["live.douyin", "live.bilibili", "huya.com", "kuaishou.com/live", "douyu.com", "twitch.tv"]):
         return "live"
-    # 订阅 URL
-    if any(x in url_lower for x in ["/user/", "/collection/", "/playlist/", "channel/", "/space/", "/profile/"]):
+    if detect_subscription_type(url):
         return "subscription"
     return "download"
 
 
 async def handle_url(url: str) -> Dict[str, Any]:
-    """智能处理 URL"""
+    """智能处理 URL（含短链解析）"""
+    # 先解析短链
+    url = await resolve_url(url)
     url_type = classify_url(url)
     if url_type == "live":
         return await add_live_subscription(url)
@@ -476,3 +672,40 @@ async def handle_url(url: str) -> Dict[str, Any]:
         return await add_subscription(url)
     else:
         return await download_url(url)
+
+
+# ==================== 内部工具 ====================
+
+def _detect_source(url: str) -> str:
+    """识别 URL 来源平台"""
+    if "douyin.com" in url or "tiktok.com" in url:
+        return "douyin"
+    elif "bilibili.com" in url or "b23.tv" in url:
+        return "bilibili"
+    elif "youtube.com" in url or "youtu.be" in url:
+        return "youtube"
+    elif "xiaohongshu.com" in url or "xhslink.com" in url:
+        return "xiaohongshu"
+    elif "kuaishou.com" in url:
+        return "kuaishou"
+    return "others"
+
+
+def _detect_platform(url: str):
+    """检测订阅平台类型"""
+    from sql.models import Platform
+    if "douyin.com" in url or "v.douyin.com" in url:
+        return Platform.douyin
+    elif "bilibili.com" in url or "b23.tv" in url:
+        return Platform.bilibili
+    elif "youtube.com" in url or "youtu.be" in url:
+        return Platform.youtube
+    elif "xiaohongshu.com" in url or "xhslink.com" in url:
+        return Platform.xiaohongshu
+    elif "tiktok.com" in url:
+        return Platform.tiktok
+    elif "instagram.com" in url:
+        return Platform.instagram
+    elif "music.163.com" in url:
+        return Platform.netease
+    return None

@@ -319,8 +319,10 @@ class WecomBotService:
         lic = "✅ LIFETIME" if r.get("license_lifetime") else (f"✅ {r.get('license_remaining', '?')}天" if r.get("license_valid") else "❌")
         return f"""【系统状态】
 💻 CPU: {r['cpu']}% | 内存: {r['mem_percent']}% | 磁盘: {r['disk_percent']}%
-📥 下载中: {r['downloading']} | 等待: {r['pending']} | 总计: {r['total_tasks']}
-📋 视频订阅: {r['subs']} | 直播: {r['lives']} (录制中: {r['recording']})
+📥 下载中: {r['downloading']} | 等待: {r['pending']} | 完成: {r.get('completed', 0)} | 失败: {r.get('failed', 0)}
+📋 视频订阅: {r.get('total_subs', r.get('subs', 0))} (活跃: {r.get('active_subs', 0)} | 暂停: {r.get('paused_subs', 0)})
+📺 直播: {r.get('total_lives', r.get('lives', 0))} (录制中: {r['recording']} | 直播中: {r.get('live_count', 0)})
+💾 订阅存储: {r.get('sub_storage_gb', 0)} GB
 🔑 授权: {lic}"""
 
     def _fmt_subscriptions(self, r: dict) -> str:
