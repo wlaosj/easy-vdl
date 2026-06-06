@@ -2679,9 +2679,9 @@ class TelegramBotService:
             elif 'x.com' in url or 'twitter.com' in url: source = 'x'
             elif 'kuaishou' in url or 'gifshow' in url: source = 'kuaishou'
             
-            # 4. 版权/授权检查 (仅针对通用解析 others 和 订阅功能)
-            # 如果是 others (通用解析)，需要检查 License
-            if source == 'others':
+            # 4. 授权检查：只有抖音/小红书/油管/B站/网易云免费下载
+            FREE_SOURCES = {'douyin', 'xiaohongshu', 'youtube', 'bilibili', 'netease'}
+            if source not in FREE_SOURCES:
                 from routers.license import license_manager
                 if not await license_manager.is_active_for("telegram.download.generic_link"):
                     await self.send_message(chat_id, "🔒 **功能限制**\n\n通用链接解析是高级功能，您的授权无效或已过期。\n请检查授权状态或联系管理员。")

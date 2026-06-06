@@ -448,17 +448,20 @@ async def check_failed_tasks() -> Dict[str, Any]:
 async def download_url(url: str) -> Dict[str, Any]:
     """下载单个视频（含短链解析）"""
     try:
+        url = await resolve_url(url)
+        url = clean_url(url)
+        source = _detect_source(url)
+
+        # 除抖音/小红书/油管/B站/网易云外，需要通用解析（高级版）
+        FREE_DOWNLOAD_SOURCES = {"douyin", "xiaohongshu", "youtube", "bilibili", "netease"}
+        if source not in FREE_DOWNLOAD_SOURCES:
+            from routers.license import license_manager
+            if not await license_manager.is_active_for("bot.download.generic"):
+                return {"success": False, "error": "该平台需通用解析下载，通用解析是高级功能，授权无效或已过期。"}
+
         from sql.database_postgresql import get_session
         from sql.models import Task, TaskStatus
         from routers.downloader import download_manager
-
-        # 短链解析
-        url = await resolve_url(url)
-        # 清洗 URL
-        url = clean_url(url)
-
-        # 识别来源
-        source = _detect_source(url)
 
         task_id = str(uuid.uuid4())
         db = get_session()
