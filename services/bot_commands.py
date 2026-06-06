@@ -82,17 +82,22 @@ def clean_url(url: str) -> str:
     if not url:
         return url
     # 小红书保留原始 URL（需要 auth 参数）
-    if "xiaohongshu.com" in url:
+    if "xiaohongshu.com" in url or "xhslink.com" in url:
         return url
-    # 保留必要参数，去除追踪参数
-    from urllib.parse import urlparse, parse_qs, urlencode
+    from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
     parsed = urlparse(url)
-    params = parse_qs(parsed.query)
-    # 保留的参数
-    keep_params = {"v", "id", "room_id", "p", "bvid", "aid", "cid", "list", "type"}
-    filtered = {k: v for k, v in params.items() if k in keep_params}
-    new_query = urlencode(filtered, doseq=True) if filtered else ""
-    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}" + (f"?{new_query}" if new_query else "")
+    params = parse_qsl(parsed.query, keep_blank_values=True)
+    # 基础保留参数
+    keep_params = {"v", "id", "room_id", "p", "list", "type"}
+    # Bilibili 特有参数
+    if "bilibili.com" in url or "b23.tv" in url:
+        keep_params.update({"bvid", "aid", "cid", "sid", "ep_id", "season_id"})
+    # 抖音保留 room_id
+    if "douyin.com" in url or "amemv.com" in url:
+        keep_params.add("room_id")
+    filtered = [(k, v) for k, v in params if k in keep_params]
+    new_query = urlencode(filtered)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", new_query, ""))
 
 
 # ==================== 订阅类型检测 ====================
@@ -416,7 +421,7 @@ async def download_url(url: str) -> Dict[str, Any]:
 
 
 async def add_subscription(url: str) -> Dict[str, Any]:
-    """添加订阅（含短链解析+精确平台检测）"""
+    """添加订阅（含短链解析+精确平台检测+输入校验）"""
     try:
         from routers.license import license_manager
         if not await license_manager.is_active_for("bot.subscribe"):
@@ -425,16 +430,54 @@ async def add_subscription(url: str) -> Dict[str, Any]:
         # 短链解析
         url = await resolve_url(url)
 
+        # 直播链接检测：如果是直播链接，转给直播订阅
+        url_lower = url.lower()
+        if any(x in url_lower for x in ["live.douyin.com", "live.bilibili.com", "youtube.com/live/"]):
+            return await add_live_subscription(url)
+
+        # 输入校验：拒绝无效链接
+        if "instagram.com" in url:
+            if "/p/" in url or "/reel/" in url or "/stories/" in url:
+                return {"success": False, "error": "Instagram 单帖/Reel/Stories 不支持订阅，请发送博主主页链接"}
+        if "xiaohongshu.com" in url:
+            if "/explore/" in url or "/livestream" in url:
+                return {"success": False, "error": "小红书笔记/直播不支持订阅，请发送博主主页链接"}
+        if "music.163.com" in url and "playlist" not in url and "id=" not in url:
+            return {"success": False, "error": "网易云只支持歌单订阅，请发送歌单链接"}
+
         from routers.subscribe.subscription import add_subscription as _add_sub
         from sql.models import SubscriptionCreate, Platform
 
         platform = _detect_platform(url)
+        subscription_type = "user"
 
-        sub_create = SubscriptionCreate(url=url, platform=platform, auto_download=True)
+        # 精确平台检测
+        if "douyin.com" in url:
+            if "/collection/" in url:
+                platform = Platform.douyin_collection if hasattr(Platform, 'douyin_collection') else Platform.douyin
+                subscription_type = "collection"
+        elif "youtube.com" in url or "youtu.be" in url:
+            if "list=" in url:
+                subscription_type = "playlist"
+            elif "/@" in url or "/c/" in url or "/channel/" in url:
+                subscription_type = "channel"
+        elif "bilibili.com" in url:
+            if "favlist" in url or "fid=" in url:
+                subscription_type = "favorite"
+            elif "/video/BV" in url:
+                subscription_type = "collection"
+
+        sub_create = SubscriptionCreate(
+            url=url,
+            platform=platform,
+            auto_download=True,
+            quality="best",
+            update_interval=3600,
+        )
         result = await _add_sub(sub_create)
         if result:
             name = getattr(result, 'nickname', None) or getattr(result, 'url', url[:40])
-            sub_type = detect_subscription_type(url) or "订阅"
+            sub_type = detect_subscription_type(url) or subscription_type
             return {"success": True, "name": name, "platform": str(platform) if platform else "自动识别", "type": sub_type}
         return {"success": False, "error": "添加失败"}
     except Exception as e:
@@ -463,10 +506,12 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
                 adapter = adapters.get_adapter_by_platform("xhs")
             elif "huya.com" in url:
                 adapter = adapters.get_adapter_by_platform("huya")
-            elif "kuaishou.com" in url:
+            elif "kuaishou.com" in url or "gifshow.com" in url or "chenzhongtech.com" in url:
                 adapter = adapters.get_adapter_by_platform("kuaishou")
             elif "douyu.com" in url:
                 adapter = adapters.get_adapter_by_platform("douyu")
+            elif "cc.163.com" in url:
+                adapter = adapters.get_adapter_by_platform("cc")
             elif "twitch.tv" in url:
                 adapter = adapters.get_adapter_by_platform("twitch")
 
@@ -488,6 +533,11 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
                 LiveSubscription.platform == platform_name,
                 LiveSubscription.room_url == url
             ).first()
+            if not existing and room_id:
+                existing = db.query(LiveSubscription).filter(
+                    LiveSubscription.platform == platform_name,
+                    LiveSubscription.room_id == str(room_id)
+                ).first()
             if existing:
                 return {"success": False, "error": f"该直播间已存在: {existing.anchor_name}"}
 
@@ -523,22 +573,25 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
 
 
 async def retry_task(task_id: str) -> Dict[str, Any]:
-    """重试失败任务"""
+    """重试失败任务（对标 TG Bot 使用 retry_task_internal）"""
     try:
         from sql.database_postgresql import get_session
-        from sql.models import Task, TaskStatus
-        from routers.downloader import download_manager
+        from sql.models import Task
+        from routers.file_manager import retry_task_internal
+
+        def _enqueue(func, *args):
+            result = func(*args)
+            if asyncio.iscoroutine(result):
+                asyncio.create_task(result)
+
         db = get_session()
         try:
+            # 先找到完整任务 ID
             task = db.query(Task).filter(Task.id.startswith(task_id)).first()
             if not task:
                 return {"success": False, "error": f"未找到任务: {task_id}"}
-            task.status = TaskStatus.PENDING.value
-            task.error_message = None
-            task.updated_at = datetime.now()
-            db.commit()
-            await download_manager.add_download_task(task.id)
-            return {"success": True, "task_id": task.id[:8], "url": task.url[:50]}
+            res = retry_task_internal(task.id, db, _enqueue)
+            return {"success": True, "task_id": task.id[:8], "message": res.get("message", "任务已开始重试")}
         finally:
             db.close()
     except Exception as e:
@@ -678,16 +731,22 @@ async def handle_url(url: str) -> Dict[str, Any]:
 
 def _detect_source(url: str) -> str:
     """识别 URL 来源平台"""
-    if "douyin.com" in url or "tiktok.com" in url:
+    if "douyin.com" in url or "iesdouyin.com" in url:
         return "douyin"
+    elif "tiktok.com" in url or "vt.tiktok.com" in url:
+        return "tiktok"
     elif "bilibili.com" in url or "b23.tv" in url:
         return "bilibili"
     elif "youtube.com" in url or "youtu.be" in url:
         return "youtube"
     elif "xiaohongshu.com" in url or "xhslink.com" in url:
         return "xiaohongshu"
-    elif "kuaishou.com" in url:
+    elif "kuaishou.com" in url or "gifshow.com" in url:
         return "kuaishou"
+    elif "x.com" in url or "twitter.com" in url:
+        return "x"
+    elif "music.163.com" in url:
+        return "netease"
     return "others"
 
 
@@ -702,7 +761,7 @@ def _detect_platform(url: str):
         return Platform.youtube
     elif "xiaohongshu.com" in url or "xhslink.com" in url:
         return Platform.xiaohongshu
-    elif "tiktok.com" in url:
+    elif "tiktok.com" in url or "vt.tiktok.com" in url:
         return Platform.tiktok
     elif "instagram.com" in url:
         return Platform.instagram
