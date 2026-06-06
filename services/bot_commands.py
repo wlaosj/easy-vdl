@@ -959,17 +959,17 @@ def _detect_platform(url: str):
     """检测订阅平台类型"""
     from sql.models import Platform
     if "douyin.com" in url or "v.douyin.com" in url:
-        return Platform.douyin
+        return Platform.DOUYIN
     elif "bilibili.com" in url or "b23.tv" in url:
-        return Platform.bilibili
+        return Platform.BILIBILI
     elif "youtube.com" in url or "youtu.be" in url:
-        return Platform.youtube
+        return Platform.YOUTUBE
     elif "xiaohongshu.com" in url or "xhslink.com" in url:
-        return Platform.xiaohongshu
+        return Platform.XIAOHONGSHU
     elif "tiktok.com" in url or "vt.tiktok.com" in url:
-        return Platform.tiktok
+        return Platform.TIKTOK
     elif "instagram.com" in url:
-        return Platform.instagram
+        return Platform.INSTAGRAM
     elif "music.163.com" in url:
-        return Platform.netease
+        return Platform.NETEASE
     return None
