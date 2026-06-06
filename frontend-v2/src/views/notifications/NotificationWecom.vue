@@ -176,120 +176,17 @@
             </div>
           </div>
         </div>
-      </template>
-    </div>
 
-    <!-- VPS 中继搭建教程 -->
-    <div class="setting-group">
-      <div class="group-title" style="cursor:pointer; user-select:none;" @click="showTutorial = !showTutorial">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="transition:transform .2s" :style="{transform: showTutorial ? 'rotate(90deg)' : 'rotate(0deg)'}">
-          <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2" fill="none"/>
-        </svg>
-        🖥️ VPS 中继搭建教程
-        <span style="font-size:.8rem;color:var(--color-text-tertiary);font-weight:400;margin-left:8px">
-          {{ showTutorial ? '收起' : '无公网 IP 时配置 frp + tinyproxy 中继' }}
-        </span>
-      </div>
-
-      <template v-if="showTutorial">
-        <div class="tutorial-section">
-          <h4>原理</h4>
-          <div class="diagram">
-            <p>出站 API → HTTP 代理 (tinyproxy) → 本地 EDL</p>
-            <p>入站回调 → VPS:8001 (frps) → frp 隧道 → 本地 EDL:8001</p>
+        <div class="setting-item">
+          <div class="setting-label">
+            <span class="title">无公网 IP？</span>
+            <p class="desc">使用 frp + tinyproxy 搭建 VPS 中继</p>
           </div>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>1. VPS 安装 Docker</h4>
-          <pre class="code-block">curl -fsSL https://get.docker.com | sh</pre>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>2. 创建配置目录</h4>
-          <pre class="code-block">mkdir -p ~/docker/frps ~/docker/tinyproxy</pre>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>3. frps 配置</h4>
-          <p class="desc">创建 <code>~/docker/frps/frps.toml</code>：</p>
-          <pre class="code-block">bindPort = 7100
-auth.token = "改成你的密钥"
-
-webServer.addr = "0.0.0.0"
-webServer.port = 7101
-webServer.user = "admin"
-webServer.password = "改成你的密码"</pre>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>4. tinyproxy 配置</h4>
-          <p class="desc">创建 <code>~/docker/tinyproxy/tinyproxy.conf</code>：</p>
-          <pre class="code-block">Port 8888
-Timeout 600
-Allow 你的EDL机器IP</pre>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>5. docker-compose.yml</h4>
-          <pre class="code-block">version: "3.8"
-
-services:
-  frps:
-    image: snowdreamtech/frps:latest
-    container_name: frps
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - ./frps/frps.toml:/etc/frp/frps.toml:ro
-
-  tinyproxy:
-    image: andyshinn/tinyproxy:latest
-    container_name: tinyproxy
-    restart: unless-stopped
-    ports:
-      - "1080:8888"
-    volumes:
-      - ./tinyproxy/tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro</pre>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>6. 启动</h4>
-          <pre class="code-block">cd ~/docker && docker compose up -d</pre>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>7. 防火墙放行端口</h4>
-          <ul class="port-list">
-            <li><code>7100</code> — frp 隧道</li>
-            <li><code>8001</code> — 微信回调</li>
-            <li><code>1080</code> — HTTP 代理</li>
-          </ul>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>8. 本地 EDL 机器配置 frpc</h4>
-          <p class="desc">创建 <code>frpc.toml</code>：</p>
-          <pre class="code-block">serverAddr = "你的VPS公网IP"
-serverPort = 7100
-auth.token = "与frps.toml一致"
-
-[[proxies]]
-name = "wecom-bot"
-type = "tcp"
-localIP = "127.0.0.1"
-localPort = 8001
-remotePort = 8001</pre>
-          <p class="desc">启动：<code>frpc -c frpc.toml</code></p>
-        </div>
-
-        <div class="tutorial-section">
-          <h4>9. 企业微信后台配置</h4>
-          <ul class="port-list">
-            <li><strong>可信 IP</strong> — 填入 VPS 公网 IP</li>
-            <li><strong>回调 URL</strong> — <code>http://VPS公网IP:8001/api/wecom/callback</code></li>
-            <li><strong>API 代理</strong> — 上面配置页填 <code>http://VPS公网IP:1080</code></li>
-          </ul>
+          <div class="setting-control">
+            <router-link class="btn btn-outline" to="/settings/notifications/wecom/tutorial">
+              查看搭建教程 →
+            </router-link>
+          </div>
         </div>
       </template>
     </div>
@@ -325,7 +222,6 @@ import Icon from '@/components/common/Icon.vue'
 const settingsStore = useSettingsStore()
 const toast = useToast()
 const testingWecom = ref(false)
-const showTutorial = ref(false)
 
 async function saveSettings() {
   const result = await settingsStore.saveNotificationSettings()
@@ -567,67 +463,5 @@ onMounted(() => {
     width: 100%;
     padding: 10px 0;
   }
-}
-
-/* VPS 中继教程 */
-.tutorial-section {
-  margin: 16px 0;
-  padding: 12px 16px;
-  background: var(--color-bg-tertiary, rgba(128,128,128,0.08));
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-}
-
-.tutorial-section h4 {
-  margin: 0 0 8px;
-  font-size: 0.95rem;
-  color: var(--color-text-primary);
-}
-
-.tutorial-section .desc {
-  font-size: 0.85rem;
-  color: var(--color-text-tertiary);
-  margin: 4px 0;
-}
-
-.diagram p {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-  margin: 4px 0;
-  padding: 6px 10px;
-  background: var(--color-bg-secondary);
-  border-radius: 6px;
-  border-left: 3px solid var(--color-primary, #07C160);
-}
-
-.port-list {
-  margin: 4px 0;
-  padding-left: 20px;
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
-}
-
-.port-list li {
-  margin: 4px 0;
-}
-
-.port-list code {
-  background: var(--color-bg-tertiary, rgba(128,128,128,0.15));
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-}
-
-.code-block {
-  background: var(--color-bg-tertiary, rgba(0,0,0,0.3));
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  overflow-x: auto;
-  white-space: pre;
-  color: var(--color-text-primary);
-  margin: 8px 0 0;
 }
 </style>
