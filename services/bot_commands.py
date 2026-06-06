@@ -808,6 +808,11 @@ async def resume_live_subscription(sub_id: str) -> Dict[str, Any]:
             sub.auto_record = "true"
             db.commit()
             live_scheduler.invalidate_config_cache(sub.id)
+            # 立即触发一次检测，不等下一个轮询周期
+            try:
+                await live_scheduler.trigger_immediate_check(sub.id)
+            except Exception:
+                pass
             return {"success": True, "name": sub.anchor_name or sub.room_url[:30]}
         finally:
             db.close()
