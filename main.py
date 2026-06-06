@@ -583,16 +583,15 @@ async def startup_event():
     try:
         from routers.wecom_bot import wecom_bot
         await wecom_bot.start()
-        # 启动企业微信回调专用端口
+        # 启动企业微信回调专用端口（无论是否启用，等待回调验证时需要）
         wecom_callback_port = int(os.environ.get("WECOM_CALLBACK_PORT", "8001"))
-        if wecom_bot.enabled:
-            import uvicorn as _uvicorn
-            from fastapi import FastAPI as _FastAPI
-            wecom_app = _FastAPI()
-            wecom_app.include_router(wecom_bot_router)
-            _wecom_callback_server = _uvicorn.Server(_uvicorn.Config(wecom_app, host="0.0.0.0", port=wecom_callback_port, log_level="warning"))
-            asyncio.create_task(_wecom_callback_server.serve())
-            logger.info(f"企业微信回调专用端口已启动: {wecom_callback_port}")
+        import uvicorn as _uvicorn
+        from fastapi import FastAPI as _FastAPI
+        wecom_app = _FastAPI()
+        wecom_app.include_router(wecom_bot_router)
+        _wecom_callback_server = _uvicorn.Server(_uvicorn.Config(wecom_app, host="0.0.0.0", port=wecom_callback_port, log_level="warning"))
+        asyncio.create_task(_wecom_callback_server.serve())
+        logger.info(f"企业微信回调专用端口已启动: {wecom_callback_port}")
     except Exception as e:
         logger.error(f"企业微信Bot启动失败: {e}")
 
