@@ -443,7 +443,12 @@ class WecomBotService:
         header = f"【直播订阅】共 {r['total']} 个 (第 {page}/{total_pages} 页)\n"
         lines = [header]
         for l in r["items"]:
-            icon = "🔴" if l["is_recording"] else "⚪"
+            if l["is_recording"]:
+                icon = "🔴"
+            elif l["is_live"]:
+                icon = "🟢"
+            else:
+                icon = "⚪"
             auto = "📹开" if l.get("auto_record") == "true" else "📹关"
             lines.append(f"• {icon} {l['anchor_name']} {auto}\n  ID: {l['id']}")
         lines.append(f"\n发送「查直播 N」翻页，N 为页码")
