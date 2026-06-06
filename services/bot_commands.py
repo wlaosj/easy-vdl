@@ -930,11 +930,17 @@ async def handle_url(url: str, context_text: str = "") -> Dict[str, Any]:
     url_type = classify_url(resolved, context_text)
     logger.debug(f"handle_url: url={url[:60]}, resolved={resolved[:60]}, type={url_type}")
     if url_type == "live":
-        return await add_live_subscription(url)
+        result = await add_live_subscription(url)
+        result["action"] = "直播录制"
+        return result
     elif url_type == "subscription":
-        return await add_subscription(url)
+        result = await add_subscription(url)
+        result["action"] = "订阅"
+        return result
     else:
-        return await download_url(url)
+        result = await download_url(url)
+        result["action"] = "下载"
+        return result
 
 
 # ==================== 内部工具 ====================
