@@ -110,6 +110,9 @@ def detect_subscription_type(url: str) -> Optional[str]:
     # 抖音合集
     if "douyin.com/collection/" in url or "/collection/" in url:
         return "抖音合集"
+    # 抖音短链（排除 note/video，可能是博主主页或直播）
+    if "v.douyin.com" in url and "/note/" not in url and "/video/" not in url:
+        return "抖音博主主页"
     # 抖音博主主页
     if "douyin.com/user/" in url or "/user/" in url or "/share/user/" in url:
         return "抖音博主主页"
