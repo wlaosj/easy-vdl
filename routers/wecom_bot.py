@@ -65,6 +65,7 @@ class WecomBotService:
         self.callback_token: Optional[str] = None
         self.callback_aes_key: Optional[str] = None
         self.enabled: bool = False
+        self._processed_msg_ids: Dict[str, float] = {}  # MsgId → time，用于回调去重
 
     def load_config(self, db: Session) -> bool:
         try:
@@ -222,6 +223,20 @@ class WecomBotService:
             msg = self._parse_xml_message(xml_data)
             if not msg:
                 return Response(content="success", media_type="text/plain")
+
+            # 企业微信回调可能重试同一条消息，用 MsgId 去重（保留 60 秒）
+            msg_id = msg.get("MsgId", "")
+            if msg_id:
+                if msg_id in self._processed_msg_ids:
+                    logger.debug(f"企业微信消息已处理过，跳过: MsgId={msg_id}")
+                    return Response(content="success", media_type="text/plain")
+                self._processed_msg_ids[msg_id] = time.time()
+                # 清理过期记录
+                now = time.time()
+                self._processed_msg_ids = {
+                    k: v for k, v in self._processed_msg_ids.items()
+                    if now - v < 60
+                }
 
             msg_type = msg.get("MsgType", "")
             from_user = msg.get("FromUserName", "")
