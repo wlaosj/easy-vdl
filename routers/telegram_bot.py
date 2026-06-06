@@ -4122,46 +4122,21 @@ class TelegramBotService:
     async def _handle_live_manual_control(self, chat_id: str, sub_id: str, action: str, message_id: int, return_page: int = 1):
         """处理直播手动开始/停止"""
         try:
-            with self._db_session() as db:
-                from sql.models import LiveSubscription
-                from live.scheduler import live_scheduler
-                
-                sub = db.query(LiveSubscription).filter(LiveSubscription.id == sub_id).first()
-                if not sub:
-                    return
-
-                if action == 'start':
-                    # 开始录制 = 开启自动录制 + 触发监控
-                    sub.auto_record = "true"
-                    db.commit()
-                    
-                    await live_scheduler.add_monitor(
-                        subscription_id=sub.id,
-                        room_url=sub.room_url,
-                        platform=sub.platform,
-                        check_interval=sub.check_interval or 60
-                    )
+            if action == 'start':
+                res = await cmd.resume_live_subscription(sub_id)
+                if res.get("success"):
                     await self.send_message(chat_id, f"✅ 已开启自动录制，正在尝试启动任务...\n(如果主播在线，录制将在几秒内开始)")
-
-                elif action == 'stop':
-                    # 停止录制 = 关闭自动录制 + 强制停止
-                    sub.auto_record = "false"
-                    db.commit()
-                    
-                    # 强制停止当前录制 (并转码)
-                    await live_scheduler.stop_recording_for_subscription(sub.id, convert_to_mp4=True)
-                    
-                    # 同时移除监控，防止立刻又被拉起（虽然 auto_record已关，但根据逻辑最好还是 remove 再 add 或者保持 remove）
-                    # 实际上如果 auto_record 关了，keepalive check 就会忽略它。
-                    # 但为了保险，我们刷新一下状态。
-                    
+                else:
+                    await self.send_message(chat_id, f"❌ {res.get('error', '操作失败')}")
+            elif action == 'stop':
+                res = await cmd.pause_live_subscription(sub_id)
+                if res.get("success"):
                     await self.send_message(chat_id, f"⏹️ 已停止录制，并关闭了该直播间的自动录制。")
-
-                # 刷新详情页状态
-                # 稍微延迟一下等待状态更新
-                import asyncio
-                await asyncio.sleep(1)
-                await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
+                else:
+                    await self.send_message(chat_id, f"❌ {res.get('error', '操作失败')}")
+            # 刷新详情页状态
+            await asyncio.sleep(1)
+            await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
         except Exception as e:
             logger.error(f"手动控制失败: {e}")
             await self.send_message(chat_id, f"❌ 操作失败: {e}")
@@ -4169,32 +4144,13 @@ class TelegramBotService:
     async def _handle_live_toggle_auto_record(self, chat_id: str, sub_id: str, action: str, message_id: int, return_page: int = 1):
         """切换直播自动录制状态"""
         try:
-            with self._db_session() as db:
-                from sql.models import LiveSubscription
-                from live.scheduler import live_scheduler # 动态导入
-                
-                sub = db.query(LiveSubscription).filter(LiveSubscription.id == sub_id).first()
-                if not sub:
-                    return
-
-                # 更新数据库
-                new_state = "true" if action == "on" else "false"
-                sub.auto_record = new_state
-                db.commit()
-                
-                # 同步 Scheduler
-                if new_state == "true":
-                    await live_scheduler.add_monitor(
-                        subscription_id=sub.id,
-                        room_url=sub.room_url,
-                        platform=sub.platform,
-                        check_interval=sub.check_interval or 60
-                    )
-                else:
-                    await live_scheduler.remove_monitor(sub.id)
-                
-                # 刷新详情页
-                await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
+            if action == "on":
+                res = await cmd.resume_live_subscription(sub_id)
+            else:
+                res = await cmd.pause_live_subscription(sub_id)
+            if not res.get("success"):
+                await self.send_message(chat_id, f"❌ {res.get('error', '操作失败')}")
+            await self._handle_live_subscription_info(chat_id, sub_id, message_id, return_page=return_page)
         except Exception as e:
             logger.error(f"切换自动录制失败: {e}")
             await self.send_message(chat_id, "❌ 操作失败")
