@@ -24,7 +24,7 @@ class DouyinAdapter(BaseAdapter):
         cookies = None
         
         # 判断 API 类型
-        is_app_api = 'v.douyin.com' in url or '/user/' in url or 'amemv.com' in url
+        is_app_api = 'v.douyin.com' in url or '/user/' in url
         
         logger.debug(f"[DouyinAdapter] URL类型判断: is_app_api={is_app_api}, URL={url}")
         
