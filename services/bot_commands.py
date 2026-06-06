@@ -212,7 +212,7 @@ async def check_status() -> Dict[str, Any]:
 
         cpu = psutil.cpu_percent(interval=1)
         mem = psutil.virtual_memory()
-        disk = psutil.disk_usage("/")
+        disk = psutil.disk_usage("/app/downloads")
 
         db = get_session()
         try:
@@ -254,11 +254,61 @@ async def check_status() -> Dict[str, Any]:
             recording = db.query(LiveSubscription).filter(LiveSubscription.is_recording == "true").count()
             today_start = datetime.combine(date.today(), datetime.min.time())
             today_records = db.query(LiveRecord).filter(LiveRecord.start_time >= today_start).count()
+
+            # 正在下载任务详情（从运行时 download_manager 获取）
+            active_downloads = []
+            try:
+                from routers.downloader import download_manager
+                for tid, task in download_manager.tasks.items():
+                    active_downloads.append({
+                        "id": tid[:8],
+                        "title": (task.get("title") or "")[:30],
+                        "progress": task.get("progress", 0) or 0,
+                        "speed": task.get("speed", ""),
+                    })
+            except Exception:
+                pass
         finally:
             db.close()
 
+        # 用运行时的 live_recorder 覆盖 recording 计数，比 DB 状态更准确
+        try:
+            from live.recorder import live_recorder
+            runtime_recording = len(live_recorder.get_all_recording_ids())
+            if runtime_recording > 0:
+                recording = runtime_recording
+        except Exception:
+            pass
+
         # 存储大小
         sub_storage = _get_dir_size("/app/downloads/subscriptions")
+
+        # 版本信息
+        app_version = ""
+        core_version = ""
+        try:
+            from routers.version import get_build_version
+            bv = await get_build_version()
+            if bv and isinstance(bv, dict):
+                app_version = bv.get("version", "")
+        except Exception:
+            pass
+        try:
+            from routers.system import _get_core_version_with_cache
+            cv = _get_core_version_with_cache()
+            if cv and isinstance(cv, dict):
+                core_version = cv.get("current_version", "")
+        except Exception:
+            pass
+
+        # 直播录制存储
+        live_storage_gb = 0.0
+        try:
+            from live.routers import _stats_data
+            if _stats_data and _stats_data.get('total_size', 0) > 0:
+                live_storage_gb = round(_stats_data['total_size'] / (1000 ** 3), 2)
+        except Exception:
+            pass
 
         from routers.license import license_manager, LicenseStatus
         lic_valid = license_manager.status == LicenseStatus.VALID
@@ -289,9 +339,13 @@ async def check_status() -> Dict[str, Any]:
             "recording": recording,
             "today_records": today_records,
             "sub_storage_gb": round(sub_storage, 2),
+            "live_storage_gb": live_storage_gb,
             "license_valid": lic_valid,
             "license_lifetime": lic_lifetime,
             "license_remaining": lic_remaining,
+            "app_version": app_version,
+            "core_version": core_version,
+            "active_downloads": active_downloads,
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -450,6 +504,7 @@ async def add_subscription(url: str) -> Dict[str, Any]:
 
         platform = _detect_platform(url)
         subscription_type = "user"
+        youtube_tab_type = None
 
         # 精确平台检测
         if "douyin.com" in url:
@@ -461,6 +516,11 @@ async def add_subscription(url: str) -> Dict[str, Any]:
                 subscription_type = "playlist"
             elif "/@" in url or "/c/" in url or "/channel/" in url:
                 subscription_type = "channel"
+            # YouTube 标签页类型
+            if "/shorts" in url:
+                youtube_tab_type = "shorts"
+            elif "/videos" in url:
+                youtube_tab_type = "videos"
         elif "bilibili.com" in url:
             if "favlist" in url or "fid=" in url:
                 subscription_type = "favorite"
@@ -468,15 +528,17 @@ async def add_subscription(url: str) -> Dict[str, Any]:
                 subscription_type = "collection"
 
         sub_create = SubscriptionCreate(
-            url=url,
+            profile_url=url,
             platform=platform,
-            auto_download=True,
+            auto_download="true",
             quality="best",
             update_interval=3600,
+            subscription_type=subscription_type,
+            youtube_tab_type=youtube_tab_type,
         )
         result = await _add_sub(sub_create)
         if result:
-            name = getattr(result, 'nickname', None) or getattr(result, 'url', url[:40])
+            name = getattr(result, 'nickname', None) or getattr(result, 'profile_url', url[:40])
             sub_type = detect_subscription_type(url) or subscription_type
             return {"success": True, "name": name, "platform": str(platform) if platform else "自动识别", "type": sub_type}
         return {"success": False, "error": "添加失败"}
@@ -516,7 +578,7 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
                 adapter = adapters.get_adapter_by_platform("twitch")
 
         if not adapter:
-            return {"success": False, "error": "无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、斗鱼、Twitch"}
+            return {"success": False, "error": "无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕、斗鱼、网易CC、Twitch"}
 
         platform_name = adapter.platform_name
         info = await adapter.get_room_info(url)
@@ -559,12 +621,15 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
             db.refresh(new_sub)
 
             from live.scheduler import live_scheduler
-            await live_scheduler.add_monitor(
-                subscription_id=new_sub.id,
-                room_url=new_sub.room_url,
-                platform=new_sub.platform,
-                check_interval=new_sub.check_interval or 60,
-            )
+            try:
+                await live_scheduler.add_monitor(
+                    subscription_id=new_sub.id,
+                    room_url=new_sub.room_url,
+                    platform=new_sub.platform,
+                    check_interval=new_sub.check_interval or 60,
+                )
+            except Exception as scheduler_err:
+                logger.warning(f"触发监控失败（系统重启后将自动接管）: {scheduler_err}")
             return {"success": True, "anchor_name": anchor_name, "platform": platform_name}
         finally:
             db.close()
