@@ -162,6 +162,7 @@ docker run -d \
     --memory-swap=4g \
     -p $FRONTEND_PORT:$FRONTEND_PORT \
     -p 5900:5900 \
+    -p 8001:8001 \
     -v "$(pwd)/downloads:/app/downloads" \
     -v "$(pwd)/logs:/app/logs" \
     -v "$(pwd)/database:/app/database" \
@@ -189,7 +190,7 @@ echo "📋 服务信息："
 echo "   - 容器名称: $CONTAINER_NAME"
 echo "   - 镜像名称: $IMAGE_NAME"
 echo "   - 访问地址: http://localhost:$FRONTEND_PORT"
-echo "   - 端口映射: $FRONTEND_PORT:$FRONTEND_PORT, 5900:5900 (VNC)"
+echo "   - 端口映射: $FRONTEND_PORT:$FRONTEND_PORT, 5900:5900 (VNC), 8001:8001 (企业微信回调)"
 echo "   - 本地下载目录: $(pwd)/downloads"
 echo "   - 本地日志目录: $(pwd)/logs"
 echo "   - 本地数据库目录: $(pwd)/database"

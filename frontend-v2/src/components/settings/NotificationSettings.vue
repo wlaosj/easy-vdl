@@ -131,6 +131,38 @@
       </div>
     </div>
 
+    <!-- 企业微信应用Bot Overview -->
+    <div class="setting-group">
+      <div class="group-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="platform-logo wecom-logo">
+          <rect width="24" height="24" rx="6" fill="#07C160"/>
+          <path d="M12 5C8.13 5 5 7.69 5 11c0 1.84 1.08 3.47 2.76 4.57L7 18l3.08-1.54c.88.22 1.81.34 2.77.34 3.58 0 6.5-2.46 6.5-5.5S15.43 5 12 5z" fill="white"/>
+        </svg>
+        企业微信应用Bot
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">
+          <span class="title">启用应用Bot</span>
+          <p class="desc">支持消息推送、菜单交互和指令查询</p>
+        </div>
+        <div class="setting-control horizontal">
+          <label class="switch">
+            <input type="checkbox" v-model="settingsStore.notificationSettings.wecomBotEnabled" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">
+          <span class="title">详细配置</span>
+          <p class="desc">企业ID、AgentId、Secret、回调设置</p>
+        </div>
+        <div class="setting-control horizontal">
+          <router-link class="btn btn-outline" to="/settings/notifications/wecom">进入配置</router-link>
+        </div>
+      </div>
+    </div>
+
     <!-- Notification Types (Left) -->
     <div class="setting-group combined-group combined-left">
       <div class="group-title">

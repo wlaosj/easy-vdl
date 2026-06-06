@@ -277,6 +277,15 @@ class DatabaseSchemaManager:
                     'telegram_proxy': {'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': True},
                     'telegram_media_max_concurrent': {'type': 'INTEGER', 'primary_key': False, 'nullable': True, 'default': '5'},
                     'telegram_media_use_date_subdir': {'type': 'VARCHAR(10)', 'primary_key': False, 'nullable': True, 'default': "'true'"},
+                    # 企业微信应用Bot
+                    'wecom_bot_enabled': {'type': 'VARCHAR(10)', 'primary_key': False, 'nullable': True, 'default': "'false'"},
+                    'wecom_corp_id': {'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': True},
+                    'wecom_agent_id': {'type': 'VARCHAR(100)', 'primary_key': False, 'nullable': True},
+                    'wecom_secret': {'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': True},
+                    'wecom_callback_token': {'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': True},
+                    'wecom_callback_aes_key': {'type': 'VARCHAR(200)', 'primary_key': False, 'nullable': True},
+                    'wecom_callback_url': {'type': 'VARCHAR(500)', 'primary_key': False, 'nullable': True},
+                    'wecom_api_proxy': {'type': 'VARCHAR(500)', 'primary_key': False, 'nullable': True},
                     # Bark (iOS 推送)
                     'bark_enabled': {'type': 'VARCHAR(10)', 'primary_key': False, 'nullable': True, 'default': "'false'"},
                     'bark_server_url': {'type': 'VARCHAR(500)', 'primary_key': False, 'nullable': True},
