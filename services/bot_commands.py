@@ -763,33 +763,55 @@ async def delete_subscription(sub_id: str) -> Dict[str, Any]:
 
 # ==================== URL 识别 ====================
 
+# 直播上下文提示词（用于短链未解析时兜底检测）
+LIVE_TEXT_KEYWORDS = [
+    "正在直播", "直播中", "来和我一起", "直播间的", "直播间",
+    "live.douyin", "live.bilibili",
+]
+
+
+def contains_live_context(text: str) -> bool:
+    """检测文本是否包含直播上下文提示"""
+    if not text:
+        return False
+    text_lower = text.lower()
+    return any(kw in text_lower for kw in LIVE_TEXT_KEYWORDS)
+
+
 def extract_url(text: str) -> Optional[str]:
     """从文本中提取第一个 URL"""
     urls = re.findall(r'https?://[^\s<>"\']+', text)
     return urls[0].rstrip("/") if urls else None
 
 
-def classify_url(url: str) -> str:
-    """识别 URL 类型: live / subscription / download"""
+def classify_url(url: str, context_text: str = "") -> str:
+    """识别 URL 类型: live / subscription / download
+
+    支持传入 context_text 辅助判断（短链未解析时，原文含"正在直播"等提示词直接命中直播）
+    """
     url_lower = url.lower()
     if any(x in url_lower for x in ["live.douyin", "live.bilibili", "huya.com", "kuaishou.com/live", "douyu.com", "twitch.tv"]):
         return "live"
+    # 抖音短链 v.douyin.com — 可能指向直播间（配合文本上下文判断）
+    if "v.douyin.com" in url and "/note/" not in url and "/video/" not in url:
+        if contains_live_context(context_text):
+            return "live"
     if detect_subscription_type(url):
         return "subscription"
     return "download"
 
 
-async def handle_url(url: str) -> Dict[str, Any]:
-    """智能处理 URL（含短链解析）"""
+async def handle_url(url: str, context_text: str = "") -> Dict[str, Any]:
+    """智能处理 URL（含短链解析 + 文本上下文辅助判断）"""
     # 先解析短链
-    url = await resolve_url(url)
-    url_type = classify_url(url)
+    resolved = await resolve_url(url)
+    url_type = classify_url(resolved, context_text)
     if url_type == "live":
-        return await add_live_subscription(url)
+        return await add_live_subscription(resolved)
     elif url_type == "subscription":
-        return await add_subscription(url)
+        return await add_subscription(resolved)
     else:
-        return await download_url(url)
+        return await download_url(resolved)
 
 
 # ==================== 内部工具 ====================

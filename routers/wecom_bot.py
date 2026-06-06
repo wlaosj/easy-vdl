@@ -293,7 +293,7 @@ class WecomBotService:
             return self._fmt_op(await cmd.add_live_subscription(url), "直播录制已添加") if url else "格式: 直播 URL"
         elif "http://" in content or "https://" in content:
             url = cmd.extract_url(content)
-            return self._fmt_op(await cmd.handle_url(url), "已处理") if url else "未识别到有效链接"
+            return self._fmt_op(await cmd.handle_url(url, content), "已处理") if url else "未识别到有效链接"
         else:
             return f"收到: {content}\n\n发送「帮助」查看可用命令"
 
