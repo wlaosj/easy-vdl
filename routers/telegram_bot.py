@@ -752,7 +752,7 @@ class TelegramBotService:
                 temp_id = str(uuid.uuid4())[:8]
                 
             self.pending_confirmations[temp_id] = {
-                "url": resolved_url,
+                "url": original_url,
                 "original_url": original_url,
                 "type": category,
                 "hint": hint,
@@ -2534,10 +2534,10 @@ class TelegramBotService:
                         "💡 **检测到小红书直播分享链接**\n\n"
                         "将自动按“直播订阅”方式处理（解决短链直播误入下载队列导致失败的问题）。"
                     )
-                    await self._handle_add_live_subscription(chat_id, url)
+                    await self._handle_add_live_subscription(chat_id, original_input_url)
                     return
 
-                # 0.1 快手直播短链/分享文案：不要走“视频下载”，直接转为“直播订阅”
+                # 0.1 快手直播短链/分享文案：不要走”视频下载”，直接转为”直播订阅”
                 if (
                     ('v.kuaishou.com' in original_input_url or 'live.kuaishou.com' in url)
                     and ('直播' in text or 'live.kuaishou.com' in url)
@@ -2547,9 +2547,9 @@ class TelegramBotService:
                         "💡 **检测到快手直播分享链接**\n\n"
                         "将自动按“直播订阅”方式处理（解决短链直播误入下载队列导致失败的问题）。"
                     )
-                    await self._handle_add_live_subscription(chat_id, url)
+                    await self._handle_add_live_subscription(chat_id, original_input_url)
                     return
-            
+
             # 1. 快速预判明显的订阅类型链接
             subscription_hint = cmd.detect_subscription_type(url)
             
