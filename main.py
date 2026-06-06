@@ -464,9 +464,9 @@ async def startup_event():
     except Exception as e:
         logger.error(f"YTD服务初始化异常: {str(e)}")
 
-    # 初始化授权服务（非阻塞，后台执行，不阻塞其他服务启动）
+    # 初始化授权服务（阻塞等待完成，避免调度器启动时误判授权失效）
     try:
-        asyncio.create_task(_init_license_async())
+        await _init_license_async()
     except Exception as e:
         logger.error(f"授权服务初始化异常: {str(e)}")
     
