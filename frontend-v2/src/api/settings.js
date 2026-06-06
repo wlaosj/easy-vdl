@@ -249,11 +249,12 @@ export const notificationsApi = {
     },
 
     // 测试企业微信应用Bot
-    testWecomBot(corpId, agentId, secret, message = 'Easy-VDL: 这是一条测试通知') {
+    testWecomBot(corpId, agentId, secret, proxy, message = 'Easy-VDL: 这是一条测试通知') {
         return client.post('/notifications/test/wecom-bot', {
             corp_id: corpId,
             agent_id: agentId,
             secret,
+            proxy: proxy || '',
             message
         });
     },

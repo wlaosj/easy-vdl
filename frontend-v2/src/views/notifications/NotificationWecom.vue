@@ -221,14 +221,14 @@ async function saveSettings() {
 }
 
 async function testWecomBot() {
-  const { wecomCorpId, wecomAgentId, wecomSecret } = settingsStore.notificationSettings
+  const { wecomCorpId, wecomAgentId, wecomSecret, wecomApiProxy } = settingsStore.notificationSettings
   if (!wecomCorpId || !wecomAgentId || !wecomSecret) {
     toast.warning('请先填写企业ID、AgentId 和 Secret')
     return
   }
   testingWecom.value = true
   try {
-    const response = await notificationsApi.testWecomBot(wecomCorpId, wecomAgentId, wecomSecret)
+    const response = await notificationsApi.testWecomBot(wecomCorpId, wecomAgentId, wecomSecret, wecomApiProxy)
     if (response.success) {
       toast.success('测试消息已发出，请在企业微信确认')
     } else {

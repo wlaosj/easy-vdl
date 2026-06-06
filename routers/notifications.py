@@ -284,11 +284,11 @@ class NotificationService:
             return False
     
     @staticmethod
-    async def send_wecom_bot_message(corp_id: str, agent_id: str, secret: str, user_id: str, message: str, msg_type: str = "text") -> bool:
+    async def send_wecom_bot_message(corp_id: str, agent_id: str, secret: str, user_id: str, message: str, msg_type: str = "text", proxy: str = "") -> bool:
         """发送企业微信应用消息"""
         try:
             from services.wecom_api import WecomApiClient
-            client = WecomApiClient(corp_id=corp_id, agent_id=agent_id, secret=secret)
+            client = WecomApiClient(corp_id=corp_id, agent_id=agent_id, secret=secret, proxy=proxy)
             tagged_message = f"[easy-vdl]\n{message}" if not message.startswith("[easy-vdl]") else message
             result = await client.send_message(user_id, tagged_message, msg_type)
             if result.get("errcode") == 0:
@@ -679,7 +679,8 @@ class NotificationService:
                         setting.wecom_secret,
                         "@all",
                         wecom_message,
-                        "text"
+                        "text",
+                        getattr(setting, 'wecom_api_proxy', '') or ""
                     )
                     channels_sent.append("wecom")
                     logger.debug(f"用户 {notification.user_id} 企业微信应用通知已加入发送队列")
@@ -1313,7 +1314,8 @@ async def test_wecom_bot(
             test_request.secret,
             "@all",
             test_request.message,
-            "text"
+            "text",
+            test_request.proxy or ""
         )
         return {
             "success": True,

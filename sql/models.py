@@ -779,6 +779,7 @@ class WecomBotTestRequest(BaseModel):
     corp_id: str
     agent_id: str
     secret: str
+    proxy: Optional[str] = ""
     message: str = "这是一条测试消息，用于验证企业微信应用Bot配置是否正确。"
 
 class WechatBotTestRequest(BaseModel):
