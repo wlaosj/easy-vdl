@@ -774,16 +774,36 @@ async def delete_subscription(sub_id: str) -> Dict[str, Any]:
 
 
 async def pause_live_subscription(sub_id: str) -> Dict[str, Any]:
-    """暂停直播订阅（关闭自动录制）"""
+    """暂停直播订阅：停止当前录制 + 关闭自动录制"""
     try:
         from sql.database_postgresql import get_session
         from sql.models import LiveSubscription
         from live.scheduler import live_scheduler
+        from live.recorder import live_recorder
         db = get_session()
         try:
             sub = db.query(LiveSubscription).filter(LiveSubscription.id.startswith(sub_id)).first()
             if not sub:
                 return {"success": False, "error": f"未找到直播订阅: {sub_id}"}
+
+            # 先停正在录制的流
+            stop_result = await live_recorder.stop_recording(
+                sub.id, convert_to_mp4=True
+            )
+            if stop_result.get('success'):
+                sub.is_recording = "false"
+                # 更新录制记录结束时间
+                from sql.models import LiveRecord
+                record = db.query(LiveRecord).filter(
+                    LiveRecord.subscription_id == sub.id,
+                    LiveRecord.status == "recording"
+                ).order_by(LiveRecord.start_time.desc()).first()
+                if record:
+                    record.end_time = datetime.now()
+                    record.duration = stop_result.get('duration', 0)
+                    record.file_size = stop_result.get('file_size', 0)
+                    record.status = "completed"
+
             sub.auto_record = "false"
             db.commit()
             live_scheduler.invalidate_config_cache(sub.id)
