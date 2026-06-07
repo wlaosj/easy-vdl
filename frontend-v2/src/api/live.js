@@ -35,6 +35,7 @@ export default {
         if (data.check_interval) params.append('check_interval', data.check_interval)
         if (data.notification_enabled !== undefined) params.append('notification_enabled', data.notification_enabled)
         if (data.danmu_enabled !== undefined) params.append('danmu_enabled', data.danmu_enabled)
+        if (data.stream_name) params.append('stream_name', data.stream_name)
 
         return client.post('/live/subscriptions?' + params.toString())
     },
@@ -122,6 +123,16 @@ export default {
      */
     getRecordingStatus(id) {
         return client.get(`/live/record/status/${id}`)
+    },
+
+    // ==================== 自定义流探测 ====================
+
+    /**
+     * 探测自定义流地址是否在线
+     * @param {string} url - 流地址
+     */
+    probeStreamUrl(url) {
+        return client.post(`/live/probe?url=${encodeURIComponent(url)}`)
     },
 
     // ==================== 录制历史 ====================

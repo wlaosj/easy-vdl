@@ -603,7 +603,7 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
                 adapter = adapters.get_adapter_by_platform("twitch")
 
         if not adapter:
-            return {"success": False, "error": "无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕、斗鱼、网易CC、Twitch"}
+            return {"success": False, "error": "无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕、斗鱼、网易CC、Twitch、自定义流(RTMP/RTSP/HLS)"}
 
         platform_name = adapter.platform_name
         info = await adapter.get_room_info(url)

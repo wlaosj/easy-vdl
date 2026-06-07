@@ -933,7 +933,7 @@ class LiveSubscription(Base):
     
     id = Column(String, primary_key=True)  # UUID
     platform = Column(String, nullable=False, index=True)  # 平台: douyin/bilibili/kuaishou/huya/douyu等
-    room_url = Column(String, nullable=False)  # 直播间URL
+    room_url = Column(Text, nullable=False)  # 直播间URL（用 Text 支持自定义流的长 URL）
     room_id = Column(String, nullable=True, index=True)  # 直播间ID (未开播时可能为空)
     anchor_name = Column(String, nullable=True)  # 主播名称 (未开播时可能为空)
     avatar_url = Column(String, nullable=True)  # 主播头像

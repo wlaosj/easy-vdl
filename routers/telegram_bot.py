@@ -4068,7 +4068,7 @@ class TelegramBotService:
                     adapter = adapters.get_adapter_by_platform('twitch')
             
             if not adapter:
-                await self.send_message(chat_id, "❌ 无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕、斗鱼、网易CC、Twitch")
+                await self.send_message(chat_id, "❌ 无法识别的直播链接，目前支持：抖音、B站、快手、虎牙、小红书、油管、咪咕、斗鱼、网易CC、Twitch、自定义流(RTMP/RTSP/HLS)")
                 return
 
             platform_name = adapter.platform_name

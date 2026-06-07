@@ -119,6 +119,7 @@
               <option value="kuaishou">快手</option>
               <option value="cc">网易CC</option>
               <option value="twitch">Twitch</option>
+              <option value="custom">自定义流</option>
             </select>
             <select v-model="filterStatus" class="form-select filter-select">
               <option value="all">所有状态</option>
@@ -203,6 +204,7 @@
                 <option value="kuaishou">快手</option>
                 <option value="cc">网易CC</option>
                 <option value="twitch">Twitch</option>
+                <option value="custom">自定义流</option>
               </select>
               <select v-model="filterStatus" class="form-select filter-select">
                 <option value="all">所有状态</option>
@@ -416,12 +418,12 @@
                 停止录制
               </button>
               
-              <button 
+              <button
                 class="btn btn-success btn-sm"
-                @click="playStream(sub)"
+                @click="sub.platform === 'custom' ? copyStreamUrl(sub) : playStream(sub)"
                 :disabled="actionLoading[sub.id]"
               >
-                {{ String(sub.platform || '').toLowerCase() === 'youtube' ? '跳转观看' : '查看直播' }}
+                {{ sub.platform === 'custom' ? '复制流地址' : (String(sub.platform || '').toLowerCase() === 'youtube' ? '跳转观看' : '查看直播') }}
               </button>
             </div>
 
@@ -500,7 +502,7 @@
             placeholder="每行一个直播间链接"
           ></textarea>
           <div class="form-hint">
-            目前支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 / 网易CC / Twitch 直播
+            目前支持 抖音 / 斗鱼 / B站 / 虎牙 / 小红书 / YouTube / 咪咕 / 快手 / 网易CC / Twitch 直播 / 自定义流(RTMP/RTSP/HLS/HTTP-FLV)
             <a href="javascript:;" @click="showFormatHelp" style="margin-left:8px; color: var(--color-primary); text-decoration: none;">
               查看支持的链接格式
             </a>
@@ -515,6 +517,36 @@
           <div class="form-hint" style="color:#dd6b20; margin-top: 4px;">
           </div>
         </div>
+
+        <!-- 自定义流：流名称 + 测试连接 -->
+        <template v-if="addMode === 'single' && addForm.room_url && (addForm.room_url.startsWith('rtmp://') || addForm.room_url.startsWith('rtmps://') || addForm.room_url.startsWith('rtsp://') || addForm.room_url.includes('.m3u8') || addForm.room_url.includes('.flv'))">
+          <div class="form-group">
+            <label class="form-label">流名称（可选）</label>
+            <input
+              v-model="addForm.stream_name"
+              type="text"
+              class="form-input"
+              placeholder="例如: 我的监控摄像头"
+            />
+            <p class="form-hint">给此流起个易识别的名字，不填则自动生成</p>
+          </div>
+          <div class="form-group">
+            <button
+              class="btn btn-sm btn-outline"
+              @click="testStreamUrl"
+              :disabled="probeTesting"
+            >
+              <span v-if="probeTesting" class="spinner spinner-sm"></span>
+              {{ probeTesting ? '探测中...' : '测试连接' }}
+            </button>
+            <span v-if="probeResult !== null" :class="probeResult ? 'text-success' : 'text-danger'" style="margin-left:8px;">
+              {{ probeResult ? '✅ 流在线' : '❌ 流不可达' }}
+            </span>
+            <span v-if="probeFormat" style="margin-left:8px; color: var(--color-text-secondary); font-size:12px;">
+              格式: {{ probeFormat }}
+            </span>
+          </div>
+        </template>
 
         <div class="form-group">
           <label class="form-label">录制画质</label>
@@ -1827,8 +1859,12 @@ const addForm = ref({
   monitor_enabled: true,
   check_interval: 60,
   notification_enabled: true,
-  danmu_enabled: true
+  danmu_enabled: true,
+  stream_name: ''
 })
+const probeTesting = ref(false)
+const probeResult = ref(null) // true=在线, false=离线, null=未探测
+const probeFormat = ref('')
 const addBatchText = ref('')
 
 function parseBatchUrls(text) {
@@ -1865,57 +1901,42 @@ const batchStats = computed(() => parseBatchUrls(addBatchText.value))
 function showFormatHelp() {
   dialog.alert({
     title: '支持的链接格式',
+    width: '520px',
     message: `
-      <div style="text-align: left; font-size: 13px; line-height: 1.5;">
-        <div style="margin-bottom: 8px;">支持 <strong>抖音 / 斗鱼 / Bilibili / 虎牙 / 小红书 / YouTube / 咪咕 / 快手</strong> 平台，常见格式：</div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 2px 0; width: 70px; color: var(--color-text-secondary); vertical-align: top;">抖音:</td>
-            <td style="padding: 2px 0;">live.douyin.com/123... 或 v.douyin.com/abc...</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">Bilibili:</td>
-            <td style="padding: 2px 0;">live.bilibili.com/123...</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">斗鱼:</td>
-            <td style="padding: 2px 0;">www.douyu.com/24422</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">虎牙:</td>
-            <td style="padding: 2px 0;">huya.com/123456</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">小红书:</td>
-            <td style="padding: 2px 0;">xhslink.com/... 或 www.xiaohongshu.com/user/profile/... （支持直链和短链）<br/>⚠️ 小红书直播链接多为临时地址，易失效，暂不建议用于长期监控。</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">YouTube:</td>
-            <td style="padding: 2px 0;">youtube.com/watch?v=... 或 youtube.com/live/... 或 youtu.be/...</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">咪咕:</td>
-            <td style="padding: 2px 0;">www.miguvideo.com/p/live/120000...</td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">快手:</td>
-            <td style="padding: 2px 0;">
-              live.kuaishou.com/u/... 或 v.kuaishou.com/... (支持短链)<br/>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">网易CC:</td>
-            <td style="padding: 2px 0;">
-              cc.163.com/123456
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 2px 0; color: var(--color-text-secondary); vertical-align: top;">Twitch:</td>
-            <td style="padding: 2px 0;">
-              twitch.tv/username 或 m.twitch.tv/username
-            </td>
-          </tr>
-        </table>
+      <style>
+        .fmt-help { font-size: 12px; line-height: 1.5; }
+        .fmt-help .section-title { font-weight: 600; margin: 10px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); }
+        .fmt-help .section-title:first-child { margin-top: 0; }
+        .fmt-help .row { display: flex; margin-bottom: 3px; }
+        .fmt-help .label { width: 64px; flex-shrink: 0; color: var(--color-text-secondary); }
+        .fmt-help .urls { flex: 1; min-width: 0; }
+        .fmt-help .urls code { display: inline-block; font-size: 11px; background: var(--color-bg-secondary); padding: 0 4px; border-radius: 2px; margin: 1px 0; word-break: break-all; }
+        .fmt-help .warn { color: #dd6b20; font-size: 11px; margin-top: 2px; }
+        .fmt-help .custom-group { background: var(--color-bg-secondary); border-radius: 4px; padding: 6px 8px; margin-top: 6px; }
+        .fmt-help .custom-group .row { margin-bottom: 2px; }
+      </style>
+      <div class="fmt-help">
+        <div class="section-title">直播平台</div>
+        <div class="row"><span class="label">抖音:</span><span class="urls"><code>live.douyin.com/123...</code> <code>v.douyin.com/abc...</code></span></div>
+        <div class="row"><span class="label">Bilibili:</span><span class="urls"><code>live.bilibili.com/123...</code></span></div>
+        <div class="row"><span class="label">斗鱼:</span><span class="urls"><code>www.douyu.com/24422</code></span></div>
+        <div class="row"><span class="label">虎牙:</span><span class="urls"><code>huya.com/123456</code></span></div>
+        <div class="row"><span class="label">小红书:</span><span class="urls"><code>xhslink.com/...</code> <code>www.xiaohongshu.com/user/profile/...</code></span></div>
+        <div class="warn" style="margin-top:2px;">⚠️ 小红书直播链接多为临时地址，易失效，暂不建议长期监控。</div>
+        <div class="row"><span class="label">YouTube:</span><span class="urls"><code>youtube.com/watch?v=...</code> <code>youtube.com/live/...</code> <code>youtu.be/...</code></span></div>
+        <div class="row"><span class="label">咪咕:</span><span class="urls"><code>www.miguvideo.com/p/live/120000...</code></span></div>
+        <div class="row"><span class="label">快手:</span><span class="urls"><code>live.kuaishou.com/u/...</code> <code>v.kuaishou.com/...</code></span></div>
+        <div class="row"><span class="label">网易CC:</span><span class="urls"><code>cc.163.com/123456</code></span></div>
+        <div class="row"><span class="label">Twitch:</span><span class="urls"><code>twitch.tv/username</code> <code>m.twitch.tv/username</code></span></div>
+
+        <div class="section-title" style="margin-top:12px;">自定义流</div>
+        <div class="custom-group">
+          <div class="row"><span class="label">RTMP:</span><span class="urls"><code>rtmp://example.com/live/stream</code></span></div>
+          <div class="row"><span class="label">RTMPS:</span><span class="urls"><code>rtmps://example.com/live/stream</code></span></div>
+          <div class="row"><span class="label">RTSP:</span><span class="urls"><code>rtsp://192.168.1.100:554/live/stream</code></span></div>
+          <div class="row"><span class="label">HLS:</span><span class="urls"><code>https://example.com/live/stream.m3u8</code></span></div>
+          <div class="row"><span class="label">HTTP-FLV:</span><span class="urls"><code>https://example.com/live/stream.flv</code></span></div>
+        </div>
       </div>
     `,
     confirmText: '知道了'
@@ -3886,6 +3907,39 @@ watch(showTipModal, (visible) => {
   }
 })
 
+// 测试流连接
+async function testStreamUrl() {
+  const url = addForm.value.room_url
+  if (!url) {
+    toast.warning('请先输入流地址')
+    return
+  }
+  probeTesting.value = true
+  probeResult.value = null
+  probeFormat.value = ''
+  try {
+    const res = await liveApi.probeStreamUrl(url)
+    if (res.success) {
+      probeResult.value = res.data.is_live
+      probeFormat.value = res.data.format || ''
+      if (res.data.is_live) {
+        toast.success('流在线')
+      } else {
+        toast.warning('流当前不可达，但仍可添加订阅，系统将持续探测')
+      }
+    } else {
+      toast.error(res.message || '探测失败')
+      probeResult.value = false
+    }
+  } catch (error) {
+    console.error('探测流失败:', error)
+    toast.error(error.response?.data?.detail || error.message || '探测失败')
+    probeResult.value = false
+  } finally {
+    probeTesting.value = false
+  }
+}
+
 // 添加订阅
 async function addSubscription() {
   if (addMode.value === 'batch') {
@@ -3905,7 +3959,15 @@ async function addSubscription() {
 
   addLoading.value = true
   try {
-    const res = await liveApi.addLiveSubscription(addForm.value)
+    // 自动检测自定义流，设置对应 platform
+    const url = addForm.value.room_url || ''
+    const isCustom = url.startsWith('rtmp://') || url.startsWith('rtmps://') || url.startsWith('rtsp://')
+      || url.includes('.m3u8') || url.includes('.flv')
+    const payload = { ...addForm.value }
+    if (isCustom) {
+      payload.platform = 'custom'
+    }
+    const res = await liveApi.addLiveSubscription(payload)
     // 注意：响应拦截器已经返回了 response.data，所以直接使用 res 而不是 res.data
     if (res.success) {
       toast.success(res.message || '添加成功')
@@ -4018,6 +4080,9 @@ async function addBatchSubscriptions() {
 function resetAddForm() {
   addMode.value = 'single'
   addIntervalTouched.value = false
+  probeTesting.value = false
+  probeResult.value = null
+  probeFormat.value = ''
   addForm.value = {
     room_url: '',
     quality: '原画',
@@ -4025,7 +4090,8 @@ function resetAddForm() {
     monitor_enabled: true,
     check_interval: 60,
     notification_enabled: true,
-    danmu_enabled: true
+    danmu_enabled: true,
+    stream_name: ''
   }
   addBatchText.value = ''
 }
@@ -4495,6 +4561,31 @@ async function batchConvertHistory() {
 }
 
 // 播放直播流
+function copyStreamUrl(sub) {
+  const url = sub?.room_url || ''
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success('流地址已复制')
+    }).catch(() => {
+      fallbackCopy(url)
+    })
+  } else {
+    fallbackCopy(url)
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    toast.success('流地址已复制')
+  }
+}
+
+// 播放直播流
 async function playStream(sub) {
   if (['youtube', 'twitch'].includes(String(sub?.platform || '').toLowerCase())) {
     const targetUrl = sub?.room_url || ''
@@ -4752,7 +4843,8 @@ function getPlatformName(platform) {
     'migu': '咪咕直播',
     'kuaishou': '快手直播',
     'cc': '网易CC直播',
-    'twitch': 'Twitch直播'
+    'twitch': 'Twitch直播',
+    'custom': '自定义流'
   }
   return names[platform] || platform
 }
@@ -5126,6 +5218,7 @@ function getStatusText(status) {
 .tag-migu { color: #1d8ef7; background: rgba(29, 142, 247, 0.12); }
 .tag-kuaishou { color: #ff6600; background: rgba(255, 102, 0, 0.12); }
 .tag-cc { color: #0d91e9; background: rgba(13, 145, 233, 0.1); }
+.tag-custom { color: #7c3aed; background: rgba(124, 58, 237, 0.1); }
 
 .q-tag {
   font-size: 10px;

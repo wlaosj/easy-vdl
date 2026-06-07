@@ -10,6 +10,7 @@ from .migu import MiguAdapter
 from .kuaishou import KuaishouAdapter
 from .cc import CCAdapter
 from .twitch import TwitchAdapter
+from .custom import CustomAdapter
 
 
 # 注册所有适配器
@@ -24,6 +25,7 @@ _ADAPTERS = [
     KuaishouAdapter(),
     CCAdapter(),
     TwitchAdapter(),
+    CustomAdapter(),
 ]
 
 def get_adapter(url: str) -> Optional[BaseAdapter]:

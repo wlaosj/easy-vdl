@@ -448,6 +448,7 @@ async def _create_live_subscription(
     check_interval: int,
     notification_enabled_bool: bool,
     danmu_enabled_bool: bool,
+    stream_name: Optional[str] = None,
     db: Session
 ):
     logger.info(f"收到添加直播间订阅请求: room_url={room_url}, platform={platform}")
@@ -473,25 +474,34 @@ async def _create_live_subscription(
                     platform = 'bilibili'
 
     if not adapter:
-        raise HTTPException(status_code=400, detail=f"不支持的平台: {platform} 或 无法识别的URL")
-
-    # 对于 YouTube watch?v= 链接，自动转换为频道永久直播页
-    if platform == "youtube" and is_watch_video_url(room_url):
-        resolved = await resolve_channel_live_url(room_url)
-        if resolved:
-            logger.info(f"YouTube 链接已自动转换为频道直播页: {room_url} -> {resolved}")
-            room_url = resolved
+        # 兜底：尝试用自定义流适配器匹配（RTMP/RTSP/HLS/HTTP-FLV）
+        custom_adapter = adapters.get_adapter_by_platform("custom")
+        if custom_adapter and custom_adapter.is_match(room_url):
+            adapter = custom_adapter
+            platform = "custom"
+            logger.info(f"匹配为自定义流: subscription_url={room_url}")
         else:
-            logger.warning(f"无法解析 YouTube 频道信息，使用原链接: {room_url}")
+            raise HTTPException(status_code=400, detail=f"不支持的平台: {platform} 或 无法识别的URL")
 
-    # 对于 Twitch /videos/ 录播链接，自动转换为频道直播页
-    if platform == "twitch" and is_vod_url(room_url):
-        resolved = await resolve_twitch_channel_url(room_url)
-        if resolved:
-            logger.info(f"Twitch 链接已自动转换为频道直播页: {room_url} -> {resolved}")
-            room_url = resolved
-        else:
-            logger.warning(f"无法解析 Twitch 频道信息，使用原链接: {room_url}")
+    # 对于 YouTube / Twitch 链接做自动转换（自定义流跳过）
+    is_custom = platform == "custom"
+    if not is_custom:
+        if platform == "youtube" and is_watch_video_url(room_url):
+            resolved = await resolve_channel_live_url(room_url)
+            if resolved:
+                logger.info(f"YouTube 链接已自动转换为频道直播页: {room_url} -> {resolved}")
+                room_url = resolved
+            else:
+                logger.warning(f"无法解析 YouTube 频道信息，使用原链接: {room_url}")
+
+        # 对于 Twitch /videos/ 录播链接，自动转换为频道直播页
+        if platform == "twitch" and is_vod_url(room_url):
+            resolved = await resolve_twitch_channel_url(room_url)
+            if resolved:
+                logger.info(f"Twitch 链接已自动转换为频道直播页: {room_url} -> {resolved}")
+                room_url = resolved
+            else:
+                logger.warning(f"无法解析 Twitch 频道信息，使用原链接: {room_url}")
 
     # 2. 验证检测间隔
     if check_interval < 10 or check_interval > 600:
@@ -512,24 +522,29 @@ async def _create_live_subscription(
 
     logger.info(f"使用适配器 [{platform}] 获取直播间信息")
 
-    # 获取该平台对应的 Cookie (如果有配置的话)
+    # 获取该平台对应的 Cookie（自定义流跳过）
     cookies = None
-    try:
-        from routers.cookie_manager import COOKIE_PATHS
-        if getattr(adapter, "platform_name", None) and adapter.platform_name in COOKIE_PATHS:
-            cookie_path = COOKIE_PATHS[adapter.platform_name]
-            if cookie_path and os.path.exists(cookie_path):
-                with open(cookie_path, 'r', encoding='utf-8') as f:
-                    raw_content = f.read().strip()
-                    cookies = _parse_cookie_content(raw_content) or None
-    except Exception as cookie_err:
-        logger.warning(f"获取直播间信息时读取/解析 Cookie 失败: {platform}, {cookie_err}")
+    if not is_custom:
+        try:
+            from routers.cookie_manager import COOKIE_PATHS
+            if getattr(adapter, "platform_name", None) and adapter.platform_name in COOKIE_PATHS:
+                cookie_path = COOKIE_PATHS[adapter.platform_name]
+                if cookie_path and os.path.exists(cookie_path):
+                    with open(cookie_path, 'r', encoding='utf-8') as f:
+                        raw_content = f.read().strip()
+                        cookies = _parse_cookie_content(raw_content) or None
+        except Exception as cookie_err:
+            logger.warning(f"获取直播间信息时读取/解析 Cookie 失败: {platform}, {cookie_err}")
 
     # 4. 获取直播间信息 (统一接口调用)
+    room_info_kwargs = {"cookies": cookies}
+    if is_custom:
+        # 自定义流传入用户命名的流名称
+        room_info_kwargs["anchor_name"] = (stream_name or "").strip()
     try:
         info = await asyncio.wait_for(
-            adapter.get_room_info(room_url, cookies=cookies),
-            timeout=ROOM_INFO_TIMEOUT_SECONDS
+            adapter.get_room_info(room_url, **room_info_kwargs),
+            timeout=ROOM_INFO_TIMEOUT_SECONDS if not is_custom else 15
         )
     except asyncio.TimeoutError:
         raise HTTPException(status_code=400, detail="获取直播间信息超时，请稍后重试")
@@ -712,6 +727,7 @@ async def add_live_subscription(
     check_interval: int = Query(60),
     notification_enabled: str = Query("true"),
     danmu_enabled: Optional[str] = Query(None),
+    stream_name: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user_or_token),
     db: Session = Depends(get_session)
 ):
@@ -739,6 +755,7 @@ async def add_live_subscription(
             check_interval=check_interval,
             notification_enabled_bool=notification_enabled_bool,
             danmu_enabled_bool=danmu_enabled_bool,
+            stream_name=stream_name,
             db=db
         )
         
@@ -1222,6 +1239,33 @@ async def get_live_status(
             "last_check_time": sub.last_check_time.isoformat() if sub.last_check_time else None
         })
     return {"success": True, "data": status_list}
+
+
+@router.post("/probe")
+@require_license_api
+async def probe_stream_url(
+    url: str = Query(...),
+    current_user: User = Depends(get_current_user_or_token)
+):
+    """探测自定义流地址是否在线（供前端"测试连接"使用）"""
+    from .adapters.custom import CustomAdapter
+    adapter = CustomAdapter()
+    try:
+        result = await adapter.get_room_info(url)
+        return {
+            "success": True,
+            "data": {
+                "is_live": result["is_live"],
+                "format": result.get("raw_data", {}).get("format", "unknown"),
+                "anchor_name": result["anchor_name"],
+            }
+        }
+    except Exception as e:
+        logger.error(f"探测流地址失败: {url}, {e}")
+        return {
+            "success": False,
+            "message": f"探测失败: {str(e)}"
+        }
 
 
 @router.post("/status/refresh/{sub_id}")

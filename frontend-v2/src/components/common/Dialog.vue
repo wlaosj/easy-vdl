@@ -1,10 +1,10 @@
 <template>
-  <Modal 
-    v-model:show="show" 
-    :title="state.title" 
-    :type="state.type" 
+  <Modal
+    v-model:show="show"
+    :title="state.title"
+    :type="state.type"
     :show-confirm="false"
-    width="400px"
+    :width="state.width"
     persistent
     z-index="50000"
   >
@@ -44,7 +44,8 @@ const state = ref({
   type: 'info',
   confirmText: '确定',
   cancelText: '取消',
-  isConfirm: false
+  isConfirm: false,
+  width: '400px'
 })
 
 const confirmBtnClass = computed(() => {
@@ -61,7 +62,8 @@ const open = (options) => {
     type: options.type || 'info',
     confirmText: options.confirmText || '确定',
     cancelText: options.cancelText || '取消',
-    isConfirm: options.isConfirm || false
+    isConfirm: options.isConfirm || false,
+    width: options.width || '400px'
   }
   show.value = true
   

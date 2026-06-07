@@ -478,12 +478,28 @@ class LiveScheduler:
                 probe_success = False
                 
                 try:
-                    adapter = adapters.get_adapter_by_platform(platform)
-                    if not adapter:
-                        # 尝试根据 URL 匹配
-                        adapter = adapters.get_adapter(room_url)
-                    
-                    if adapter:
+                    # ===== 自定义流特殊处理 =====
+                    if platform == "custom":
+                        custom_adapter = adapters.get_adapter_by_platform("custom")
+                        if custom_adapter:
+                            if live_recorder.is_recording(subscription_id):
+                                room_info = {"is_live": True, "probe_success": True, "anchor_name": anchor_name, "room_id": ""}
+                                logger.debug(f"[custom] 录制中，跳过探测: {subscription_id}")
+                            else:
+                                room_info = await custom_adapter.get_room_info(room_url, anchor_name=anchor_name)
+                            probe_success = bool(room_info.get("probe_success", True))
+                            is_live = room_info.get('is_live', False)
+                            anchor_name = room_info.get('anchor_name', anchor_name)
+                            room_id = room_info.get('room_id', '')
+                            adapter = custom_adapter  # 供后续 get_stream_url 使用
+                        else:
+                            logger.warning(f"未加载自定义流适配器: {subscription_id}")
+                    else:
+                        adapter = adapters.get_adapter_by_platform(platform)
+                        if not adapter:
+                            adapter = adapters.get_adapter(room_url)
+
+                    if platform != "custom" and adapter:
                         # 尝试获取对应平台的Cookie
                         from routers.cookie_manager import COOKIE_PATHS
                         cookies = None
@@ -514,7 +530,7 @@ class LiveScheduler:
                         anchor_name = room_info.get('anchor_name', '')
                         room_id = room_info.get('room_id', '')
                         
-                    else:
+                    elif platform != "custom":
                         logger.warning(f"未找到适配器: {platform}, 跳过检测")
                         
                 except Exception as e:

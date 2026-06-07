@@ -172,7 +172,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "add_live_subscription",
-            "description": "添加直播监控。当用户提供一个直播间链接时使用。支持抖音、B站、小红书、虎牙、斗鱼、快手、YouTube、Twitch、咪咕、CC。",
+            "description": "添加直播监控。当用户提供一个直播间链接时使用。支持抖音、B站、小红书、虎牙、斗鱼、快手、YouTube、Twitch、咪咕、CC 以及自定义流(RTMP/RTSP/HLS)。",
             "parameters": {
                 "type": "object",
                 "properties": {
