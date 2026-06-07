@@ -1471,6 +1471,7 @@ watch(subscriptions, () => {
 .tag-migu { background: linear-gradient(135deg, #1d8ef7 0%, #4aa7ff 100%); }
 .tag-kuaishou { background: linear-gradient(135deg, #FF7D00 0%, #FF5000 100%); }
 .tag-cc { background: linear-gradient(135deg, #0d91e9 0%, #00b0ff 100%); }
+.tag-custom { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); }
 
 .loading-state {
   flex: 1;
