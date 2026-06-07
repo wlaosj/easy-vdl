@@ -291,7 +291,8 @@ const platforms = [
   { key: 'migu', name: '咪咕' },
   { key: 'kuaishou', name: '快手' },
   { key: 'cc', name: '网易CC' },
-  { key: 'twitch', name: 'Twitch' }
+  { key: 'twitch', name: 'Twitch' },
+  { key: 'custom', name: '自定义流' }
 ]
 
 // 授权状态 - 优先读取本地缓存，避免闪烁
@@ -547,7 +548,8 @@ function getPlatformName(p) {
     youtube: 'YouTube',
     migu: '咪咕',
     kuaishou: '快手',
-    cc: '网易CC'
+    cc: '网易CC',
+    custom: '自定义流',
   }
   return map[p] || p
 }
