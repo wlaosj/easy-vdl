@@ -92,6 +92,7 @@
           <button class="filter-tag" :class="{ active: selectedPlatform === 'huya' }" @click="selectedPlatform = 'huya'">虎牙</button>
           <button class="filter-tag" :class="{ active: selectedPlatform === 'cc' }" @click="selectedPlatform = 'cc'">网易CC</button>
           <button class="filter-tag" :class="{ active: selectedPlatform === 'twitch' }" @click="selectedPlatform = 'twitch'">Twitch</button>
+          <button class="filter-tag" :class="{ active: selectedPlatform === 'custom' }" @click="selectedPlatform = 'custom'">自定义流</button>
         </div>
 
         <SkeletonLoader 
@@ -837,6 +838,7 @@
                 <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'huya' }" @click="manualStreamerPlatform = 'huya'">虎牙</button>
                 <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'cc' }" @click="manualStreamerPlatform = 'cc'">网易CC</button>
                 <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'twitch' }" @click="manualStreamerPlatform = 'twitch'">Twitch</button>
+                <button class="filter-tag" :class="{ active: manualStreamerPlatform === 'custom' }" @click="manualStreamerPlatform = 'custom'">自定义流</button>
               </div>
               <SkeletonLoader 
                 v-if="manualStreamersLoading"
@@ -1451,6 +1453,7 @@ function platformTagText(platform) {
   if (key === 'huya') return '虎牙'
   if (key === 'cc') return '网易CC'
   if (key === 'twitch') return 'Twitch'
+  if (key === 'custom') return '自定义流'
   return key || '未知'
 }
 
@@ -1471,6 +1474,7 @@ function platformTagClass(platform) {
   if (key === 'huya') return 'tag-huya'
   if (key === 'cc') return 'tag-cc'
   if (key === 'twitch') return 'tag-twitch'
+  if (key === 'custom') return 'tag-custom'
   return 'tag-unknown'
 }
 
@@ -4187,6 +4191,10 @@ h2 {
 
 .tag-twitch {
   background: linear-gradient(135deg, #9146ff 0%, #6441a5 100%);
+}
+
+.tag-custom {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
 }
 
 .tag-unknown {
