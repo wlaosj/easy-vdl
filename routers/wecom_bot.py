@@ -333,7 +333,40 @@ class WecomBotService:
             action = result.pop("action", "已处理")
             return self._fmt_op(result, action)
         else:
-            return f"收到: {content}\n\n发送「帮助」查看可用命令"
+            # LLM 自然语言处理（异步执行，不阻塞回调）
+            asyncio.create_task(self._handle_llm_command(content, from_user))
+            return None  # 返回 None，不立即发送回复
+
+    async def _handle_llm_command(self, content: str, from_user: str):
+        """LLM 自然语言处理 — 异步执行，结果通过 send_notification 发送"""
+        from services.llm_assistant import llm_assistant
+        from services.llm_assistant import format_actions_summary
+        from sql.database_postgresql import get_session
+
+        try:
+            session_id = f"wecom:{from_user}"
+
+            db = get_session()
+            try:
+                result = await llm_assistant.chat(session_id, content, db)
+            finally:
+                db.close()
+
+            reply = result.get("reply", "")
+            actions = result.get("actions", [])
+
+            # 追加操作结果摘要
+            actions_summary = format_actions_summary(actions)
+            if actions_summary:
+                reply += "\n\n" + actions_summary
+
+            if not reply:
+                reply = "🤔 无法理解，请发送「帮助」查看可用命令"
+        except Exception as e:
+            logger.error(f"LLM 异步处理异常: {e}", exc_info=True)
+            reply = "🤖 处理异常，请稍后重试或发送「帮助」查看可用命令"
+
+        await self.send_notification(from_user, reply)
 
     # ==================== 格式化（企业微信纯文本） ====================
 

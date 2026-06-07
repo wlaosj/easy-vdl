@@ -5,7 +5,7 @@
         class="tab-btn"
         :class="{ active: activeTab === 'strategy' }"
         @click="switchTab('strategy')"
-      >默认策略</button>
+      >特征分配</button>
       <button
         class="tab-btn"
         :class="{ active: activeTab === 'minimax' }"
@@ -34,7 +34,25 @@
     </div>
 
     <div class="tab-panel strategy-panel" v-if="activeTab === 'strategy'">
-      <div class="group-title">双级 AI 默认偏好</div>
+      <div class="group-title">特征 → 模型分配</div>
+
+      <div class="setting-item">
+        <div class="setting-label">
+          <span class="title">🗣 AI 对话</span>
+          <p class="desc">AI 助手的自然语言对话与操作控制，建议用云端强力模型。
+            选"自动"则按 DeepSeek &gt; MiniMax &gt; 兼容平台 &gt; Ollama 优先级自动选择。</p>
+        </div>
+        <div class="setting-control">
+          <select v-model="settingsStore.aiModelSettings.chatProvider" class="form-input">
+            <option value="auto">自动（按优先级）</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="minimax">MiniMax</option>
+            <option value="compat">兼容平台</option>
+            <option value="ollama">Ollama</option>
+            <option value="none">关闭</option>
+          </select>
+        </div>
+      </div>
 
       <div class="setting-item">
         <div class="setting-label">
@@ -690,7 +708,7 @@ const ollamaVisionConclusion = computed(() => {
 })
 
 const currentClearLabel = computed(() => {
-  if (activeTab.value === 'strategy') return '默认策略'
+  if (activeTab.value === 'strategy') return '特征分配'
   if (activeTab.value === 'minimax') return 'MiniMax'
   if (activeTab.value === 'deepseek') return 'DeepSeek'
   if (activeTab.value === 'compat') return '兼容平台'

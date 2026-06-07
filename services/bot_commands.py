@@ -653,6 +653,8 @@ async def add_live_subscription(url: str) -> Dict[str, Any]:
                     platform=new_sub.platform,
                     check_interval=new_sub.check_interval or 60,
                 )
+                # 添加后立即检测一次直播间状态，不等下一周期
+                await live_scheduler.trigger_immediate_check(new_sub.id)
             except Exception as scheduler_err:
                 logger.warning(f"触发监控失败（系统重启后将自动接管）: {scheduler_err}")
             return {"success": True, "anchor_name": anchor_name, "platform": platform_name}
@@ -803,26 +805,61 @@ async def pause_live_subscription(sub_id: str) -> Dict[str, Any]:
             return {"success": False, "error": "直播管理是高级功能，授权无效或已过期。"}
         from sql.database_postgresql import get_session
         from sql.models import LiveSubscription
+        from sql.models import LiveRecord
         from live.scheduler import live_scheduler
         from live.recorder import live_recorder
+        import asyncio
         db = get_session()
         try:
             sub = db.query(LiveSubscription).filter(LiveSubscription.id.startswith(sub_id)).first()
             if not sub:
                 return {"success": False, "error": f"未找到直播订阅: {sub_id}"}
 
-            # 先停正在录制的流
+            # 先查出正在录制的记录，为回调做准备
+            record = db.query(LiveRecord).filter(
+                LiveRecord.subscription_id == sub.id,
+                LiveRecord.status == "recording"
+            ).order_by(LiveRecord.start_time.desc()).first()
+            record_id = record.id if record else None
+
+            # 构建转码完成回调（更新录制记录路径）
+            loop = asyncio.get_running_loop()
+            def _on_transcode_done(success, mp4_path):
+                if not success or not record_id:
+                    return
+                try:
+                    cb_db = get_session()
+                    try:
+                        rec = cb_db.query(LiveRecord).filter(LiveRecord.id == record_id).first()
+                        if rec:
+                            from live.routers import _apply_transcode_success_to_record
+                            _apply_transcode_success_to_record(rec, mp4_path)
+                            rec.status = "completed"
+                            cb_db.commit()
+                            # WS 广播
+                            try:
+                                from routers.websocket import broadcast_live_status_update
+                                asyncio.run_coroutine_threadsafe(
+                                    broadcast_live_status_update({
+                                        "id": record_id, "status": "completed",
+                                        "converted": "true", "converted_path": mp4_path,
+                                        "file_path": mp4_path, "format": "mp4",
+                                        "type": "record_update"
+                                    }), loop)
+                            except Exception:
+                                pass
+                    finally:
+                        cb_db.close()
+                except Exception as e:
+                    logger.error(f"转码回调更新DB失败: {e}")
+
+            # 先停正在录制的流（传入回调，转码完成后自动更新 DB）
             stop_result = await live_recorder.stop_recording(
-                sub.id, convert_to_mp4=True
+                sub.id, convert_to_mp4=True, on_convert_complete=_on_transcode_done
             )
             if stop_result.get('success'):
                 sub.is_recording = "false"
                 # 更新录制记录结束时间
-                from sql.models import LiveRecord
-                record = db.query(LiveRecord).filter(
-                    LiveRecord.subscription_id == sub.id,
-                    LiveRecord.status == "recording"
-                ).order_by(LiveRecord.start_time.desc()).first()
                 if record:
                     record.end_time = datetime.now()
                     record.duration = stop_result.get('duration', 0)
@@ -832,7 +869,12 @@ async def pause_live_subscription(sub_id: str) -> Dict[str, Any]:
             sub.auto_record = "false"
             db.commit()
             live_scheduler.invalidate_config_cache(sub.id)
-            return {"success": True, "name": sub.anchor_name or sub.room_url[:30]}
+            result = {"success": True, "name": sub.anchor_name or sub.room_url[:30]}
+            if stop_result.get('success'):
+                result["recording_stopped"] = True
+                if stop_result.get('converted'):
+                    result["converted"] = True
+            return result
         finally:
             db.close()
     except Exception as e:

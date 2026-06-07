@@ -17,7 +17,7 @@ const LLM_PROVIDER_DEFAULT_MODELS = {
 
 function normalizeLlmProvider(provider) {
     const key = String(provider || '').trim().toLowerCase();
-    return ['minimax', 'deepseek', 'compat', 'ollama', 'none'].includes(key) ? key : 'none';
+    return ['minimax', 'deepseek', 'compat', 'ollama', 'none', 'auto'].includes(key) ? key : 'auto';
 }
 
 function getDefaultModelForProvider(provider) {
@@ -201,7 +201,9 @@ export const useSettingsStore = defineStore('settings', () => {
         l1ScoutProvider: 'none',
         l1ScoutModel: '',
         l2EditorProvider: 'none',
-        l2EditorModel: ''
+        l2EditorModel: '',
+        // --- AI 对话 ---
+        chatProvider: 'auto'
     });
 
     // 加载状态
@@ -872,6 +874,8 @@ export const useSettingsStore = defineStore('settings', () => {
                 || getDefaultModelForProvider(aiModelSettings.l1ScoutProvider);
             aiModelSettings.l2EditorModel = String(data.llm_l2_editor_model || '').trim()
                 || getDefaultModelForProvider(aiModelSettings.l2EditorProvider);
+            aiModelSettings.chatProvider = normalizeLlmProvider(data.llm_chat_provider || 'auto');
+            aiModelSettings.chatModel = '';
         } catch (err) {
             console.error('Failed to load AI model settings:', err);
         }
@@ -986,6 +990,7 @@ export const useSettingsStore = defineStore('settings', () => {
                 llm_l2_editor_provider: normalizeLlmProvider(aiModelSettings.l2EditorProvider || 'none'),
                 llm_l2_editor_model: String(aiModelSettings.l2EditorModel || '').trim()
                     || getDefaultModelForProvider(aiModelSettings.l2EditorProvider),
+                llm_chat_provider: normalizeLlmProvider(aiModelSettings.chatProvider || 'auto'),
             });
             resetOllamaMetaState();
             aiModelSettings.ollamaVisionCapability = 'unknown';

@@ -49,6 +49,12 @@ const routes = [
   },
 
   {
+    path: '/chat',
+    name: 'chat',
+    component: () => import('@/views/ChatView.vue'),
+    meta: { title: 'AI 助手', requiresAuth: true, noPadding: true }
+  },
+  {
     path: '/player',
     component: () => import('@/views/Player/index.vue'),
     meta: { title: '视频播放', requiresAuth: true }

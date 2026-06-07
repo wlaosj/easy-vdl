@@ -108,6 +108,8 @@ AI_CONFIG_KEYS = [
     "llm_l1_scout_model",
     "llm_l2_editor_provider",
     "llm_l2_editor_model",
+    "llm_chat_provider",
+    "llm_chat_model",
 ]
 
 
@@ -210,6 +212,8 @@ def get_ai_config(current_user: User = Depends(get_current_user), db: Session = 
     l1_scout_model = ""
     l2_editor_provider = "none"
     l2_editor_model = ""
+    chat_provider = "auto"
+    chat_model = ""
 
     try:
         rows = db.query(models.GlobalConfig).filter(models.GlobalConfig.key.in_(AI_CONFIG_KEYS)).all()
@@ -298,6 +302,10 @@ def get_ai_config(current_user: User = Depends(get_current_user), db: Session = 
             l2_editor_provider = str(kv.get("llm_l2_editor_provider")).strip()
         if kv.get("llm_l2_editor_model"):
             l2_editor_model = str(kv.get("llm_l2_editor_model")).strip()
+        if kv.get("llm_chat_provider"):
+            chat_provider = str(kv.get("llm_chat_provider")).strip()
+        if kv.get("llm_chat_model"):
+            chat_model = str(kv.get("llm_chat_model")).strip()
     except Exception as e:
         logger.warning(f"读取 AI 配置失败，将使用默认值: {e}")
 
@@ -335,6 +343,8 @@ def get_ai_config(current_user: User = Depends(get_current_user), db: Session = 
         "llm_l1_scout_model": l1_scout_model,
         "llm_l2_editor_provider": l2_editor_provider,
         "llm_l2_editor_model": l2_editor_model,
+        "llm_chat_provider": chat_provider,
+        "llm_chat_model": chat_model,
     }
 
 
@@ -371,6 +381,8 @@ def set_ai_config(
     llm_l1_scout_model: str = Body(None),
     llm_l2_editor_provider: str = Body(None),
     llm_l2_editor_model: str = Body(None),
+    llm_chat_provider: str = Body(None),
+    llm_chat_model: str = Body(None),
     db: Session = Depends(get_db),
 ):
     """保存 AI 相关配置。"""
@@ -466,6 +478,8 @@ def set_ai_config(
     l1_scout_model_update = (llm_l1_scout_model or "").strip() if llm_l1_scout_model is not None else None
     l2_editor_provider_update = (llm_l2_editor_provider or "").strip() if llm_l2_editor_provider is not None else None
     l2_editor_model_update = (llm_l2_editor_model or "").strip() if llm_l2_editor_model is not None else None
+    chat_provider_update = (llm_chat_provider or "").strip() if llm_chat_provider is not None else None
+    chat_model_update = (llm_chat_model or "").strip() if llm_chat_model is not None else None
 
     try:
         for key, value in minimax_updates.items():
@@ -486,6 +500,10 @@ def set_ai_config(
             _upsert_global_config(db, "llm_l2_editor_provider", l2_editor_provider_update)
         if l2_editor_model_update is not None:
             _upsert_global_config(db, "llm_l2_editor_model", l2_editor_model_update)
+        if chat_provider_update is not None:
+            _upsert_global_config(db, "llm_chat_provider", chat_provider_update)
+        if chat_model_update is not None:
+            _upsert_global_config(db, "llm_chat_model", chat_model_update)
         db.commit()
     except Exception as e:
         db.rollback()

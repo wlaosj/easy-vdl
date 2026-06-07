@@ -152,7 +152,10 @@ const menuItems = [
   { path: '/player', label: '视频播放', icon: 'play' },
   { path: '/live-timeline', label: '直播回放', icon: 'history', isPremium: true },
   { path: '/live-highlights', label: '高光切片', icon: 'activity', isPremium: true, tagLabel: 'LIFETIME', tagType: 'lifetime' },
-  
+
+  // AI 组
+  { path: '/chat', label: 'AI 助手', icon: 'zap' },
+
   // 管理组
   // 下面这个 badge 改为通过 getBadge 动态获取，避免响应式更新导致整个菜单重绘
   { path: '/downloads', label: '下载中心', icon: 'download' },

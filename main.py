@@ -24,6 +24,7 @@ from routers.youtube import youtube_api  # 添加YouTube API导入
 from routers.scheduler import scheduler
 from routers.downloader import download_manager
 from routers.websocket import router as websocket_router  # 添加websocket导入
+from routers.chat import router as chat_router  # AI 对话路由
 
 # 全局变量 (wnxt service)
 wnxt.captured_media = {}  # 确保在主应用中是全局的
@@ -760,6 +761,7 @@ app.include_router(telegram_media.router)  # Telegram 媒体入站独立路由
 app.include_router(wecom_bot_router)  # 企业微信应用Bot回调路由
 app.include_router(backup.router)  # 添加数据备份路由
 app.include_router(cache.router)  # 添加缓存管理路由
+app.include_router(chat_router)  # AI 对话路由
 
 # 在其他路由注册后添加
 from routers import douyin, youtube, bilibili, tiktok, netease, xhsapi

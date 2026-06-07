@@ -636,7 +636,7 @@ class TelegramBotService:
         else:
             # 只有在私聊时才回复闲聊，群组里不回复
             if message.get('chat', {}).get('type') == 'private':
-                await self.send_message(chat_id, "我听不懂... 请发送视频链接或使用命令。")
+                await self._handle_llm_message(chat_id, text)
 
     def _is_url(self, text: str) -> bool:
         """简单检查是否包含 URL"""
@@ -844,6 +844,86 @@ class TelegramBotService:
             "live_storage_gb": r.get("live_storage_gb", 0),
         }
 
+
+    async def _handle_llm_message(self, chat_id: str, text: str):
+        """LLM 自然语言处理入口 — 当消息不匹配任何已知命令/URL 时调用"""
+        from services.llm_assistant import llm_assistant
+        from services.llm_assistant import format_actions_summary
+        from sql.database_postgresql import get_session
+
+        session_id = f"tg:{chat_id}"
+
+        # 发送"思考中"提示（可能失败，失败时 thinking_msg_id 为 None）
+        thinking_msg_id = await self.send_message(chat_id, "🤔 思考中...", return_message_id=True)
+
+        db = get_session()
+        try:
+            result = await llm_assistant.chat(session_id, text, db)
+        finally:
+            db.close()
+
+        reply = result.get("reply", "")
+        actions = result.get("actions", [])
+
+        # 检查是否有删除操作需要二次确认
+        pending_delete = None
+        for a in actions:
+            tool = a.get("tool", "")
+            r = a.get("result", {})
+            if tool in ("delete_subscription", "delete_download", "delete_live_subscription"):
+                if not r.get("success") and "需要用户确认" in (r.get("error") or ""):
+                    pending_delete = a
+                    break
+
+        if pending_delete is not None:
+            # 需要用户确认 — 显示内联键盘，不直接输出结果
+            # 从 LLM 的 tool_calls 中提取原始参数（需要重新调用 chat 获取）
+            # 简化方案：存 session_id + tool 信息，确认后让 LLM 重新执行
+            import uuid
+            temp_id = str(uuid.uuid4())[:8]
+            self._clean_expired_confirmations()
+            while temp_id in self.pending_confirmations:
+                temp_id = str(uuid.uuid4())[:8]
+            self.pending_confirmations[temp_id] = {
+                "tool": pending_delete["tool"],
+                "session_id": session_id,
+                "user_message": text,
+                "created_at": time.time(),
+            }
+            tool_labels = {
+                "delete_subscription": "删除订阅",
+                "delete_download": "删除下载任务",
+                "delete_live_subscription": "删除直播监控",
+            }
+            label = tool_labels.get(pending_delete["tool"], "删除操作")
+            card_text = (
+                f"⚠️ *确认{label}*\n\n"
+                f"{reply}\n\n"
+                f"该操作不可撤销，确认执行吗？"
+            )
+            inline_keyboard = [
+                [{"text": "✅ 确认执行", "callback_data": f"cfm:llm_del:{temp_id}"}],
+                [{"text": "❌ 取消", "callback_data": f"cfm:can:{temp_id}"}],
+            ]
+            if thinking_msg_id is not None:
+                await self._edit_message(chat_id, thinking_msg_id, card_text, inline_keyboard, parse_mode=None)
+            else:
+                await self.send_message(chat_id, card_text, reply_markup={"inline_keyboard": inline_keyboard})
+            return
+
+        # 追加操作结果摘要
+        actions_summary = format_actions_summary(actions)
+        if actions_summary:
+            reply += "\n\n" + actions_summary
+
+        if not reply:
+            reply = "🤔 无法理解，请尝试 /help 查看命令"
+
+        if thinking_msg_id is not None:
+            # LLM 回复是纯文本，不使用 Markdown 避免特殊字符触发解析错误
+            await self._edit_message(chat_id, thinking_msg_id, reply, parse_mode=None)
+        else:
+            await self.send_message(chat_id, reply)
 
     async def _handle_status_command(self, chat_id: str):
         """处理 /status 命令"""
@@ -1363,7 +1443,43 @@ class TelegramBotService:
                 if len(parts) >= 3:
                     action = parts[1]
                     temp_id = parts[2]
-                    
+
+                    # LLM 删除操作确认
+                    if action == 'llm_del':
+                        pending = self.pending_confirmations.get(temp_id)
+                        if not pending:
+                            await ack_once("⏳ 确认已过期，请重新操作", show_alert=True)
+                            if message_id:
+                                await self._delete_message(chat_id, message_id)
+                            return
+                        tool = pending.get("tool", "")
+                        user_msg = pending.get("user_message", "")
+                        session_id = pending.get("session_id", "")
+                        self.pending_confirmations.pop(temp_id, None)
+                        await ack_once("✅ 正在执行...")
+                        # 重发确认消息，利用 LLM 对话上下文执行删除
+                        from services.llm_assistant import llm_assistant
+                        from services.llm_assistant import format_actions_summary
+                        from sql.database_postgresql import get_session
+                        db = get_session()
+                        try:
+                            result = await llm_assistant.chat(
+                                session_id,
+                                f"用户已确认：请执行{tool}，confirmed=true",
+                                db
+                            )
+                        finally:
+                            db.close()
+                        final_reply = result.get("reply", "操作已执行")
+                        actions_summary = format_actions_summary(result.get("actions", []))
+                        if actions_summary:
+                            final_reply += "\n\n" + actions_summary
+                        if message_id:
+                            await self._edit_message(chat_id, message_id, final_reply, parse_mode=None)
+                        else:
+                            await self.send_message(chat_id, final_reply)
+                        return
+
                     if action == 'can':
                         await ack_once("🛑 操作已取消")
                         if temp_id in self.pending_confirmations:
@@ -2172,15 +2288,16 @@ class TelegramBotService:
         except Exception as e:
             logger.error(f"显示设置面板失败: {e}")
 
-    async def _edit_message(self, chat_id: str, message_id: int, text: str, inline_keyboard: List[List[Dict]] = None):
+    async def _edit_message(self, chat_id: str, message_id: int, text: str, inline_keyboard: List[List[Dict]] = None, parse_mode: str = "Markdown"):
         """编辑已发送的消息"""
         url = f"{self.base_url}/bot{self.token}/editMessageText"
         payload = {
             "chat_id": chat_id,
             "message_id": message_id,
             "text": text,
-            "parse_mode": "Markdown"
         }
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
         if inline_keyboard:
             payload["reply_markup"] = {"inline_keyboard": inline_keyboard}
 
