@@ -860,6 +860,7 @@
                   <td>{{ record._size }}</td>
                   <td>
                     <div style="display: flex; align-items: center; gap: 4px;">
+                      <span class="p-tag" :class="`tag-${record.platform || 'custom'}`" v-if="record.platform" style="font-size:10px; margin-right:4px;">{{ (record._platformName || record.platform).replace('直播', '') }}</span>
                       <span class="status-badge" :class="'status-' + record.status">
                         {{ record._statusText }}
                       </span>
@@ -962,9 +963,12 @@
                     <span class="h-card-name" :title="record.anchor_name">{{ record._anchorName }}</span>
                   </div>
                 </div>
-                <span class="status-badge" :class="'status-' + record.status">
-                  {{ record._statusText }}
-                </span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="p-tag" :class="`tag-${record.platform || 'custom'}`" v-if="record.platform">{{ (record._platformName || record.platform).replace('直播', '') }}</span>
+                  <span class="status-badge" :class="'status-' + record.status">
+                    {{ record._statusText }}
+                  </span>
+                </div>
               </div>
               <div class="h-card-body">
                 <div class="h-info-row">
@@ -1974,6 +1978,7 @@ const historyCardItems = computed(() => {
   return historyRecords.value.map(record => ({
     ...record,
     _anchorName: truncateHistoryAnchorName(record.anchor_name),
+    _platformName: getPlatformName(record.platform),
     _date: formatDate(record.start_time),
     _duration: formatDuration(record.duration),
     _size: formatSize(record.file_size),
