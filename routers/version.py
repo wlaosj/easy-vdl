@@ -558,6 +558,8 @@ async def _notify_announcement_update(version: int, top_severity: Optional[str],
                    web_push_enabled, websocket_enabled,
                    COALESCE(telegram_bot_enabled, 'false') AS telegram_bot_enabled,
                    telegram_chat_id,
+                   COALESCE(wecom_bot_enabled, 'false') AS wecom_bot_enabled,
+                   wecom_corp_id, wecom_agent_id, wecom_secret, wecom_api_proxy,
                    COALESCE(system_status_enabled, 'true') AS system_status_enabled
             FROM notification_settings
             """,
@@ -634,6 +636,19 @@ async def _notify_announcement_update(version: int, top_severity: Optional[str],
                             ))
                     except Exception as e:
                         logger.debug(f"Telegram 通知准备失败: {e}")
+                # 企业微信 Bot
+                wecom_enabled = str(r.get("wecom_bot_enabled") or "false").lower()
+                if wecom_enabled == "true" and r.get("wecom_corp_id") and r.get("wecom_agent_id") and r.get("wecom_secret"):
+                    try:
+                        tasks.append(asyncio.create_task(
+                            NotificationService.send_wecom_bot_message(
+                                r["wecom_corp_id"], r["wecom_agent_id"], r["wecom_secret"],
+                                "", f"{title}\n\n{content}", "text",
+                                r.get("wecom_api_proxy") or ""
+                            )
+                        ))
+                    except Exception as e:
+                        logger.debug(f"企业微信通知准备失败: {e}")
             except Exception as e:
                 logger.debug(f"用户平台通知准备失败: {e}")
 
