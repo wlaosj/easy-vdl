@@ -144,11 +144,17 @@ class CustomAdapter(BaseAdapter):
 
     # ----- HLS 探测 -----
 
-    async def _probe_hls(self, url: str) -> dict:
+    async def _probe_hls(self, url: str, _followed: int = 0) -> dict:
         """HLS (m3u8) 流探测：
-        - 获取 playlist 内容
-        - 有 #EXTINF 分段标记 且 无 #EXT-X-ENDLIST → 直播在线
+
+        支持两类 playlist：
+        - **Master Playlist**（#EXT-X-STREAM-INF）：提取首个变体流 URL 后递归探测
+        - **Media Playlist**（#EXTINF）：检查有无分段标记和 #EXT-X-ENDLIST
+
+        最多跟随 2 层 Master → Media 重定向。
         """
+        if _followed > 2:
+            return {"is_live": False, "error": "too many playlist redirects"}
         try:
             async with httpx.AsyncClient(
                 timeout=8, follow_redirects=True
@@ -169,9 +175,31 @@ class CustomAdapter(BaseAdapter):
                         "error": f"HTTP {resp.status_code}",
                     }
                 body = resp.text
+                # 判断 playlist 类型
+                has_stream_inf = "#EXT-X-STREAM-INF:" in body
                 has_inf = "#EXTINF:" in body
                 has_endlist = "#EXT-X-ENDLIST" in body
-                # 直播流：有分段标记且未结束
+
+                # Master Playlist：提取第一个变体流 URL 并递归探测
+                if has_stream_inf and not has_inf:
+                    # 找第一个 #EXT-X-STREAM-INF 下方的 URL 行
+                    variant_url = None
+                    for line in body.splitlines():
+                        stripped = line.strip()
+                        if stripped and not stripped.startswith("#"):
+                            # 相对路径处理
+                            if stripped.startswith("http://") or stripped.startswith("https://"):
+                                variant_url = stripped
+                            else:
+                                from urllib.parse import urljoin
+                                variant_url = urljoin(url, stripped)
+                            break
+                    if variant_url:
+                        return await self._probe_hls(
+                            variant_url, _followed=_followed + 1
+                        )
+
+                # Media Playlist
                 is_live = has_inf and not has_endlist
                 return {"is_live": is_live, "error": None}
         except httpx.TimeoutException:
