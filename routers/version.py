@@ -643,7 +643,7 @@ async def _notify_announcement_update(version: int, top_severity: Optional[str],
                         tasks.append(asyncio.create_task(
                             NotificationService.send_wecom_bot_message(
                                 r["wecom_corp_id"], r["wecom_agent_id"], r["wecom_secret"],
-                                "", f"{title}\n\n{content}", "text",
+                                "@all", f"{title}\n\n{content}", "text",
                                 r.get("wecom_api_proxy") or ""
                             )
                         ))
