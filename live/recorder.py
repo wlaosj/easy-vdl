@@ -139,8 +139,13 @@ class LiveRecorder:
         else:
             # [优化] HLS(m3u8)流的 -reconnect 参数无效，仅对 HTTP 直连流(FLV等)启用
             is_hls = stream_url and '.m3u8' in stream_url.split('?')[0].lower()
+            # RTSP / RTMP 协议不支持 reconnect 和 user_agent 参数
+            stream_url_lower = (stream_url or '').lower()
+            is_rtsp = stream_url_lower.startswith('rtsp://')
+            is_rtmp = stream_url_lower.startswith(('rtmp://', 'rtmps://'))
+            is_http_or_hls = not is_rtsp and not is_rtmp
             reconnect_opts = []
-            if not is_hls:
+            if is_http_or_hls and not is_hls:
                 reconnect_opts = [
                     '-reconnect', '1',
                     '-reconnect_streamed', '1',
@@ -166,8 +171,8 @@ class LiveRecorder:
                     '-y',
                     # 输入选项 (reconnect 仅对非 HLS 流有效)
                     *reconnect_opts,
-                    '-rw_timeout', rw_timeout,
-                    '-user_agent', user_agent,
+                    *([] if is_rtsp or is_rtmp else ['-rw_timeout', rw_timeout]),
+                    *([] if is_rtsp or is_rtmp else ['-user_agent', user_agent]),
                     *input_headers_opts,
                     '-fflags', '+discardcorrupt',
                     # 输入文件
@@ -195,8 +200,8 @@ class LiveRecorder:
                     '-y',
                     # 输入选项 (reconnect 仅对非 HLS 流有效)
                     *reconnect_opts,
-                    '-rw_timeout', rw_timeout,  # 平台自适应IO超时（抖音更宽松）
-                    '-user_agent', user_agent,
+                    *([] if is_rtsp or is_rtmp else ['-rw_timeout', rw_timeout]),  # 平台自适应IO超时（抖音更宽松）
+                    *([] if is_rtsp or is_rtmp else ['-user_agent', user_agent]),
                     *input_headers_opts,
                     '-fflags', '+discardcorrupt',
                     # 输入文件
