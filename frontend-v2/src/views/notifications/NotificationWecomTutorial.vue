@@ -17,7 +17,7 @@
         <div class="principle-item">
           <span class="label">📤 出站 API</span>
           <span class="arrow">→</span>
-          <span class="value highlight">HTTP 代理 (tinyproxy)</span>
+          <span class="value highlight">HTTP 代理 (Squid 带密码)</span>
           <span class="arrow">→</span>
           <span class="value">本地 EDL</span>
         </div>
@@ -40,7 +40,10 @@
 
     <div class="section">
       <h3>2. 创建配置目录</h3>
-      <pre class="code-block">mkdir -p ~/docker/frps ~/docker/tinyproxy</pre>
+      <pre class="code-block">mkdir -p ~/docker/frps ~/docker/squid
+# 生成 Squid 密码文件（将 user123 改成你的用户名）
+apt-get install -y apache2-utils  # 需要 htpasswd 命令
+htpasswd -c ~/docker/squid/passwd user123</pre>
     </div>
 
     <div class="section">
@@ -56,11 +59,15 @@ webServer.password = "改成你的密码"</pre>
     </div>
 
     <div class="section">
-      <h3>4. tinyproxy 配置</h3>
-      <p class="field-hint">创建 <code>~/docker/tinyproxy/tinyproxy.conf</code>：</p>
-      <pre class="code-block">Port 8888
-Timeout 600
-Allow 你的EDL机器IP</pre>
+      <h3>4. Squid 配置</h3>
+      <p class="field-hint">创建 <code>~/docker/squid/squid.conf</code>：</p>
+      <pre class="code-block">http_port 8888
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
+auth_param basic realm proxy
+acl authenticated proxy_auth REQUIRED
+http_access allow authenticated
+http_access deny all</pre>
+      <p class="field-hint" style="color:#dd6b20; margin-top:8px;">⚠️ 务必设置密码认证，否则代理会被扫描器滥用！</p>
     </div>
 
     <div class="section">
@@ -77,14 +84,15 @@ services:
     volumes:
       - ./frps/frps.toml:/etc/frp/frps.toml:ro
 
-  tinyproxy:
-    image: andyshinn/tinyproxy:latest
-    container_name: tinyproxy
+  squid:
+    image: ubuntu/squid:latest
+    container_name: squid
     restart: unless-stopped
     ports:
       - "1080:8888"
     volumes:
-      - ./tinyproxy/tinyproxy.conf:/etc/tinyproxy/tinyproxy.conf:ro</pre>
+      - ./squid/squid.conf:/etc/squid/squid.conf:ro
+      - ./squid/passwd:/etc/squid/passwd:ro</pre>
     </div>
 
     <div class="section">
@@ -97,7 +105,7 @@ services:
       <ul class="port-list">
         <li><code>7100</code> — frp 隧道端口</li>
         <li><code>8001</code> — 微信回调端口</li>
-        <li><code>1080</code> — HTTP 代理端口</li>
+        <li><code>1080</code> — HTTP 代理端口（Squid）</li>
       </ul>
     </div>
 
@@ -122,7 +130,7 @@ remotePort = 8001</pre>
       <ul class="port-list">
         <li><strong>可信 IP</strong> — 填入 VPS 公网 IP</li>
         <li><strong>回调 URL</strong> — <code>http://VPS公网IP:8001/api/wecom/callback</code></li>
-        <li><strong>API 代理</strong> — 在配置页填 <code>http://VPS公网IP:1080</code></li>
+        <li><strong>API 代理</strong> — 在配置页填 <code>http://用户名:密码@VPS公网IP:1080</code></li>
       </ul>
     </div>
 
