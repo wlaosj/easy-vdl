@@ -884,7 +884,16 @@ class DatabaseSchemaManager:
                     })
                     if result.rowcount > 0:
                         logger.info(f"✅ YouTube任务表迁移: {old_format} -> {new_format}, 影响 {result.rowcount} 条记录")
-                
+
+                # 将 YouTube 任务表中 format_id 为空的任务设为默认格式
+                null_result = conn.execute(text("""
+                    UPDATE tasks
+                    SET format_id = 'bestvideo+bestaudio', updated_at = CURRENT_TIMESTAMP
+                    WHERE format_id IS NULL AND source = 'youtube'
+                """))
+                if null_result.rowcount > 0:
+                    logger.info(f"✅ YouTube任务表 NULL 格式迁移: -> bestvideo+bestaudio, 影响 {null_result.rowcount} 条记录")
+
                 # 迁移B站订阅表（best -> bestvideo+bestaudio）
                 for old_format, new_format in bilibili_format_mappings:
                     result = conn.execute(text("""
