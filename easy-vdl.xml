@@ -75,6 +75,7 @@ Easy-VDL 现已登录 Unraid CA 商店！
   <Config Name="Admin Password" Target="EASY_VDL_ADMIN_PASSWORD" Default="" Description="管理员登录密码，首次使用前必须设置。 / Admin login password. Must be set before first use." Type="Variable" Display="always" Required="true" Mask="true"></Config>
   <Config Name="Internal Container Port" Target="EASY_VDL_PORT" Default="80" Description="内部容器 Nginx 服务端口（默认 80），Bridge 模式下通常无需修改。 / Internal Nginx service port (default 80). Usually no need to change in Bridge mode." Type="Variable" Display="advanced" Required="false" Mask="false">80</Config>
   <Config Name="Timezone" Target="TZ" Default="Asia/Shanghai" Description="系统运行的时区设置。 / System timezone setting." Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Shanghai</Config>
+  <Config Name="WeCom Bot Port" Target="8001" Default="8001" Mode="tcp" Description="企业微信 Bot 回调端口（可选），若使用企业微信消息回调功能需映射此端口。 / WeCom Bot callback port (optional). Required if using WeCom message callback." Type="Port" Display="advanced" Required="false" Mask="false">8001</Config>
 
   <!-- 硬件加速设备映射 -->
   <Config Name="Intel/AMD iGPU Device" Target="/dev/dri" Default="/dev/dri" Description="Intel/AMD 核显硬件加速映射通道（仅限 x86 且拥有核显的机器）。 / Intel/AMD iGPU hardware acceleration device mapping (x86 with iGPU only)." Type="Device" Display="advanced" Required="false" Mask="false">/dev/dri</Config>
