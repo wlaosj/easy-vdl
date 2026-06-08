@@ -151,12 +151,12 @@
             <input
               type="text"
               v-model="settingsStore.notificationSettings.wecomApiProxy"
-              placeholder="http://your-vps-ip:1080"
+              placeholder="http://user:pass@your-vps-ip:3128"
               class="form-input"
             />
             <div class="callback-help">
               <p class="field-hint"><strong>有公网 IP：</strong>不填，直接把公网 IP 加到企业微信可信 IP 白名单即可。</p>
-              <p class="field-hint"><strong>无公网 IP：</strong>在 VPS 上开一个 HTTP 代理（如 tiny-proxy），填 <code>http://VPS_IP:代理端口</code>，然后把 VPS IP 加到白名单。</p>
+              <p class="field-hint"><strong>无公网 IP：</strong>在 VPS 上开一个 HTTP 代理（如 Squid，务必设置用户名密码认证防扫描），填 <code>http://用户名:密码@VPS_IP:代理端口</code>，然后把 VPS IP 加到白名单。</p>
               <p class="field-hint">不填则 EDL 直连企业微信 API，需要 EDL 出口 IP 在白名单中。</p>
             </div>
           </div>
@@ -180,7 +180,7 @@
         <div class="setting-item">
           <div class="setting-label">
             <span class="title">无公网 IP？</span>
-            <p class="desc">使用 frp + tinyproxy 搭建 VPS 中继</p>
+            <p class="desc">使用 frp + Squid（带密码认证）搭建 VPS 中继</p>
           </div>
           <div class="setting-control">
             <router-link class="btn btn-outline" to="/settings/notifications/wecom/tutorial">
