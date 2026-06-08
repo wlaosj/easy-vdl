@@ -30,7 +30,7 @@ if not SECRET_KEY:
     # 未配置固定密钥时，启动即生成随机密钥（仅本进程生命周期有效）
     # 这意味着服务重启后旧JWT会全部失效，客户端需重新登录。
     SECRET_KEY = secrets.token_urlsafe(64)
-    logger.warning("JWT_SECRET_KEY 未设置，已启用启动期随机JWT密钥（重启后需重新登录）")
+    logger.info("JWT_SECRET_KEY 未设置，已启用启动期随机JWT密钥（重启后需重新登录）")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24小时
 
