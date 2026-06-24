@@ -1,5 +1,6 @@
 # 🚀 Easy-VDL 综合媒体资源管理平台
 
+![已持续维护](https://img.shields.io/date/1750982400?style=flat-square&label=%E5%B7%B2%E6%8C%81%E7%BB%AD%E7%BB%B4%E6%8A%A4&color=brightgreen)
 ![Docker Pulls](https://img.shields.io/docker/pulls/qq918652593/easy-vdl?style=flat-square&color=orange)
 ![Platform Support](https://img.shields.io/badge/Platform-x86_64%20%7C%20ARM64-blue?style=flat-square)
 [![Telegram Group](https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&style=flat-square)](https://t.me/+7jcTMePlNVwwZjg1)
@@ -13,7 +14,7 @@
 ## 🌟 功能特色
 
 * **🎬 多平台视频订阅**：支持 **抖音**（博主/合集/点赞）、**快手**（博主）、**YouTube**（频道/播放列表/Shorts）、**B站**（UP主/合集）、**小红书**、**TikTok**、**Instagram**、**X** 等平台自动检测更新并归档保存。
-* **🔴 直播自动录制与回放**：自动检测 **抖音**、**快手**、**B站**、**小红书**、**虎牙** 等直播间状态，开播自动录制，停播自动转码保存。支持内置网页播放器无缝时间轴回放，无需第三方播放器。
+* **🔴 直播自动录制与回放**：自动检测 **抖音**、**快手**、**B站**、**小红书**、**虎牙**、**PandaTV**、**SOOP** 等直播间状态，开播自动录制，停播自动转码保存。支持内置网页播放器无缝时间轴回放，无需第三方播放器。
 * **📜 直播弹幕同步与回放**：直播录制过程中同步记录弹幕时间流，支持 WebSocket 实时推送至前端（跑马灯/列表双模式），回放时可同步浏览历史弹幕。
 * **🤖 AI 智能精彩片段提取**：直播结束后基于弹幕热度与情感分析**自动提取精彩片段**，接入大语言模型（如 DeepSeek）自动生成标题与内容摘要，打包一键导出剪辑素材。
 * **🔔 智能通知推送**：支持 微信机器人、Telegram Bot、Server酱³、Bark (iOS) 及 WebSocket 实时交互通知。
