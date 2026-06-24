@@ -1,6 +1,6 @@
 # 🚀 Easy-VDL 综合媒体资源管理平台
 
-![已持续维护](https://img.shields.io/badge/📅%20已持续维护-XX天-brightgreen?style=flat-square)
+![已持续维护](https://img.shields.io/badge/📅%20已持续维护-362天-brightgreen?style=flat-square)
 ![Docker Pulls](https://img.shields.io/docker/pulls/qq918652593/easy-vdl?style=flat-square&color=orange)
 ![Platform Support](https://img.shields.io/badge/Platform-x86_64%20%7C%20ARM64-blue?style=flat-square)
 [![Telegram Group](https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&style=flat-square)](https://t.me/+7jcTMePlNVwwZjg1)
