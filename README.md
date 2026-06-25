@@ -1,6 +1,6 @@
 # 🚀 Easy-VDL 综合媒体资源管理平台
 
-![已持续维护](https://img.shields.io/badge/📅%20已持续维护-362天-brightgreen?style=flat-square)
+![已持续维护](https://img.shields.io/badge/📅%20已持续维护-363天-brightgreen?style=flat-square)
 ![Docker Pulls](https://img.shields.io/docker/pulls/qq918652593/easy-vdl?style=flat-square&color=orange)
 ![Platform Support](https://img.shields.io/badge/Platform-x86_64%20%7C%20ARM64-blue?style=flat-square)
 [![Telegram Group](https://img.shields.io/badge/Telegram-Group-blue?logo=telegram&style=flat-square)](https://t.me/+7jcTMePlNVwwZjg1)
@@ -46,8 +46,17 @@ services:
     mem_limit: 4g                     # 推荐 4G，小规模订阅可降为 2G
     mem_limit_swap: 4g
     # 【x86硬件加速，ARM设备请删除 devices/cap_add 块】
+    # Intel/AMD 核显（默认配置，NVIDIA 用户请改用下方注释块）：
     devices:
       - /dev/dri:/dev/dri             # Intel/AMD 核显硬件加速映射
+    # NVIDIA 显卡请改用以下配置（注释上方 devices，取消下方注释）：
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     cap_add:
       - PERFMON                       # GPU 仪表盘监控负载支持
     volumes:
@@ -67,10 +76,23 @@ services:
 #### 💡 传统的 Docker Run 部署指令
 
 ```bash
-# x86_64（支持 Intel/AMD 硬件加速与 GPU 监控）
+# x86_64 - Intel/AMD 核显（支持硬解与 GPU 监控）
 docker run -d --name easy-vdl -p 888:80 -p 8001:8001 \
   --memory=4g --memory-swap=4g \
   --device=/dev/dri:/dev/dri \
+  --cap-add PERFMON \
+  -v $(pwd)/downloads:/app/downloads \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/database:/app/database \
+  -e EASY_VDL_PORT=80 -e PUID=1000 -e PGID=100 -e TZ=Asia/Shanghai \
+  -e EASY_VDL_ADMIN_USERNAME=admin -e EASY_VDL_ADMIN_PASSWORD=admin123456 \
+  --restart always \
+  qq918652593/easy-vdl:latest
+
+# x86_64 - NVIDIA 显卡（需提前安装 nvidia-container-toolkit）
+docker run -d --name easy-vdl -p 888:80 -p 8001:8001 \
+  --memory=4g --memory-swap=4g \
+  --gpus all \
   --cap-add PERFMON \
   -v $(pwd)/downloads:/app/downloads \
   -v $(pwd)/logs:/app/logs \
